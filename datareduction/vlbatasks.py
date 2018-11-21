@@ -12,10 +12,15 @@ import sys, os, subprocess, math, datetime, glob
 import interaction, pylab, ephem, astro_utils
 from interaction import yesno
 
+# Set up AIPS version
 try:
-    aipsver = os.environ['PSRPIAIPSVER']
+    aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC16'
+    try:
+        aipsver = os.environ['AIPS_VERSION']
+    except KeyError:
+        aipsver = '31DEC18'
+
 speedOfLight = 299792458.
 
 vlbadiameter = 25.47415721 # metres

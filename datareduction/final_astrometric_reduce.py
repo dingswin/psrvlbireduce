@@ -550,9 +550,12 @@ def printTableAndRunlevel(runlevel, snversion, clversion, uvdata):
 # Option parsing and defaulted global variables
 ################################################################################
 try:
-    aipsver = os.environ['PSRPIAIPSVER']
+    aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC16'
+    try:
+        aipsver = os.environ['AIPS_VERSION']
+    except KeyError:
+        aipsver = '31DEC18'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("-e", "--experiment", dest="experiment", default="",
@@ -602,7 +605,7 @@ if runfromlevel > runtolevel:
 try:
     auxdir = os.environ['PSRVLBAUXDIR']
 except KeyError:
-    print "PSRPISVNROOT is not defined - aborting!"
+    print "PSRVLBAUXDIR is not defined - aborting!"
     sys.exit(1)
 configdir     = auxdir + '/configs/'
 finalmodeldir = auxdir + '/sourcemodels/final/'
