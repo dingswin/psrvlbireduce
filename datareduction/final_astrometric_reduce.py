@@ -573,7 +573,7 @@ parser.add_option("--startlocaltv", dest="startlocaltv", default=False,
                   action="store_true", help="Start a local AIPS TV " + \
                                             "(for X11, VNC etc")
 (options, junk) = parser.parse_args()
-svndir          = ""
+auxdir          = ""
 rootdir         = ""
 targetonly      = options.targetonly
 calonly         = options.calonly
@@ -598,13 +598,13 @@ if runfromlevel > runtolevel:
     parser.error("Runtolevel (" + str(runtolevel) + ") must be greater " \
                  "than or equal to runfromlevel (" + str(runfromlevel) + ")")
 try:
-    svndir = os.environ['PSRPISVNROOT']
+    auxdir = os.environ['PSRVLBAUXDIR']
 except KeyError:
     print "PSRPISVNROOT is not defined - aborting!"
     sys.exit(1)
-configdir     = svndir + '/configs/'
-finalmodeldir = svndir + '/inbeammodels/final/'
-prelimmodeldir= svndir + '/inbeammodels/preliminary/'
+configdir     = auxdir + '/configs/'
+finalmodeldir = auxdir + '/sourcemodels/final/'
+prelimmodeldir= auxdir + '/sourcemodels/preliminary/'
 expconfigfile = configdir + experiment + '.yaml'
 if not os.path.exists(expconfigfile):
     parser.error("Experiment config file %s does not exist!" % expconfigfile)
