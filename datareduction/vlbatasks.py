@@ -17,7 +17,7 @@ try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
     try:
-        aipsver = os.environ['AIPS_VERSION']
+        aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
     except KeyError:
         aipsver = '31DEC18'
 
