@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import os, sys
 
 usage = "prepare_astrometric_epoch.py <.vex file>"
