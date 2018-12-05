@@ -118,7 +118,7 @@ def parse_log(code):
     databad = re.compile('\*[BFHKLMNOPS][A-Z]')
     datamay = re.compile('\%[BFHKLMNOPS][A-Z]')
 
-    infile = os.environ['PSRPISVNROOT'] + '/runlogs/' + code.lower() + 'log.vlba'
+    infile = os.environ['PSRVLBAUXDIR'] + '/runlogs/' + code.lower() + 'log.vlba'
     if os.path.exists(infile):
         f = open(infile, 'r')
         for l in f:
