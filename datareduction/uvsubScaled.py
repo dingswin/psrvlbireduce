@@ -70,7 +70,12 @@ for row in wizuvdata2:
     baselines.append([row.baseline[0],row.baseline[1]])
     output2.write("%.6f %d-%d\n" % (row.time, row.baseline[0], row.baseline[1]))
 output2.close()
+
+print "Finished reading file 1..."
+
 visibilities = numpy.zeros(rowcount*numif*numchan*numstokes*3).reshape(rowcount, numif, numchan, numstokes, 3)
+
+print "Allocated space for visibilities"
 rowcount = 0
 for row in wizuvdata2:
     for i in range(numif):
@@ -79,6 +84,8 @@ for row in wizuvdata2:
                 for l in range(3):
                     visibilities[rowcount][i][j][k][l] = row.visibility[i][j][k][l]
     rowcount += 1
+
+print "Now we've read in file 1's visibilities, time to skip through file 2"
 numvisibilities = rowcount
 
 times1 = []
@@ -110,7 +117,17 @@ for row in wizuvdata1:
 #    while atindex < len(times) and (row.baseline[0] > baselines[atindex][0] or ((row.baseline[0] == baselines[atindex][0]) and (row.baseline[1] > baselines[atindex][1]))):
     #while atindex < len(times) and row.time < times[atindex]-TINY and (row.baseline[0] > baselines[atindex][0] or ((row.baseline[0] == baselines[atindex][0]) and (row.baseline[1] > baselines[atindex][1]))):
     ## WARNING - CHANGING THIS FROM ABOVE, SINCE THE TIME CHECK SEEMED INCORRECT
-    while atindex < len(times) and row.time < times[atindex]+TINY and (row.baseline[0] > baselines[atindex][0] or ((row.baseline[0] == baselines[atindex][0]) and (row.baseline[1] > baselines[atindex][1])) or (row.baseline[0] != baselines[atindex][0] and row.baseline[1] != baselines[atindex][1] and baselines[atindex][1] == baselines[atindex][1])):
+    while ( atindex < len(times) # Not running off the end of the times array
+             and 
+              row.time < times[atindex]+TINY # Current row is earlier than or equal to the time we are currently looking at - ensures we don't race off into the future
+             and  
+              (row.baseline[0] > baselines[atindex][0] # The row's baseline is a higher number than the one we are currently looking at
+               or 
+                ((row.baseline[0] == baselines[atindex][0]) and (row.baseline[1] > baselines[atindex][1])) # The row's baseline is a higher number than the one we're currently looking at
+               or 
+                (row.baseline[0] != baselines[atindex][0] and row.baseline[1] != baselines[atindex][1] and baselines[atindex][0] == baselines[atindex][1]) # The baseline doesn't match and we're currently looking at an autocorrelation, which might be present in the to-subtract dataset and not the primary dataset
+              )
+           ):
         print "Skipping a visibility due to baseline mismatch!"
         print row.baseline, baselines[atindex], atindex, len(baselines), len(times)
         atindex += 1
