@@ -2434,6 +2434,15 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
     newdecrad += float(splite[6])*math.pi/(180*60*60*1000)
     return newrarad, newdecrad, orgrarad, orgdecrad
 
+####### ENSURE THAT NO HIGHER SEQNO FILES EXIST, THEN RETURN DESIRED OBJECT ####
+def zapAndCreateUVData(srcname, klass, disk, seqno):
+    for i in range(seqno, 100):
+        outputdata = AIPSUVData(srcname,klass,disk,i)
+        if outputdata.exists():
+            outputdata.zap()
+    outputdata = AIPSUVData(srcname,klass,disk,seqno)
+    return outputdata
+
 ####### ATLOD FOR RPFITS FILES FROM THE LBA ####################################
 def atlod(atfile, uvdata, sources):
     if uvdata.exists():
@@ -2542,7 +2551,7 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
         fitld()
 
 ####### FITLD FOR CORRELATOR UV FILES ##########################################
-def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate=''):
+def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='', cltablemin=0.166667):
     fitld = AIPSTask('fitld', version = aipsver)
     splitfile = file.split(':')
     splitantenna = antennalist.split(',')
@@ -2558,7 +2567,7 @@ def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='
     fitld.echan = 0
     fitld.bif = 0
     fitld.eif = 0
-    fitld.clint = 0.166667
+    fitld.clint = cltablemin
     fitld.digicor = 1
     fitld.wtthresh = wtthreshold
     fitld.refdate = rdate
@@ -4132,6 +4141,53 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
           str(bpass.calsour[1]) + ", timer is " + str(bpass.timerang)
     bpass()
 
+##### Polynomial-based bandpass correction #####################################
+def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None):
+    cpass = AIPSTask('cpass', version = aipsver)
+    cpass.indata = uvdataset
+    cpass.calsour[1] = srcname
+    cpass.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
+    cpass.docalib = 2
+    cpass.gainuse = clversion
+    cpass.flagver = 1
+    cpass.outver = 1
+    cpass.solint = 0
+    if ampcalmodeldata == None:
+        cpass.in2name = ''
+        cpass.in2class = ''
+    else:
+        cpass.in2data = ampcalmodeldata
+    cpass.invers = 0
+    cpass.ncomp[1:] = [0]
+    cpass.flux = 0
+    cpass.smodel[1:] = [0]
+    cpass.bpassprm[1:] = [0]
+    cpass.bpassprm[10] = 1
+    cpass.bpassprm[11] = 1
+    cpass.cparm[1:] = [0]
+    cpass.cparm[1] = 10
+    cpass.cparm[2] = 80
+    cpass.cparm[3] = 0.005
+    cpass.cparm[5] = 2
+    cpass.cparm[8] = 1
+    cpass()
+
+##### Get the number of channels in a uv file ##################################
+def getNumChannels(uvdata):
+    numchannels = -1
+    fqtable = uvdata.table('FQ', 1)
+    for row in fqtable:
+        try:
+            thisnumchannels = int((row.total_bandwidth[0] / row.ch_width[0]) + 0.5)
+        except (AttributeError, TypeError):
+            thisnumchannels = int((row.total_bandwidth / row.ch_width) + 0.5)
+        if numchannels < 0:
+            numchannels = thisnumchannels
+        elif thisnumchannels != numchannels:
+            print "Different num channels for different IFs! Returning -1"
+            return -1
+    return numchannels
+
 ##### Get the channel bandwidth for a uv file ##################################
 def getchannelbandwidthhz(uvdata):
     chanbw = -1
@@ -5078,10 +5134,9 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
 ##### Use difmap to map a target ###############################################
 def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
                      mapsize=1024, uvweightstr="0,-1", dogaussian=False, 
-                     beginif=1, endif=4, ifrange="", finalmapsize=1024):
+                     beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
-    finepix = 0.2
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
     difmap.stdin.write("float pkflux\n")
