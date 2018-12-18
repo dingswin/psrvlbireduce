@@ -10,9 +10,9 @@ import os, sys, glob
 # Global variables and option parsing
 ################################################################################
 try:
-    aipsver = os.environ['PSRPIAIPSVER']
+    aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC15'
+    aipsver = '31DEC18'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("--rootdir", dest="rootdir",
