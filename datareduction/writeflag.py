@@ -113,7 +113,7 @@ while index < len(queries):
         else:
             flagline += (entries[index] % answer)
     index += 1
-flagline += ("sources='%s' " % flagsource)
+#flagline += ("sources='%s' " % flagsource)
 
 if flagline == "":
     print "You didn't enter anything to flag..?   I'm not going to do anything."

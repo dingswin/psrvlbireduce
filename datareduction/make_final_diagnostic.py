@@ -314,7 +314,7 @@ if __name__ == "__main__":
     #
     # Get relevant info from the log
     # 
-    os.system("$PSRVLBIREDUCE/make_pipeline_summary.py %s %s/../" % (code.lower(), os.getcwd()))
+    os.system("make_pipeline_summary.py %s %s/../" % (code.lower(), os.getcwd()))
     diag.hr()
     diag.h1('Important messages from the pipeline log')
     summarylines = open(code.lower() + '.pipelinesummary').readlines()

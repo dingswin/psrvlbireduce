@@ -553,7 +553,7 @@ try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
     try:
-        aipsver = os.environ['AIPS_VERSION']
+        aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
     except KeyError:
         aipsver = '31DEC18'
 usage = "usage: %prog [options]"
@@ -801,35 +801,34 @@ printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load the user flags (if any) ################################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Loading user flags"
+    userflagfiles = glob.glob(tabledir + '/*.flag')
     if not targetonly:
         userflagfile = tabledir + "additionaledit.flag"
         if os.path.exists(userflagfile):
             for i in range(numinbeams):
                 vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
-                for j in range(numtargets):
-                    if i < len(inbeamnames[j]):
-                        extraflagfile = tabledir + "additionaledit." + inbeamnames[j][i] + ".flag"
-                        if os.path.exists(extraflagfile):
-                            vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
+        for i in range(numtargets):
+            for inbeamname in inbeamnames[i]:
+                extraflagfile = tabledir + "additionaledit." + inbeamname + ".flag"
+                if os.path.exists(extraflagfile):
+                    vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
     if not calonly:
-        for flagfile in glob.glob(tabledir + '/additionaledit*'):
-            flagfilename = flagfile.split('/')[-1].strip()
-            if flagfilename != "additionaledit.flag":
-                flagsourcename = flagfilename.split('.')[1]
-                userflagfile = flagfile
-                if flagsourcename in targetnames:
-                    if haveungated:
-                        vlbatasks.userflag(ungateduvdata, 1, userflagfile)
-                    vlbatasks.userflag(gateduvdata, 1, userflagfile)
-                elif flagsourcename in inbeamnames:
-                    i = inbeamnames.index(flagsourcename)
-                    vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
-               # else:
-                   # vlbatasks.userflag(finduvdata(flagsourcename),1,userflagfile)
-            else:
-                userflagfile = flagfile
-        if len(glob.glob(tabledir + '/*.flag')) == 0:
-            print "No user flag file - skipping"
+        userflagfile = tabledir + "additionaledit.flag"
+        if os.path.exists(userflagfile):
+            vlbatasks.userflag(gateduvdata, 1, userflagfile)
+            if haveungated:
+                vlbatasks.userflag(ungateduvdata, 1, userflagfile)
+        for targetname in targetnames:
+            extraflagfile = tabledir + "additionaledit." + targetname + ".flag"
+            if os.path.exists(extraflagfile):
+                vlbatasks.userflag(gateduvdata, 1, extraflagfile)
+                if haveungated:
+                    vlbatasks.userflag(ungateduvdata, 1, extraflagfile)
+    if len(userflagfiles) == 0:
+        print "No user flag file - skipping"
+    for userflagfile in userflagfiles:
+        if "target" in userflagfile:
+            print "Warning: old-style additionaledit.target.flag file no longer supported!"
 else:
     print "Skipping flagging from user flag file"
 
@@ -2707,9 +2706,6 @@ gaussianinbeam = True
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Image targets using Difmap and fit for position #############################
 if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
-
-    os.system("echo $PATH")
-
     print "Runlevel " + str(runlevel) + ": Fitting target positions using difmap"
     for i in range(numtargets):
         config = targetconfigs[i]
