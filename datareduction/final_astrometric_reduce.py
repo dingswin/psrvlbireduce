@@ -16,7 +16,7 @@ from AIPSTV import AIPSTV
 ################################################################################
 # General python imports
 ################################################################################
-import sys, os, string, math, warnings, subprocess, yaml
+import sys, os, string, math, warnings, subprocess, yaml,glob
 import interaction, vlbatasks
 from time import gmtime, strftime
 from optparse import OptionParser
@@ -553,7 +553,7 @@ try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
     try:
-        aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
+        aipsver = os.environ['AIPS_VERSION']
     except KeyError:
         aipsver = '31DEC18'
 usage = "usage: %prog [options]"
@@ -812,15 +812,24 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                         if os.path.exists(extraflagfile):
                             vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
     if not calonly:
-        userflagfile = tabledir + "additionaledit.target.flag"
-        if not os.path.exists(userflagfile):
-            userflagfile = tabledir + "additionaledit.flag"
-        if os.path.exists(userflagfile):
-            if haveungated:
-                vlbatasks.userflag(ungateduvdata, 1, userflagfile)
-            vlbatasks.userflag(gateduvdata, 1, userflagfile)
-    else:
-        print "No user flag file - skipping"
+        for flagfile in glob.glob(tabledir + '/additionaledit*'):
+            flagfilename = flagfile.split('/')[-1].strip()
+            if flagfilename != "additionaledit.flag":
+                flagsourcename = flagfilename.split('.')[1]
+                userflagfile = flagfile
+                if flagsourcename in targetnames:
+                    if haveungated:
+                        vlbatasks.userflag(ungateduvdata, 1, userflagfile)
+                    vlbatasks.userflag(gateduvdata, 1, userflagfile)
+                elif flagsourcename in inbeamnames:
+                    i = inbeamnames.index(flagsourcename)
+                    vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
+               # else:
+                   # vlbatasks.userflag(finduvdata(flagsourcename),1,userflagfile)
+            else:
+                userflagfile = flagfile
+        if len(glob.glob(tabledir + '/*.flag')) == 0:
+            print "No user flag file - skipping"
 else:
     print "Skipping flagging from user flag file"
 
@@ -2698,6 +2707,9 @@ gaussianinbeam = True
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Image targets using Difmap and fit for position #############################
 if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
+
+    os.system("echo $PATH")
+
     print "Runlevel " + str(runlevel) + ": Fitting target positions using difmap"
     for i in range(numtargets):
         config = targetconfigs[i]
