@@ -21,10 +21,8 @@ def parse_timerange(response, formatstring, dayno):
 
 wd = os.getcwd()
 splitwd = wd.split('/')
-
 exp = splitwd[-1]
 tabledir = wd + '/tables/'
-flagfile = tabledir + 'additionaledit.flag'
 vexfile = wd + '/' + exp + '.vex'
 
 if not os.path.exists(tabledir):
@@ -34,6 +32,12 @@ if not os.path.exists(tabledir):
 if not os.path.exists(vexfile):
     print vexfile + " does not exist - aborting!"
     sys.exit()
+
+flagsource = raw_input('Flag source: ')
+if flagsource=="":
+    flagfile = tabledir + 'additionaledit.flag'
+else:
+    flagfile = tabledir + 'additionaledit.' + flagsource + '.flag'
 
 dayno = -1
 vexlines = open(vexfile).readlines()
@@ -74,8 +78,8 @@ queries.append("Flag baselines from %s to")
 entries.append("bas_name='%s' ")
 queries.append("Flag timerange (hh:mm:ss,hh:mm:ss)")
 entries.append("timerang=%03d,%02d,%02d,%02d, %03d,%02d,%02d,%02d ")
-queries.append("Flag sources")
-entries.append("sources='%s' ")
+#queries.append("Flag sources")
+#entries.append("sources='%s' ")
 queries.append("Flag IFs (begin,end)")
 entries.append("bif=%d eif=%d ")
 queries.append("Flag stokes")
@@ -109,6 +113,7 @@ while index < len(queries):
         else:
             flagline += (entries[index] % answer)
     index += 1
+#flagline += ("sources='%s' " % flagsource)
 
 if flagline == "":
     print "You didn't enter anything to flag..?   I'm not going to do anything."

@@ -16,7 +16,7 @@ from AIPSTV import AIPSTV
 ################################################################################
 # General python imports
 ################################################################################
-import sys, os, string, math, warnings, subprocess, yaml
+import sys, os, string, math, warnings, subprocess, yaml,glob
 import interaction, vlbatasks
 from time import gmtime, strftime
 from optparse import OptionParser
@@ -801,26 +801,34 @@ printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load the user flags (if any) ################################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Loading user flags"
+    userflagfiles = glob.glob(tabledir + '/*.flag')
     if not targetonly:
         userflagfile = tabledir + "additionaledit.flag"
         if os.path.exists(userflagfile):
             for i in range(numinbeams):
                 vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
-                for j in range(numtargets):
-                    if i < len(inbeamnames[j]):
-                        extraflagfile = tabledir + "additionaledit." + inbeamnames[j][i] + ".flag"
-                        if os.path.exists(extraflagfile):
-                            vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
+        for i in range(numtargets):
+            for inbeamname in inbeamnames[i]:
+                extraflagfile = tabledir + "additionaledit." + inbeamname + ".flag"
+                if os.path.exists(extraflagfile):
+                    vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
     if not calonly:
-        userflagfile = tabledir + "additionaledit.target.flag"
-        if not os.path.exists(userflagfile):
-            userflagfile = tabledir + "additionaledit.flag"
+        userflagfile = tabledir + "additionaledit.flag"
         if os.path.exists(userflagfile):
+            vlbatasks.userflag(gateduvdata, 1, userflagfile)
             if haveungated:
                 vlbatasks.userflag(ungateduvdata, 1, userflagfile)
-            vlbatasks.userflag(gateduvdata, 1, userflagfile)
-    else:
+        for targetname in targetnames:
+            extraflagfile = tabledir + "additionaledit." + targetname + ".flag"
+            if os.path.exists(extraflagfile):
+                vlbatasks.userflag(gateduvdata, 1, extraflagfile)
+                if haveungated:
+                    vlbatasks.userflag(ungateduvdata, 1, extraflagfile)
+    if len(userflagfiles) == 0:
         print "No user flag file - skipping"
+    for userflagfile in userflagfiles:
+        if "target" in userflagfile:
+            print "Warning: old-style additionaledit.target.flag file no longer supported!"
 else:
     print "Skipping flagging from user flag file"
 
