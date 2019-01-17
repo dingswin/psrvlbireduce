@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import os, sys
 
 def parse_timerange(response, formatstring, dayno):
