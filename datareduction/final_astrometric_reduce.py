@@ -808,10 +808,11 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             for i in range(numinbeams):
                 vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
         for i in range(numtargets):
-            for inbeamname in inbeamnames[i]:
-                extraflagfile = tabledir + "additionaledit." + inbeamname + ".flag"
+            for j in range(len(inbeamnames[i])):
+                #for inbeamname in inbeamnames[i]:
+                extraflagfile = tabledir + "additionaledit." + inbeamnames[i][j] + ".flag"
                 if os.path.exists(extraflagfile):
-                    vlbatasks.userflag(inbeamuvdatas[i], 1, extraflagfile)
+                    vlbatasks.userflag(inbeamuvdatas[j], 1, extraflagfile)
     if not calonly:
         userflagfile = tabledir + "additionaledit.flag"
         if os.path.exists(userflagfile):
