@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os, sys
+from astropy.time import Time
 
 usage = "prepare_astrometric_epoch.py <.vex file>"
 if len(sys.argv) != 2:
@@ -13,6 +14,8 @@ vexin.close()
 startfound = False
 stopfound = False
 for line in vexlines:
+    if 'MJD' in line:
+        MJD = int(line.split(':')[-1])
     if "exper_nominal_start" in line:
         splitline = line.split('=')
         syear     = int(splitline[1][:4])
@@ -36,7 +39,19 @@ os.system("mkdir logs")
 os.system("mkdir tables")
 os.system("mkdir images")
 os.chdir("logs")
-os.system("wget https://vlbi.gsfc.nasa.gov/apriori/usno_finals.erp")
+os.system("wget -T 12 https://vlbi.gsfc.nasa.gov/apriori/usno_finals.erp")
+# in case the erp file service was down...
+if not os.path.exists("usno_finals.erp"):
+    print "\ndownload usno_finals.erp from another route\n"
+    today=Time.now()
+    if today.mjd-MJD<30:
+        print "\nchoose the newer erp file\n"
+        os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno500_finals.erp")
+        os.rename("usno500_finals.erp","usno_finals.erp")
+    else:
+        os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno_finals.erp")
+
+
 os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
 os.system("gunzip jplg%03d0.%02di.Z" % (sdoy, syy))
 if edoy != sdoy:
