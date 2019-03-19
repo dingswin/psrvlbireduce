@@ -39,7 +39,6 @@ os.system("mkdir logs")
 os.system("mkdir tables")
 os.system("mkdir images")
 os.chdir("logs")
-os.system("rm *")
 os.system("wget -T 12 https://vlbi.gsfc.nasa.gov/apriori/usno_finals.erp")
 # in case the erp file service was down...
 if not os.path.exists("usno_finals.erp"):
@@ -55,6 +54,10 @@ if not os.path.exists("usno_finals.erp"):
 if edoy != sdoy:
     sdoy  = edoy
     syear = eyear
+try:
+    os.system("rm *.Z")
+    except OSError:
+        pass
 os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
 if os.path.exists("igsg%03d0.%02di.Z" % (sdoy,syy)):
     print ("\ngunzip igsg%03d0.%02di.Z...\n" % (sdoy,syy))
