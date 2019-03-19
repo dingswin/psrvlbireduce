@@ -56,8 +56,8 @@ if edoy != sdoy:
     syear = eyear
 try:
     os.system("rm *.Z")
-    except OSError:
-        pass
+except OSError:
+    pass
 os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
 if os.path.exists("igsg%03d0.%02di.Z" % (sdoy,syy)):
     print ("\ngunzip igsg%03d0.%02di.Z...\n" % (sdoy,syy))
