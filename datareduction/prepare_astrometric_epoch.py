@@ -39,6 +39,7 @@ os.system("mkdir logs")
 os.system("mkdir tables")
 os.system("mkdir images")
 os.chdir("logs")
+os.system("rm *")
 os.system("wget -T 12 https://vlbi.gsfc.nasa.gov/apriori/usno_finals.erp")
 # in case the erp file service was down...
 if not os.path.exists("usno_finals.erp"):
@@ -51,9 +52,13 @@ if not os.path.exists("usno_finals.erp"):
     else:
         os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno_finals.erp")
 
-
-os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
-os.system("gunzip jplg%03d0.%02di.Z" % (sdoy, syy))
 if edoy != sdoy:
-    os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (eyear, edoy))
-    os.system("gunzip jplg%03d0.%02di.Z" % (edoy, eyy))
+    sdoy  = edoy
+    syear = eyear
+os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
+if os.path.exists("igsg%03d0.%02di.Z" % (sdoy,syy)):
+    print ("\ngunzip igsg%03d0.%02di.Z...\n" % (sdoy,syy))
+    os.system("gunzip igsg%03d0.%02di.Z" % (sdoy,syy))
+else:
+    print ("\ngunzip jgsg%03d0.%02di.Z...\n" % (sdoy,syy))
+    os.system("gunzip jplg%03d0.%02di.Z" % (sdoy, syy))
