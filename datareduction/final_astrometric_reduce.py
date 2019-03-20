@@ -606,6 +606,11 @@ try:
 except KeyError:
     print "PSRVLBAUXDIR is not defined - aborting!"
     sys.exit(1)
+try:
+    codedir = os.environ['PSRVLBICODEDIR']
+except KeyError:
+    print "PSRVLBICODEDIR is not defined - aborting!"
+    sys.exit(1)
 configdir     = auxdir + '/configs/'
 finalmodeldir = auxdir + '/sourcemodels/final/'
 prelimmodeldir= auxdir + '/sourcemodels/preliminary/'
@@ -2860,9 +2865,6 @@ for i in range(numtargets):
 ## Make some nice diagnostic plots #############################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Making final diagnostic plots"
-    cwd = os.getcwd()
-    os.chdir(directory)
-    os.system("%s/make_final_diagnostic.py" % cwd)
-    os.chdir(cwd)
+    os.system("%s/make_final_diagnostic.py" % codedir)
 else:
     print "Skipping making of diagnostic plots"
