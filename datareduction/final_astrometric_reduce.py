@@ -2477,10 +2477,12 @@ for i in range(20): #Clear any old FINAL split catalog entries
 phscaluvfiles = []
 inbeamuvfiles = []
 gateduvfiles = []
-divideduvfiles = []
+dividedinbeamuvfiles = []
 ungateduvfiles = []
 ungatedpresent = []
 dividesourcelist = []
+ibshiftdivphscaluvfiles = []
+divinbeampreselfcaluvfiles = []
 try:
     if not config['dividesources'] == None:
         dividesourcelist = [x.strip(' ') for x in config['dividesources'].split(',')]
@@ -2491,8 +2493,10 @@ for phscalsrc in phscalnames:
         phscalsrc = phscalsrc[:12]
     phscaluvfiles.append(directory + '/' + experiment + "_" + phscalsrc + \
                          "_pipeline_uv.fits")
+    ibshiftdivphscaluvfiles.append(directory + '/' + experiment + '_' + phscalsrc + '_ibshiftdiv_uv.fits')
     inbeamuvfiles.append([])
-    divideduvfiles.append([])
+    divinbeampreselfcaluvfiles.append([])
+    dividedinbeamuvfiles.append([])
 for targetoutname in targetnames:
     gfile = directory + '/' + experiment + "_" + targetoutname + \
             "_pipeline_uv.gated.fits"
@@ -2510,13 +2514,18 @@ for i in range(numtargets):
                 inbeamoutname + "_pipeline_uv.fits"
         dfile = directory + '/' + experiment + "_" + \
                 inbeamoutname + "_pipeline_divided_uv.fits"
+        ifile_preselfcal = directory + '/' + experiment + "_preselfcal_" + \
+                inbeamoutname + "_pipeline_divided_uv.fits"
         if expconfig['dodefaultnames']:
             ifile = directory + '/' + experiment + "_inbeam-" + str(i) + \
+                    "_" + str(icount) + "_pipeline_uv.fits"
+            ifile_preselfcal = directory + '/' + experiment + "_preselfcal_inbeam-" + str(i) + \
                     "_" + str(icount) + "_pipeline_uv.fits"
             dfile = directory + '/' + experiment + "_inbeam-" + str(i) + \
                     "_" + str(icount) + "_pipeline_divided_uv.fits"
         inbeamuvfiles[i].append(ifile)
-        divideduvfiles[i].append(dfile)
+        divinbeampreselfcaluvfiles[i].append(ifile_preselfcal)
+        dividedinbeamuvfiles[i].append(dfile)
         icount += 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Split, image and write all three ############################################
@@ -2559,16 +2568,34 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                 aipssrcname = phscalnames[i]
                 if len(aipssrcname) > 12:
                     aipssrcname = aipssrcname[:12]
-                splitdata = AIPSUVData(aipssrcname, 'FINAL', 1, 1)
-                if splitdata.exists():
-                    splitdata.zap()
-                vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'FINAL', phscalnames[i], splitseqno, splitmulti,
-                                     splitband, splitbeginif, splitendif, combineifs, leakagedopol)
-                #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
-                #if not skipplots:
-                #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
-                #                    fullauto, stokesi)
-                vlbatasks.writedata(splitdata, phscaluvfiles[i], True)
+                for split_phscal_option in ['FINAL','IBS']: #ibshift
+                    splitdata = AIPSUVData(aipssrcname, split_phscal_option, 1, 1)
+                    if splitdata.exists():
+                        splitdata.zap()
+                    if split_phscal_option == 'FINAL':
+                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion, split_phscal_option, phscalnames[i], splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                        vlbatasks.writedata(splitdata, phscaluvfiles[i], True)
+                    else:
+                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion+targetcl, split_phscal_option, phscalnames[i], splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                        phscal_image_file = modeldir + aipssrcname + ".clean.fits"
+                        if not os.path.exists(phscal_image_file):
+                            print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
+                            print "But " + phscal_image_file + " was not found."
+                            sys.exit()
+                        modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
+                        if modeldata.exists():
+                            modeldata.zap()
+                        vlbatasks.fitld_image(phscal_image_file, modeldata)
+                        divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                        if divideddata.exists():
+                            divideddata.zap()
+                        vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
+                        vlbatasks.writedata(divideddata, ibshiftdivphscaluvfiles[i], True)
+                    #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
+                    #if not skipplots:
+                    #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
+                    #                    fullauto, stokesi)
+                
             # Then the inbeams
             for inbeamsrc in inbeamnames[i]:
                 aipssrcname = inbeamsrc
@@ -2585,6 +2612,14 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                 #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, inbeamsrc, plotfile, False,
                 #                    fullauto, stokesi)
                 vlbatasks.writedata(splitdata, inbeamuvfiles[i][count], True)
+                #split primary in-beam calibrator referenced to phscal (pre-inbeamselfcal)
+                if inbeamsrc in config['primaryinbeam']:
+                    splitdata_PS = AIPSUVData(aipssrcname, 'PRESEL', 1, 1) #pre-selfcalibration
+                    if splitdata_PS.exists():
+                        splitdata_PS.zap()
+                    vlbatasks.splittoseq(inbeamuvdatas[count], clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                #divide inbeamuvfiles by model
+                tempdivfile = directory + '/temp.fits'
                 if inbeamsrc in dividesourcelist:
                     if config['separateifmodel'] and inbeamsrc in config['primaryinbeam']:
                         ifdivideddatas = []
@@ -2643,10 +2678,30 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                         if divideddata.exists():
                             divideddata.zap()
                         vlbatasks.normaliseUVData(splitdata, modeldata, divideddata)
-                    tempdivfile = directory + '/temp.fits'
                     os.system("rm -f " + tempdivfile)
                     vlbatasks.writedata(divideddata, tempdivfile, True)
-                    os.system("mv -f " + tempdivfile + " " + divideduvfiles[i][count])
+                    os.system("mv -f " + tempdivfile + " " + dividedinbeamuvfiles[i][count])
+                #divide pre-selfcal primary inbeam uvfile by model
+                if inbeamsrc in config['primaryinbeam']:
+                    divideddata_PS = AIPSUVData(aipssrcname, 'PSDIV', 1, 1) #pre-selfcal div
+                    if divideddata_PS.exists():
+                        divideddata_PS.zap()
+                    inbeam_image_file = modeldir + inbeamsrc + ".clean.fits"
+                    if not os.path.exists(inbeam_image_file):
+                        print "Need a model for " + inbeamsrc + " since --divideinbeammodel=True"
+                        print "But " + inbeam_image_file + " was not found."
+                        sys.exit()
+                    shortname = inbeamsrc
+                    if len(inbeamsrc) > 12:
+                        shortname = inbeamsrc[:12]
+                    modeldata = AIPSImage(shortname, "CLEAN", 1, 1)
+                    if modeldata.exists():
+                        modeldata.zap()
+                    vlbatasks.fitld_image(inbeam_image_file, modeldata)
+                    vlbatasks.normaliseUVData(splitdata_PS, modeldata,  divideddata_PS)
+                    os.system("rm -f " + tempdivfile)
+                    vlbatasks.writedata(divideddata_PS, tempdivfile, True)
+                    os.system("mv -f " + tempdivfile + " " + divinbeampreselfcaluvfiles[i][count])
                 count += 1
         if not calonly:
             splitdata1 = AIPSUVData(targetnames[i], 'UFINL', 1, 1)
@@ -2751,6 +2806,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                                        config['difmapweightstring'], config['usegaussiantarget'], 
                                        beginif, endif-subtractif)
             vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
+        
+        #difmap-image and jmfit ibshiftdivphscal
+        targetimagefile = directory + '/' + experiment + phscalnames[i] + '_ibshiftdiv_difmap.fits'
+        jmfitfile = directory + '/' + experiment + '_' + phscalnames[i] + '_ibshiftdiv_difmap.jmfit'
+        vlbatasks.difmap_maptarget(ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
+        vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
+        #then in-beam cals    
         for j in range(len(inbeamnames[i])):
             targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                               '_difmap.fits'
@@ -2778,10 +2840,20 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                                       "_" + str(icount) + '_pipeline_divided_uv.fits'
                     jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                 "_" + str(icount) + '_divided.difmap.jmfit'
-                vlbatasks.difmap_maptarget(divideduvfiles[i][j], targetimagefile, 
+                vlbatasks.difmap_maptarget(dividedinbeamuvfiles[i][j], targetimagefile, 
                                            fullauto, stokesi, config['difmappixelmas'], 
                                            config['difmapnpixels'], config['difmapweightstring'], 
                                            config['usegaussianinbeam'], beginif, 
+                                           endif-subtractif)
+                vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
+                                stokesi, endif-subtractif)
+            if inbeamnames[i][j] in config['primaryinbeam']:
+                targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
+                jmfitfile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided.difmap.jmfit' 
+                vlbatasks.difmap_maptarget(divinbeampreselfcaluvfiles[i][j], targetimagefile, 
+                                           fullauto, stokesi, config['difmappixelmas'],
+                                           config['difmapnpixels'], config['difmapweightstring'],
+                                           config['usegaussianinbeam'], beginif,
                                            endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                 stokesi, endif-subtractif)
@@ -2791,6 +2863,7 @@ else:
 
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
+"""
 ## Pass inbeamsn back to phscal ################################################
 expconfig     = yaml.load(open(expconfigfile))
 expdir        = expconfig['rootdir'] + '/' + experiment + '/'
@@ -2862,6 +2935,7 @@ for i in range(numtargets):
                    0, 0, 0, 100, 20)
     vlbatasks.nonpulsarjmfit("", jmfitfile, aips12phsrefname, -1, -1, True,
                              False,shiftedimage,48)
+"""
 ## Make some nice diagnostic plots #############################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Making final diagnostic plots"
