@@ -16,7 +16,7 @@ from AIPSTV import AIPSTV
 ################################################################################
 # General python imports
 ################################################################################
-import sys, os, string, math, warnings, subprocess, yaml,glob
+import sys, os, string, math, warnings, subprocess, yaml, glob
 import interaction, vlbatasks
 from time import gmtime, strftime
 from optparse import OptionParser
@@ -432,10 +432,32 @@ def inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
             inbeam_uv_data.zap()
     return tocalnames, tocalindices
 
+def target2cals(targetname): #get phscal and bandpass cal given targetname
+    auxdir = os.environ['PSRVLBAUXDIR']
+    targetdir = auxdir + '/processing/' + targetname
+    sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
+    if sourcefiles == []:
+        print("source files not found; abort")
+        sys.exit()
+    sourcefiles.sort()
+    sourcefile = sourcefiles[0]
+    lines = open(sourcefile).readlines()
+    for line in lines:
+        if 'BANDPASS' in line:
+            bpcal = line.split(':')[-1].strip()
+        if 'PHSREF' in line:
+            phscal = line.split(':')[-1].strip()
+            cals = [phscal, bpcal]
+    return cals
+
 def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                      expconfig, targetconfigs, targetonly, calonly, doampcal,
                      dosecondary, sumifs, clversion, snversion, inbeamnames, 
                      targetnames):
+    phsrefnames = []
+    for targetname in targetnames:
+        [phscalname, junk] = target2cals(targetname)
+        phsrefnames.append(phscalname)
     sncount = 0
     numinbeams = len(inbeamuvdatas)
     #for i in range(numtargets):
@@ -506,10 +528,15 @@ def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata,
             sourcelist = []
             for j in tocalindices:
                 if i < len(inbeamnames[j]):
-                    sourcelist.append(inbeamnames[j][i])
+                    sourcelist.append(inbeamnames[j][i]) 
             print "Applying inbeamsn for ", sourcelist, " to file ", i
             vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
-                                   clversion, expconfig['refant'], sourcelist, 'CALP')
+                                   clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
+        sourcelist = []
+        for i in tocalindices: 
+            sourcelist.append(phsrefnames[i]) 
+        vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
+                               clversion, expconfig['refant'], sourcelist, 'CALP')
     if not calonly:
         sourcelist = []
         for i in tocalindices:
@@ -2573,10 +2600,10 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                     if splitdata.exists():
                         splitdata.zap()
                     if split_phscal_option == 'FINAL':
-                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion, split_phscal_option, phscalnames[i], splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
                         vlbatasks.writedata(splitdata, phscaluvfiles[i], True)
                     else:
-                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion+targetcl, split_phscal_option, phscalnames[i], splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion+targetcl, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
                         phscal_image_file = modeldir + aipssrcname + ".clean.fits"
                         if not os.path.exists(phscal_image_file):
                             print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
@@ -2699,7 +2726,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                         modeldata.zap()
                     vlbatasks.fitld_image(inbeam_image_file, modeldata)
                     vlbatasks.normaliseUVData(splitdata_PS, modeldata,  divideddata_PS)
-                    os.system("rm -f " + tempdivfile)
+                    #os.system("rm -f " + tempdivfile)
                     vlbatasks.writedata(divideddata_PS, tempdivfile, True)
                     os.system("mv -f " + tempdivfile + " " + divinbeampreselfcaluvfiles[i][count])
                 count += 1
@@ -2808,10 +2835,22 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
             vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
         
         #difmap-image and jmfit ibshiftdivphscal
-        targetimagefile = directory + '/' + experiment + phscalnames[i] + '_ibshiftdiv_difmap.fits'
-        jmfitfile = directory + '/' + experiment + '_' + phscalnames[i] + '_ibshiftdiv_difmap.jmfit'
-        vlbatasks.difmap_maptarget(ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
-        vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
+        #targetimagefile = directory + '/' + experiment + '_' + phscalnames[i] + '_ibshiftdiv_difmap.fits'
+        aipssrcname = phscalnames[i]
+        if len(aipssrcname) > 12:
+            aipssrcname = aipssrcname[:12]
+        ibshiftedimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+        if ibshiftedimage.exists():
+            ibshiftedimage.zap()
+        divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+        jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_ibshiftdiv_difmap.jmfit'
+        #vlbatasks.difmap_maptarget(ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
+        #vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
+        vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050,
+                   0, 0, 0, 100, 20)
+        vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                             False,ibshiftedimage,48)
+
         #then in-beam cals    
         for j in range(len(inbeamnames[i])):
             targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
@@ -2848,15 +2887,27 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                 vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                 stokesi, endif-subtractif)
             if inbeamnames[i][j] in config['primaryinbeam']:
-                targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
-                jmfitfile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided.difmap.jmfit' 
-                vlbatasks.difmap_maptarget(divinbeampreselfcaluvfiles[i][j], targetimagefile, 
-                                           fullauto, stokesi, config['difmappixelmas'],
-                                           config['difmapnpixels'], config['difmapweightstring'],
-                                           config['usegaussianinbeam'], beginif,
-                                           endif-subtractif)
-                vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
-                                stokesi, endif-subtractif)
+                #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
+                #vlbatasks.difmap_maptarget(divinbeampreselfcaluvfiles[i][j], targetimagefile, 
+                #                           fullauto, stokesi, config['difmappixelmas'],
+                #                           config['difmapnpixels'], config['difmapweightstring'],
+                #                           config['usegaussianinbeam'], beginif,
+                #                           endif-subtractif)
+                #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
+                #                stokesi, endif-subtractif)
+                aipssrcname = inbeamnames[i][j]
+                if len(aipssrcname) > 12:
+                    aipssrcname = aipssrcname[:12]
+                jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.divided.difmap.jmfit' 
+                ibshiftedimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                if ibshiftedimage.exists():
+                    ibshiftedimage.zap()
+                #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                vlbatasks.widefieldimage(divideddata_PS, aipssrcname, 256, 0.75, True, 0.050,
+                           0, 0, 0, 100, 20)
+                vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                                   False,ibshiftedimage,48)
+
             icount += 1
 else:
     print "Skipping imaging/position fitting of target"
@@ -2939,6 +2990,7 @@ for i in range(numtargets):
 ## Make some nice diagnostic plots #############################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Making final diagnostic plots"
+    os.chdir(directory)
     os.system("%s/make_final_diagnostic.py" % codedir)
 else:
     print "Skipping making of diagnostic plots"
