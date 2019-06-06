@@ -3735,6 +3735,19 @@ def elevationflag(uvdataset, outflagver, elevationlimit):
     uvflg.reason = 'ELEVATION'
     uvflg()
 
+##### Shadowing flagging #################################################
+def shadowflag(uvdataset, outflagver, shadowdiameter, xtalkbl):
+    uvflg = AIPSTask('uvflg', version = aipsver)
+    uvflg.indata = uvdataset
+    uvflg.intext = ''
+    uvflg.outfgver = outflagver
+    uvflg.aparm[1:] = [0]
+    uvflg.aparm[5] = shadowdiameter  # > 0 flag for shadowing; shadow diameter in m
+    uvflg.aparm[6] = xtalkbl         # flag for cross-talk; baseline (BL) in m
+    uvflg.opcode = 'FLAG'
+    uvflg.reason = 'SHADOWING'
+    uvflg()
+
 ##### Fringe rate flagging #####################################################
 def fringerateflag(uvdataset, outflagver, suppressionfactor):
     uvflg = AIPSTask('uvflg', version = aipsver)
