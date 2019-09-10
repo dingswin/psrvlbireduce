@@ -4155,7 +4155,7 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
     bpass()
 
 ##### Polynomial-based bandpass correction #####################################
-def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None):
+def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10):
     cpass = AIPSTask('cpass', version = aipsver)
     cpass.indata = uvdataset
     cpass.calsour[1] = srcname
@@ -4178,7 +4178,7 @@ def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None):
     cpass.bpassprm[10] = 1
     cpass.bpassprm[11] = 1
     cpass.cparm[1:] = [0]
-    cpass.cparm[1] = 10
+    cpass.cparm[1] = npoly
     cpass.cparm[2] = 80
     cpass.cparm[3] = 0.005
     cpass.cparm[5] = 2
