@@ -4287,7 +4287,7 @@ def splittoseq(uvdataset, clversion, outklass, srcname, seqno, domulti=False,
     except (AttributeError, TypeError):
         nchan = uvdataset.table('FQ', 1)[0].total_bandwidth/\
                 uvdataset.table('FQ', 1)[0].ch_width
-    split.echan = nchan-1
+    split.echan = nchan
     if not beginif < 0:
         split.bif = beginif
     if not endif < 0:
@@ -4297,6 +4297,7 @@ def splittoseq(uvdataset, clversion, outklass, srcname, seqno, domulti=False,
         split.nchav = 1
     else:
         split.aparm[1] = 2
+        split.echan = nchan-1
         if combineifs:
             split.aparm[1] = 3
         if nchan > 8:
