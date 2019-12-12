@@ -25,9 +25,9 @@ if not len(sys.argv) == 3 and not len(sys.argv) == 4:
 ################################################################################
 AIPS.userno = 123
 try:
-    aipsver = os.environ['PSRPIAIPSVER']
+    aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC15'
+    aipsver = '31DEC18'
 imagefile = sys.argv[1]
 jmfitfile = sys.argv[2]
 pixwindowx = 50
