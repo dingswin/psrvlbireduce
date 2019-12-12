@@ -5,11 +5,12 @@ from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from scipy.special import jn
 import sys, os, subprocess, math, datetime, glob
 import interaction, pylab, ephem, astro_utils
+import numpy as np
 from interaction import yesno
 
 # Set up AIPS version
@@ -1075,7 +1076,7 @@ def norm_snamplitudes(sntable):
             numimfound += 1
         lineno += 1
     if lineno == numlines:
-        print "Couldn't find all weight/im/re indices - aborting!"
+        print "Couldn't find all weight/im/re row_noss - aborting!"
         sys.exit()
     wtcolindex = [-1,-1]
     recolindex = [-1,-1]
@@ -1347,7 +1348,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
     #Fix the antenna table
     antable = wizuvdata.table('AN', 1)
     antennas_updated = []
-    antenna_indices  = []
+    antenna_row_noss  = []
     for row in antable:
         antennas_updated.append(False)
     for ant in model2start.antennas:
@@ -2193,10 +2194,10 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
     wizuvdata2 = WizAIPSUVData(targetuvdata)
     times1 = {}
     wvals1 = {}
-    indices1 = {}
+    row_noss1 = {}
     times2 = {}
     wvals2 = {}
-    indices2 = {}
+    row_noss2 = {}
     flags = {}
     mintime = 9999
     maxtime = -9999
@@ -2209,8 +2210,8 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
             times2[baselinestr] = []
             wvals2[baselinestr] = []
             flags[baselinestr] = []
-            indices1[baselinestr] = 0
-            indices2[baselinestr] = 0
+            row_noss1[baselinestr] = 0
+            row_noss2[baselinestr] = 0
     lasttime = -9999
     counts = {}
     for visibility in wizuvdata1:
@@ -2823,10 +2824,12 @@ def mergebins(inputdatafiles, outputdatafile, noaverage):
     junk2.zap()
 
 ####### LOAD AN ANTAB FORMAT FILE ##############################################
-def antab(uvdata, antabfile):
+def antab(uvdata, antabfile, tyver, gcver):
     antab = AIPSTask('antab', version = aipsver)
     antab.indata = uvdata
     antab.calin = antabfile
+    antab.tyver = tyver
+    antab.gcver = gcver
     antab()
 
 ####### DIFFERENCE TWO DATASETS ################################################
@@ -4579,10 +4582,10 @@ def clcordelaysfromfile(uvdata, filename, clversion):
     clcor.opcode = 'CLOC'
     clcor.clcorprm[1:] = [0]
     clcor.clcorprm[7] = 1
-    anindices = {}
+    anrow_noss = {}
     antable = uvdata.table('AN', 1)
     for row in antable:
-        anindices[row.anname.strip()] = row.nosta
+        anrow_noss[row.anname.strip()] = row.nosta
     for line in open(filename):
         if len(line) == 0 or line[0] == "#":
             continue
@@ -4591,7 +4594,7 @@ def clcordelaysfromfile(uvdata, filename, clversion):
             print "Badly formed line " + line + " in " + filename
             sys.exit()
         try:
-            antindex = anindices[splitline[0]]
+            antindex = anrow_noss[splitline[0]]
         except KeyError:
             print "Couldn't find " + splitline[0] + " in the AN table!"
             sys.exit()
@@ -5133,7 +5136,7 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
 
 ##### Use difmap to map a target ###############################################
 def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
-                     mapsize=1024, uvweightstr="0,-1", dogaussian=False, 
+                     mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', dogaussian=False, 
                      beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
@@ -5150,7 +5153,7 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     difmap.stdin.write("obs " + uvfile + "\n")
     difmap.stdin.write("mapsize " + str(mapsize) + "," + str(pixsize) + "\n")
     difmap.stdin.write("uvweight " + uvweightstr + "\n")
-    difmap.stdin.write("uvaver 20\n")
+    difmap.stdin.write("uvaver " + uvaverstr + "\n")
     difmap.stdin.write("mapcolor none\n")
     if nointeraction:
         difmap.stdin.write("device /null\n")
@@ -6006,3 +6009,209 @@ def gethash(hashstr):
     hashc = hashval - 576*hasha - 24*hashb
     return "%c%c%c" % (chr(ord('a') + hasha), chr(ord('a') + hashb), 
                        chr(ord('a') + hashc))
+
+class calibrate_target_phase_with_two_colinear_phscals:
+    def __init__(s, inbeamuvdata):
+        s.inbeamuvdata = inbeamuvdata
+        #s.compile_into_table()
+        #s.solve_phase_ambiguity_semi_automatically()
+    def read_inbeamselfcalp1_solutions(s):
+        wizuvdata = WizAIPSUVData(s.inbeamuvdata)
+        sntable = wizuvdata.table('SN', 0)
+        s.numantennas = len(s.inbeamuvdata.antennas)
+        times = np.array([])
+        antenna_nos = np.array([])
+        phi_degs = np.array([])
+        row_nos = np.array([])
+        j = 0
+        for row in sntable:
+            mag = row.real1[0]**2 + row.imag1[0]**2
+            if mag < 1.1:
+                #row.imag1 = [0,0]
+                times = np.append(times, row.time)
+                antenna_nos = np.append(antenna_nos, row.antenna_no)
+                phi_rad = math.atan2(row.imag1[0], row.real1[0])
+                phi_deg = phi_rad/math.pi*180
+                phi_degs = np.append(phi_degs, phi_deg)
+                row_nos = np.append(row_nos, int(j))
+            j += 1
+        #print phi_degs
+        return row_nos, antenna_nos, times, phi_degs
+    def read_inbeamselfcalpn_solutions(s):
+        wizuvdata = WizAIPSUVData(s.inbeamuvdata)
+        sntable = wizuvdata.table('SN', 0)
+        num_if  = int(sntable.keywords['NO_IF'])
+        phi_degs = []
+        for row in sntable:
+            imag1 = np.array(row.imag1)
+            real1 = np.array(row.real1)
+            phi_rad = np.arctan2(imag1, real1)
+            phi_deg = phi_rad/math.pi*180
+            phi_degs.append(phi_deg)
+        print phi_degs, len(phi_degs)
+        return phi_degs
+    def compile_into_table(s):
+        from astropy.table import Table
+        [row_nos, antenna_nos, times, phi_degs] = s.read_inbeamselfcalp1_solutions()
+        s.t = Table([row_nos, antenna_nos, times, phi_degs], names=['row_no', 'antenna_no', 'time', 'phi'])
+        print s.t
+    def edit_inbeamselfcalpn_in_AIPS_and_write_out(s, correction_factor, snver, outputsntable):
+        phi_degs = s.read_inbeamselfcalpn_solutions()
+        wizuvdata = WizAIPSUVData(s.inbeamuvdata)
+        sntable = wizuvdata.table('SN', snver)
+        num_if  = int(sntable.keywords['NO_IF'])
+        j = 0
+        for row in sntable:
+            #if j in s.t2['row_no']:
+            #    index_in_t2 = s.t2['row_no']==j
+            for i in range(num_if):
+                phi = phi_degs[j][i]
+                if phi != 45: #INDE points
+                    phi *= correction_factor
+                    phi_rad = phi/180*math.pi
+                    real = math.cos(phi_rad)
+                    imag = math.sin(phi_rad)
+                    for k in [1,2]:    
+                        exec("row.imag%d[i] = imag" % k)
+                        exec("row.real%d[i] = real" % k)
+                row.update()
+            j += 1
+        sntable.close()
+        
+        if os.path.exists(outputsntable):
+            os.remove(outputsntable)
+        writetable(s.inbeamuvdata, 'SN', snver, outputsntable)
+        
+    def interactively_solve_phase_ambiguity(s, plotpath2save):
+        from astropy.table import Table
+        import pickle
+        for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+            exec('%ss = np.array([])' % parameter)
+        saved_phase_edit = plotpath2save+'/.corrected_phases_inbeam_selfcal'
+        t = s.t
+        if os.path.exists(saved_phase_edit):
+            choise = raw_input('Do you want to use saved phase edit and continue the edit? Press y if affirmative: ')
+            if choise == 'y' or choise=='yes':
+                print "Continue on the saved phase edit."
+                readfile = open(saved_phase_edit, 'r')
+                t = pickle.load(readfile)
+                readfile.close()
+            else:
+                print "Start new phase edit."
+        
+        phase_shifts = []
+        for i in range(1,s.numantennas+1):
+            index = t['antenna_no']==i
+            eachAnt = t[index]
+            if len(eachAnt)==0:
+                continue
+            if phase_shifts == 's':
+                for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+                    exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+                continue
+            if max(eachAnt['phi'])>=90 or min(eachAnt['phi'])<=-90:
+                print eachAnt['row_no']
+                print("Here is the diagnostic plot for phase edit on a new antenna.\n")
+                phase_shifts = []
+                while not phase_shifts in ['s', 'n']:
+                    s.plot_diagnostic_phi_versus_time_for_each_antenna1(eachAnt, i)
+                    phase_shifts = raw_input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*180 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
+                    try: 
+                        N1 = int(phase_shifts.split(',')[0].strip())
+                        N2 = int(phase_shifts.split(',')[1].strip())
+                    except ValueError:
+                        if not phase_shifts in ['s', 'n']:  
+                            print "Input format does not match the requirement. Start over again."
+                        continue
+                    if N2>-5:
+                        eachAnt['phi'][N1:len(eachAnt)] += N2*360
+                    elif N2>-10 and N2<-4:
+                        eachAnt.remove_row(N1)
+                    else:
+                        eachAnt.remove_rows(range(N1,len(eachAnt)))
+            for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+                exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+            print row_nos
+        s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
+        print s.t1
+        writefile = open(saved_phase_edit, 'w')
+        pickle.dump(s.t1, writefile)
+        writefile.close()
+    def copy_inbeamselfcal_sntable(s, sntable):
+        oldsntable = sntable.replace('.icalib.p1.sn', '_original.icalib.p1.sn')
+        os.system('cp %s %s' % (sntable, oldsntable))
+        return oldsntable
+    def load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(s, final_phase_edit, correction_factor):
+        from astropy.table import Table
+        import pickle
+        readfile = open(final_phase_edit, 'r')
+        t = pickle.load(readfile)
+        readfile.close()
+        phis = t['phi'] * correction_factor
+        reals = np.cos(phis*math.pi/180)
+        imags = np.sin(phis*math.pi/180)
+        s.t2 = Table([t['row_no'], t['antenna_no'], t['time'], reals, imags], 
+                                names=['row_no', 'antenna_no', 'time', 'real', 'imag'])
+        print s.t2
+    def edit_AIPS_sntable_and_write_out(s, snver, outputsntable):
+        wizuvdata = WizAIPSUVData(s.inbeamuvdata)
+        sntable = wizuvdata.table('SN', snver)
+        num_if  = int(sntable.keywords['NO_IF'])
+        j = 0
+        for row in sntable:
+            print j in s.t2['row_no']
+            if j in s.t2['row_no']:
+                index_in_t2 = s.t2['row_no']==j
+                for k in [1,2]:
+                    exec("row.imag%d = list(s.t2['imag'][index_in_t2]*np.ones(num_if))" % k)
+                    exec("row.real%d = list(s.t2['real'][index_in_t2]*np.ones(num_if))" % k)
+                row.update()
+            j += 1
+        sntable.close()
+        
+        if os.path.exists(outputsntable):
+            os.remove(outputsntable)
+        writetable(s.inbeamuvdata, 'SN', snver, outputsntable)
+    def plot_diagnostic_phi_versus_time_for_each_antenna(s, antenna_no):
+        import matplotlib.pyplot as plt
+        index = s.t['antenna_no']==antenna_no
+        plt.scatter(s.t['time'][index], s.t['phi'][index], marker='.')
+        plt.ylim(-180,180)
+        plt.xlabel('time (day)')
+        plt.ylabel('phase (degree)')
+        plt.title('phase-time evolution for antenna%d' % antenna_no)
+        #plt.draw()
+        plt.show()
+        plt.clf()
+    def plot_diagnostic_phi_versus_time_for_each_antenna1(s, t, antenna_no):
+        import matplotlib.pyplot as plt
+        plt.scatter(t['time'], t['phi'], marker='.')
+        plt.xlabel('time (day)')
+        plt.ylabel('phase (degree)')
+        plt.title('phase-time evolution for antenna%d' % antenna_no)
+        plt.show()
+        plt.clf()
+    def plot_phi_versus_time_for_each_antenna(s, plotpath2save, projectcode, before_phase_correction=True):
+        import matplotlib.pyplot as plt
+        if before_phase_correction:
+            t = s.t
+            before_or_after = 'before'
+        else:
+            t = s.t1
+            before_or_after = 'after'
+        for i in range(1,s.numantennas+1):
+            index = t['antenna_no']==i
+            if len(t[index])==0:
+                continue
+            plt.scatter(t['time'][index], t['phi'][index], marker='.')
+            if before_phase_correction:
+                plt.ylim(-180,180)
+            plt.xlabel('time (day)')
+            plt.ylabel('phase (degree)')
+            plt.title('phase-time evolution for antenna%d' % i)
+            plt.savefig("%s/%s_inbeamselfcal_phi_time_for_antenna%d_%s_phase_correction.eps" % (plotpath2save, projectcode, i, before_or_after))
+            plt.clf()
+
+class calibrate_target_phase_with_three_phscals:
+    def __init__(s, targetname, cal1, cal2, cal3):
+        pass
