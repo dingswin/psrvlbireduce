@@ -3738,6 +3738,19 @@ def elevationflag(uvdataset, outflagver, elevationlimit):
     uvflg.reason = 'ELEVATION'
     uvflg()
 
+##### Shadowing flagging #################################################
+def shadowflag(uvdataset, outflagver, shadowdiameter, xtalkbl):
+    uvflg = AIPSTask('uvflg', version = aipsver)
+    uvflg.indata = uvdataset
+    uvflg.intext = ''
+    uvflg.outfgver = outflagver
+    uvflg.aparm[1:] = [0]
+    uvflg.aparm[5] = shadowdiameter  # > 0 flag for shadowing; shadow diameter in m
+    uvflg.aparm[6] = xtalkbl         # flag for cross-talk; baseline (BL) in m
+    uvflg.opcode = 'FLAG'
+    uvflg.reason = 'SHADOWING'
+    uvflg()
+
 ##### Fringe rate flagging #####################################################
 def fringerateflag(uvdataset, outflagver, suppressionfactor):
     uvflg = AIPSTask('uvflg', version = aipsver)
@@ -4145,7 +4158,7 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
     bpass()
 
 ##### Polynomial-based bandpass correction #####################################
-def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None):
+def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10):
     cpass = AIPSTask('cpass', version = aipsver)
     cpass.indata = uvdataset
     cpass.calsour[1] = srcname
@@ -4168,7 +4181,7 @@ def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None):
     cpass.bpassprm[10] = 1
     cpass.bpassprm[11] = 1
     cpass.cparm[1:] = [0]
-    cpass.cparm[1] = 10
+    cpass.cparm[1] = npoly
     cpass.cparm[2] = 80
     cpass.cparm[3] = 0.005
     cpass.cparm[5] = 2
@@ -4277,7 +4290,7 @@ def splittoseq(uvdataset, clversion, outklass, srcname, seqno, domulti=False,
     except (AttributeError, TypeError):
         nchan = uvdataset.table('FQ', 1)[0].total_bandwidth/\
                 uvdataset.table('FQ', 1)[0].ch_width
-    split.echan = nchan-1
+    split.echan = nchan
     if not beginif < 0:
         split.bif = beginif
     if not endif < 0:
@@ -4287,6 +4300,7 @@ def splittoseq(uvdataset, clversion, outklass, srcname, seqno, domulti=False,
         split.nchav = 1
     else:
         split.aparm[1] = 2
+        split.echan = nchan-1
         if combineifs:
             split.aparm[1] = 3
         if nchan > 8:
@@ -4894,6 +4908,62 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
         pylab.savefig(prefix + ".IF" + str(ifnum) + '.chan' + str(channel) + "-" + pol + "." + baselinestr + ".phsdifference." + plottype)
     pylab.clf()
     return True
+
+##### Make a postscript of a bandpass ##########################################
+def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion=1, ifs=[0,0], smooth=0, chans=[0,0], stokes=""):
+    possm = AIPSTask('possm', version = aipsver)
+    possm.indata = uvdata
+    possm.stokes = stokes
+    if isinstance(ifs, (list,)) and len(ifs) == 2:
+        possm.bif = ifs[0]
+        possm.eif = ifs[1]
+    elif isinstance(ifs, (int,)):
+        possm.bif = ifs
+        poss.eif = ifs
+    else:
+        print "IFs parameter must be either a len(2) list for bif and eif, or else a single integer, is", ifs
+        sys.exit()
+    if isinstance(chans, (list,)) and len(chans) == 2:
+        possm.bchan = chans[0]
+        possm.echan = chans[1]
+    else:
+        print "Chans parameter must be a len(2) list for bchan and echan, was", chans
+        sys.exit()
+    if clversion > 0:
+        possm.docalib = 1
+        possm.gainuse = clversion
+    else:
+        possm.docalib = 0
+    if plotbptable:
+        if bpver <= 0:
+            print "bpver must be >= 1 in order to plot BP table"
+            sys.exit()
+        possm.bpver = bpver
+        possm.aparm[8] = 2
+    else:
+        if bpver > 0:
+            possm.doband = 1
+            possm.bpver = bpver
+        possm.aparm[8] = 0
+        possm.smooth[1] = 13 # Hanning
+        possm.smooth[2] = smooth
+    possm.nplots = plotsperpage
+    possm.dotv = 0
+    possm.aparm[9] = 1
+    possm()
+    if os.path.exists(outputfile):
+        os.system("rm -f " + outputfile)
+    lwpla = AIPSTask('lwpla', version = aipsver)
+    lwpla.indata = uvdata
+    lwpla.plver = 1
+    lwpla.invers = 9999
+    lwpla.outfile = outputfile
+    lwpla.lpen = 5
+    lwpla.dparm[5] = 0
+    lwpla()
+    for table in uvdata.tables:
+        if table[1] == 'AIPS PL':
+            deletetable(uvdata, 'PL', table[0])
 
 ##### Make a postscript of a given SN or CL table ##############################
 def plottops(uvdata, tabletype, tablever, plotvariable, nifs, npols, plotsperpage, outputfile, doautoorientation=True):
