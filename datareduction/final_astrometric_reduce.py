@@ -206,6 +206,7 @@ def inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
             haveampcal = False
             if expconfig['ampcalscan'] > 0:
                 haveampcal = True
+            # split out inbeam_uv_data=inbeamsrc.CALIB.1 from inbeamuvdata
             vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc,
                                  1, domulti, haveampcal, beginif, 
                                  endif-subtractif, combineifs, leakagedopol)
@@ -437,10 +438,15 @@ def target2cals(targetname): #get phscal and bandpass cal given targetname
     targetdir = auxdir + '/processing/' + targetname
     sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
     if sourcefiles == []:
-        print("source files not found; abort")
-        sys.exit()
+        targetname = raw_input("What's the name of the root directory for this target?\n")
+        targetdir = auxdir + '/processing/' + targetname
+        sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
+        if sourcefiles == []:
+            print("source files not found; abort")
+            sys.exit()
+        
     sourcefiles.sort()
-    sourcefile = sourcefiles[0]
+    sourcefile = sourcefiles[0] # this might cause problem in adhoc observations
     lines = open(sourcefile).readlines()
     for line in lines:
         if 'BANDPASS' in line:
@@ -449,6 +455,13 @@ def target2cals(targetname): #get phscal and bandpass cal given targetname
             phscal = line.split(':')[-1].strip()
             cals = [phscal, bpcal]
     return cals
+
+#def find_alternative_targetname(targetname):
+#    expconfigfile = configdir + experiment + '.yaml'
+#    if not os.path.exists(expconfigfile):
+#        parser.error("Experiment config file %s does not exist!" % expconfigfile)
+#    expconfig     = yaml.load(open(expconfigfile))
+#    rootdir       = expconfig['rootdir']
 
 def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                      expconfig, targetconfigs, targetonly, calonly, doampcal,
@@ -479,6 +492,8 @@ def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata,
                 calibstring = 'sp1'
             else:
                 calibstring = 'p1'
+                if int(dualphscal_setup[0])>0:
+                    calibstring += '.dualphscal'
         else:
             if dosecondary:
                 print "Can't do separate IFs secondary cal!"
@@ -487,11 +502,17 @@ def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata,
                 calibstring = 'apn'
             else:
                 calibstring = 'pn'
+                if int(dualphscal_setup[0])>0:
+                    calibstring += '.dualphscal'
         print inbeamsrc
         if "CONCAT" in inbeamsrc:
             calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
         else:
             calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
+        ## for the first imbeamselfcalp1 or inbeamselfcalpn apply
+        if not os.path.exists(calibtablepath):
+            calibtablepath = calibtablepath.replace('.dualphscal', '')
+
         print "Applying table " + calibtablepath
         if targetonly and (not os.path.exists(calibtablepath)):
             print "For target-only, the SN file must exist already - aborting!"
@@ -690,6 +711,21 @@ if startlocaltv:
     tv.start()
 if alwayssaved:
     interaction.setalwaysuse(True)
+try:
+    dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
+except KeyError:
+    dualphscal_setup = ['-1','0']
+
+try:
+    triphscal_setup = targetconfigs[0]['triphscal'].split(';')
+    dotriphscal = True
+except KeyError:
+    dotriphscal = False
+
+if float(dualphscal_setup[0]) > 0 and dotriphscal:
+    print("Can't do both dualphscal and triphscal; aborting...")
+    sys.exit()
+
 
 ################################################################################
 # Parse the source file and set some more variables
@@ -1138,6 +1174,11 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not skipapcalaccor:
             vlbatasks.snsmo(inbeamuvdatas[0], 'BOTH', 20, accorampsmo, 0.0, 0.0, snversion, expconfig['refant'], True)
         else:
             vlbatasks.tacop(inbeamuvdatas[0], 'SN', snversion, inbeamuvdatas[0], snversion+1)
+        ### load .antab file if available
+        antabfile = logdir + '/' + experiment + '.antab'
+        if os.path.exists(antabfile):
+            for uvdata in alluvdatas:
+                vlbatasks.antab(uvdata, antabfile, 1, 1)
         vlbatasks.apcal(inbeamuvdatas[0], snversion+2)
         if apcalampsmo > 0:
             vlbatasks.snsmo(inbeamuvdatas[0], 'BOTH', 20, apcalampsmo, 0.0, 0.0, snversion+2, expconfig['refant'], True)
@@ -2159,12 +2200,13 @@ for i in range(numtargets):
     primaryinbeams = targetconfigs[i]['primaryinbeam'].split(',')
     try:
         secondaryinbeam = targetconfigs[i]["secondaryinbeam"]
+        secondaryinbeam = secondaryinbeam.split(',')
     except KeyError:
         secondaryinbeam = "XXXXX"
     for j in range(len(inbeamnames[i])):
-        if not secondaryinbeam == None and (secondaryinbeam.strip() == inbeamnames[i][j].strip()):
-            if not secondaryinbeam.strip() in secondaryinbeams:
-                secondaryinbeams.append(secondaryinbeam.strip())
+        for inbeamsrc in secondaryinbeam:
+            if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
+                secondaryinbeams.append(inbeamsrc.strip())
                 secondaryfilenums.append(j)
         for primaryinbeam in primaryinbeams:
             if primaryinbeam.strip() == inbeamnames[i][j].strip():
@@ -2221,7 +2263,7 @@ else:
 
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
-## Do a combined IF phase selfcal on the inbeams if requested #################
+## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxinbeamcalibp1mins > 0:
     print "Runlevel " + str(runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)"
@@ -2251,6 +2293,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
     sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                targetconfigs, targetonly, calonly, False, False, True,
                                clversion, snversion, inbeamnames, targetnames)
+    #sncount is used to point at SN table in post-phscal stage
 else:
     print "Skipping application of inbeam phase-only selfcal (combined IFs)"
     if maxinbeamcalibp1mins > 0:
@@ -2259,7 +2302,7 @@ else:
         sncount = 0
 
 runlevel = runlevel + 1
-targetcl = 0
+targetcl = 0 #used for pointing at new CL table in post-phscal stage.
 if maxinbeamcalibp1mins > 0:
     snversion = snversion + sncount
     targetcl += 1
@@ -2287,6 +2330,60 @@ else:
 
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
+## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
+if runfromlevel <= runlevel and runtolevel >= runlevel and \
+   int(dualphscal_setup[0].strip()) > 0:
+    print("Adopt dual-phscal mode now...")
+    inbeamselfcal_phase_time_folder = directory+'/inbeamselfcal_phase_time_evolution'
+    if not os.path.exists(inbeamselfcal_phase_time_folder):
+        os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
+    
+    inbeamselfcalp1sntable = tabledir + config['primaryinbeam'].split(',')[0].strip() + '.icalib.p1.sn'
+    for i in range(20):
+        vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+i)
+        ## reverse the last applyinbeamcalib only on target data
+        if not calonly:
+            vlbatasks.deletetable(gateduvdata, 'CL', clversion+1+i) 
+            if haveungated:
+                vlbatasks.deletetable(ungateduvdata, 'CL', clversion+1+i)
+    vlbatasks.loadtable(inbeamuvdatas[0], inbeamselfcalp1sntable, snversion)
+    dualphscalp1 = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(inbeamuvdatas[0])
+    dualphscalp1.compile_into_table()
+    #originalinbeamselfcalp1sntable = dualphscal.copy_inbeamselfcal_sntable(inbeamselfcalp1sntable) 
+    
+    final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_inbeam_selfcal.final'
+    if not os.path.exists(final_inbeamselfcal_phase_edit):
+        print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it to .corrected_phases_inbeam_selfcal.final and rerun the pipeline.")
+        dualphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder)
+        sys.exit()
+    else:
+        phase_correction_factor = float(dualphscal_setup[1].strip())
+        dualphscalp1.load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(final_inbeamselfcal_phase_edit,
+                                                                                    phase_correction_factor)
+        dualphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.dualphscal.sn')
+        dualphscalp1.edit_AIPS_sntable_and_write_out(snversion, dualphscaloutputsn)
+        #apply the corrected p1.sn only to the target
+        junk = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                               targetconfigs, True, calonly, False, False, True,
+                               clversion, snversion, inbeamnames, targetnames)
+        vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
+
+runlevel += 1
+
+## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
+if runfromlevel <= runlevel and runtolevel >= runlevel and \
+   int(dualphscal_setup[0].strip()) > 0 and maxinbeamcalibpnmins > 0:
+    inbeamselfcalpnsntable = tabledir + config['primaryinbeam'].split(',')[0].strip() + '.icalib.pn.sn'
+    for i in range(20):
+        vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+i)
+    vlbatasks.loadtable(inbeamuvdatas[0], inbeamselfcalpnsntable, snversion)
+    dualphscalpn = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(inbeamuvdatas[0])
+    dualphscalpn.read_inbeamselfcalpn_solutions()
+    dualphscaloutputsn = inbeamselfcalpnsntable.replace('.sn', '.dualphscal.sn')
+    dualphscalpn.edit_inbeamselfcalpn_in_AIPS_and_write_out(phase_correction_factor, snversion, dualphscaloutputsn)
+    vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
+
+runlevel += 1
 ## Load all the inbeam CALIB solutions ########################################
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxinbeamcalibpnmins > 0:
@@ -2815,7 +2912,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                             '.gated.difmap.jmfit'
         vlbatasks.difmap_maptarget(gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                    config['difmappixelmas'], config['difmapnpixels'],
-                                   config['difmapweightstring'], config['usegaussiantarget'],
+                                   config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'],
                                    beginif, endif-subtractif)
         vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
         targetimagefile = directory + '/' + experiment + '_' + targetnames[i] + \
@@ -2830,7 +2927,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
         if haveungated and ungatedpresent[i]:
             vlbatasks.difmap_maptarget(ungateduvfiles[i], targetimagefile, fullauto, 
                                        stokesi, config['difmappixelmas'], config['difmapnpixels'], 
-                                       config['difmapweightstring'], config['usegaussiantarget'], 
+                                       config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'], 
                                        beginif, endif-subtractif)
             vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
         
@@ -2864,7 +2961,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                             "_" + str(icount) + '.difmap.jmfit'
             vlbatasks.difmap_maptarget(inbeamuvfiles[i][j], targetimagefile, 
                                        fullauto, stokesi, config['difmappixelmas'],
-                                       config['difmapnpixels'], config['difmapweightstring'],
+                                       config['difmapnpixels'], config['difmapweightstring'], '20, False',
                                        config['usegaussianinbeam'], beginif,
                                        endif-subtractif)
             vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
@@ -2881,7 +2978,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                                 "_" + str(icount) + '_divided.difmap.jmfit'
                 vlbatasks.difmap_maptarget(dividedinbeamuvfiles[i][j], targetimagefile, 
                                            fullauto, stokesi, config['difmappixelmas'], 
-                                           config['difmapnpixels'], config['difmapweightstring'], 
+                                           config['difmapnpixels'], config['difmapweightstring'], '20, False', 
                                            config['usegaussianinbeam'], beginif, 
                                            endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
@@ -2990,7 +3087,7 @@ for i in range(numtargets):
 ## Make some nice diagnostic plots #############################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Making final diagnostic plots"
-    os.chdir(directory)
-    os.system("%s/make_final_diagnostic.py" % codedir)
+    #os.chdir(directory)
+    #os.system("%s/make_final_diagnostic.py" % codedir)
 else:
     print "Skipping making of diagnostic plots"
