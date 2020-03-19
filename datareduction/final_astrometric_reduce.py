@@ -2606,7 +2606,7 @@ ungateduvfiles = []
 ungatedpresent = []
 dividesourcelist = []
 ibshiftdivphscaluvfiles = []
-divinbeampreselfcaluvfiles = []
+inbeampreselfcaluvfiles = []
 try:
     if not config['dividesources'] == None:
         dividesourcelist = [x.strip(' ') for x in config['dividesources'].split(',')]
@@ -2619,7 +2619,7 @@ for phscalsrc in phscalnames:
                          "_pipeline_uv.fits")
     ibshiftdivphscaluvfiles.append(directory + '/' + experiment + '_' + phscalsrc + '_ibshiftdiv_uv.fits')
     inbeamuvfiles.append([])
-    divinbeampreselfcaluvfiles.append([])
+    inbeampreselfcaluvfiles.append([])
     dividedinbeamuvfiles.append([])
 for targetoutname in targetnames:
     gfile = directory + '/' + experiment + "_" + targetoutname + \
@@ -2639,7 +2639,7 @@ for i in range(numtargets):
         dfile = directory + '/' + experiment + "_" + \
                 inbeamoutname + "_pipeline_divided_uv.fits"
         ifile_preselfcal = directory + '/' + experiment + "_preselfcal_" + \
-                inbeamoutname + "_pipeline_divided_uv.fits"
+                inbeamoutname + "_pipeline_uv.fits"
         if expconfig['dodefaultnames']:
             ifile = directory + '/' + experiment + "_inbeam-" + str(i) + \
                     "_" + str(icount) + "_pipeline_uv.fits"
@@ -2648,7 +2648,7 @@ for i in range(numtargets):
             dfile = directory + '/' + experiment + "_inbeam-" + str(i) + \
                     "_" + str(icount) + "_pipeline_divided_uv.fits"
         inbeamuvfiles[i].append(ifile)
-        divinbeampreselfcaluvfiles[i].append(ifile_preselfcal)
+        inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
         dividedinbeamuvfiles[i].append(dfile)
         icount += 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
@@ -2742,6 +2742,9 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                     if splitdata_PS.exists():
                         splitdata_PS.zap()
                     vlbatasks.splittoseq(inbeamuvdatas[count], clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, leakagedopol)
+                    #write out pre-selfcal in-beam cal data
+                    vlbatasks.writedata(splitdata_PS, inbeampreselfcaluvfiles[i][count], True)
+                    #os.system("mv -f " + tempdivfile + " " + inbeampreselfcaluvfiles[i][count])
                 #divide inbeamuvfiles by model
                 tempdivfile = directory + '/temp.fits'
                 if inbeamsrc in dividesourcelist:
@@ -2806,6 +2809,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                     vlbatasks.writedata(divideddata, tempdivfile, True)
                     os.system("mv -f " + tempdivfile + " " + dividedinbeamuvfiles[i][count])
                 #divide pre-selfcal primary inbeam uvfile by model
+                """
                 if inbeamsrc in config['primaryinbeam']:
                     divideddata_PS = AIPSUVData(aipssrcname, 'PSDIV', 1, 1) #pre-selfcal div
                     if divideddata_PS.exists():
@@ -2825,7 +2829,8 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
                     vlbatasks.normaliseUVData(splitdata_PS, modeldata,  divideddata_PS)
                     #os.system("rm -f " + tempdivfile)
                     vlbatasks.writedata(divideddata_PS, tempdivfile, True)
-                    os.system("mv -f " + tempdivfile + " " + divinbeampreselfcaluvfiles[i][count])
+                    os.system("mv -f " + tempdivfile + " " + inbeampreselfcaluvfiles[i][count])
+                """
                 count += 1
         if not calonly:
             splitdata1 = AIPSUVData(targetnames[i], 'UFINL', 1, 1)
@@ -2985,7 +2990,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                                 stokesi, endif-subtractif)
             if inbeamnames[i][j] in config['primaryinbeam']:
                 #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
-                #vlbatasks.difmap_maptarget(divinbeampreselfcaluvfiles[i][j], targetimagefile, 
+                #vlbatasks.difmap_maptarget(inbeampreselfcaluvfiles[i][j], targetimagefile, 
                 #                           fullauto, stokesi, config['difmappixelmas'],
                 #                           config['difmapnpixels'], config['difmapweightstring'],
                 #                           config['usegaussianinbeam'], beginif,
@@ -2995,15 +3000,15 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not calonly:
                 aipssrcname = inbeamnames[i][j]
                 if len(aipssrcname) > 12:
                     aipssrcname = aipssrcname[:12]
-                jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.divided.difmap.jmfit' 
-                ibshiftedimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
-                if ibshiftedimage.exists():
-                    ibshiftedimage.zap()
+                jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.difmap.jmfit' 
+                preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                if preselfcalinbeamimage.exists():
+                    preselfcalinbeamimage.zap()
                 #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                vlbatasks.widefieldimage(divideddata_PS, aipssrcname, 256, 0.75, True, 0.050,
+                vlbatasks.widefieldimage(splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
                            0, 0, 0, 100, 20)
                 vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                   False,ibshiftedimage,48)
+                                   False, preselfcalinbeamimage, 48)
 
             icount += 1
 else:
