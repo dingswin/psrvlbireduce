@@ -29,6 +29,8 @@ try:
 except KeyError:
     aipsver = '31DEC18'
 imagefile = sys.argv[1]
+#if len(imagefile) > 10:
+#    imagefile = imagefile[-10:]
 jmfitfile = sys.argv[2]
 pixwindowx = 50
 pixwindowy = 50
@@ -75,6 +77,9 @@ if not jmfitfile[0] == '/':
 # Run JMFIT
 ################################################################################
 print "JMFIT'ing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
+wrong_imagedata = AIPSUVData('JUNK', 'IMG', 1, 1)
+if wrong_imagedata.exists():
+    wrong_imagedata.zap()
 imagedata = AIPSImage('JUNK', 'IMG', 1, 1)
 outdata = AIPSImage('JUNK', 'IMG', 1, 2)
 targetstatout = open(jmfitfile, "w")

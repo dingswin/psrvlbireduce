@@ -29,7 +29,8 @@ for line in lines:
         writtenlines.append(line)
 
 output.close()
-diagdir = auxdir +'/finaldiagnostics/' + observation + '/'
-if not os.path.exists(diagdir):
-    print diagdir + " does not exist!"
-    sys.exit()
+#diagdir = auxdir +'/finaldiagnostics/' + observation + '/'
+#if not os.path.exists(diagdir):
+#    print diagdir + " does not exist! create one.."
+#    os.system("mkdir %s" % diagdir)
+#    sys.exit()

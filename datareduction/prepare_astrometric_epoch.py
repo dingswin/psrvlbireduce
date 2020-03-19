@@ -71,6 +71,7 @@ os.system("wget -T 12 https://vlbi.gsfc.nasa.gov/apriori/usno_finals.erp")
 # in case the erp file service was down...
 if not os.path.exists("usno_finals.erp"):
     print "\ndownload usno_finals.erp from another route\n"
+    """
     today=Time.now()
     if today.mjd-MJD<30:
         print "\nchoose the newer erp file\n"
@@ -78,6 +79,8 @@ if not os.path.exists("usno_finals.erp"):
         os.rename("usno500_finals.erp","usno_finals.erp")
     else:
         os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno_finals.erp")
+    """
+    os.system("wget ftp://cddis.gsfc.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp")
 
 os.system("wget ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
 if os.path.exists("igsg%03d0.%02di.Z" % (sdoy,syy)):
