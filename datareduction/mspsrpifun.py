@@ -1,3 +1,9 @@
+##########################################################################################
+## Codes written for astrometry data analysis
+## Hao Ding
+##########################################################################################
+
+
 import os,glob,sys,yaml,math,pickle,datetime
 from scipy import constants
 from astropy import constants as AC

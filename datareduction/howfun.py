@@ -1,3 +1,8 @@
+####################################################################
+## Codes written for general use
+## Hao Ding
+####################################################################
+
 import math,os,sys,random
 import numpy as np
 import matplotlib.pyplot as plt
