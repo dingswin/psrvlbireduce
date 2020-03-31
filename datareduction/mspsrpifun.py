@@ -1486,6 +1486,7 @@ class pulsars_based_GdotG_kD(object):
         from numpy.random import normal, multivariate_normal
         from chainconsumer import ChainConsumer
         from matplotlib import pyplot as plt
+        plt.rc('text', usetex=True)
         #np.random.seed(2)
         #cov = 0.2 * normal(size=(3, 3)) + np.identity(3)
         truth = normal(size=3)
@@ -2083,6 +2084,7 @@ class generatepmparin:
     3) then you can bootstrap with the pmparinfile
     4) in the end, you can make plots with the bootstrap instograms
     5) test potential outlying of a specific epoch, using the 'plot_to_justify_potential_outlier_using_bootstrapping_given_expno' function group
+    6) make corner plots of the three or five astrometric parameters using the 'covariance_2d_plots_with_chainconsumer' function
     """
     def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, epoch=57700):
         s.targetname = targetname
@@ -2279,14 +2281,30 @@ class generatepmparin:
                 t = vstack([t0, t])
         t.write(bootstrapped_five_parameters_table, format='ascii', overwrite=True)
     
+    def calculate_v_t(s, PI, mu_a, mu_d):
+        a = estimate_uncertainty(s.targetname)
+        v_t = (mu_a**2+mu_d**2)**0.5 / PI * a.A
+        return v_t
     def bootstrapped_sample2measured_value(s):
         bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
         if not os.path.exists(bootstrapped_five_parameters_table):
             print("%s (bootstrap results) does not exist; aborting\n" % bootstrapped_five_parameters_table)
+            sys.exit()
         t = Table.read(bootstrapped_five_parameters_table, format='ascii')
         for estimate in ['PI', 'mu_a', 'mu_d', 'RA', 'Dec']:
             exec("%ss = np.array(t['%s'])" % (estimate, estimate))
-            exec("%ss.sort()" % estimate)
+            #exec("%ss.sort()" % estimate)
+        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        if os.path.exists(saved_plot_parameters):
+            readfile = open(saved_plot_parameters, 'r')
+            plot_parameter_dictionary = pickle.load(readfile)
+            readfile.close()
+            for key in plot_parameter_dictionary:
+                exec("%s = plot_parameter_dictionary[key]" % key)
+        for estimate in ['PI', 'mu_a', 'mu_d']:
+            exec("s.most_probable_%s = howfun.sample2most_probable_value(%ss, binno_%s)" % (estimate, estimate, estimate))
+        most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
+        ## write out estimates #########################################################
         bootstrap_estimates_output = s.pmparesultsdir + '/' + s.targetname + '.bootstrap.estimates.out'
         fileWrite = open(bootstrap_estimates_output, 'w')
         fileWrite.write("estimates obtained with %d bootstrap runs:\n" % len(PIs))
@@ -2299,15 +2317,27 @@ class generatepmparin:
                 exec("s.error_%s_symm = howfun.sample2uncertainty(%ss, s.median_%s, CL)" % (
                 estimate, estimate, estimate))
                 exec("[s.median_low_end_%s, s.median_high_end_%s] = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate)) #low and high end of the central 68% (or else) of the sample
+                ## transverse velocity ########################################################
+            min_v_t = s.calculate_v_t(s.value_PI+s.error_PI, min(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
+                                                             min(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
+            max_v_t = s.calculate_v_t(s.value_PI-s.error_PI, max(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
+                                                             max(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
             fileWrite.write(70*"=" + "\n")
             fileWrite.write("confidencelevel = %f:\n" % CL)
             fileWrite.write("epoch = %f\n" % s.epoch)
             fileWrite.write("pi = %f +- %f (mas)\n" % (s.value_PI, s.error_PI))
             fileWrite.write("mu_a = %f +- %f (mas/yr) #mu_a=mu_ra*cos(dec)\n" % (s.value_mu_a, s.error_mu_a))
             fileWrite.write("mu_d = %f +- %f (mas/yr)\n" % (s.value_mu_d, s.error_mu_d))
-            fileWrite.write("PI_symm = %f +- %f (mas)\n" % (s.median_PI, s.error_PI_symm))
+            fileWrite.write("PI_symm = %f +- %f (mas) # symmetric uncertainty interval around median\n" % (s.median_PI, s.error_PI_symm))
             fileWrite.write("mu_a_symm = %f +- %f (mas/yr)\n" % (s.median_mu_a, s.error_mu_a_symm))
             fileWrite.write("mu_d_symm = %f +- %f (mas/yr)\n" % (s.median_mu_d, s.error_mu_d_symm))
+            if os.path.exists(saved_plot_parameters):
+                fileWrite.write("most_probable_PI = %f + %f - %f (mas)\n" % (s.most_probable_PI, s.value_PI+s.error_PI-s.most_probable_PI, s.most_probable_PI-s.value_PI+s.error_PI))
+                fileWrite.write("most_probable_mu_a = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_a, s.value_mu_a+s.error_mu_a-s.most_probable_mu_a, s.most_probable_mu_a-s.value_mu_a+s.error_mu_a))
+                fileWrite.write("most_probable_mu_d = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_d, s.value_mu_d+s.error_mu_d-s.most_probable_mu_d, s.most_probable_mu_d-s.value_mu_d+s.error_mu_d))
+                fileWrite.write("most_probable_D = %f + %f - %f (kpc)\n" % (1/s.most_probable_PI, 1/(s.value_PI-s.error_PI)-1/s.most_probable_PI,
+                                                                            1/s.most_probable_PI-1/(s.value_PI+s.error_PI)))
+                fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t - most_probable_v_t, most_probable_v_t-min_v_t))
         fileWrite.close()
         os.system("cat %s" % bootstrap_estimates_output)
         return PIs, mu_as, mu_ds, RAs, Decs
@@ -2341,9 +2371,9 @@ class generatepmparin:
         ax1.axvline(x=most_probable_PI, c='black', linestyle='--', linewidth=0.5)
         ax1.axvline(x=s.value_PI+s.error_PI, c='black', linestyle='-.', linewidth=0.5)
         ax1.axvline(x=s.value_PI-s.error_PI, c='black', linestyle='-.', linewidth=0.5)
-        #ax1.axvline(x=s.median_PI, c='blue', linestyle='--', linewidth=0.5)
-        #ax1.axvline(x=s.median_low_end_PI, c='blue', linestyle='-.', linewidth=0.5)
-        #ax1.axvline(x=s.median_high_end_PI, c='blue', linestyle='-.', linewidth=0.5)
+        ax1.axvline(x=s.median_PI, c='blue', linestyle='--', linewidth=0.5)
+        ax1.axvline(x=s.median_low_end_PI, c='blue', linestyle='-.', linewidth=0.5)
+        ax1.axvline(x=s.median_high_end_PI, c='blue', linestyle='-.', linewidth=0.5)
         #subplot2
         ax2 = fig.add_subplot(gs[:2, 2:4])
         ax2.hist(mu_as, binno_mu_a, density=True, facecolor='g', alpha=0.75)
@@ -2353,9 +2383,9 @@ class generatepmparin:
         ax2.axvline(x=most_probable_mu_a, c='black', linestyle='dashed', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a+s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a-s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
-        #ax2.axvline(x=s.median_mu_a, c='blue', linestyle='dashed', linewidth=0.5)
-        #ax2.axvline(x=s.median_low_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
-        #ax2.axvline(x=s.median_high_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
+        ax2.axvline(x=s.median_mu_a, c='blue', linestyle='dashed', linewidth=0.5)
+        ax2.axvline(x=s.median_low_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
+        ax2.axvline(x=s.median_high_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
         #subplot3
         ax3 = fig.add_subplot(gs[:2, 4:6])
         ax3.hist(mu_ds, binno_mu_d, density=True, facecolor='g', alpha=0.75)
@@ -2365,9 +2395,9 @@ class generatepmparin:
         ax3.axvline(x=most_probable_mu_d, c='black', linestyle='dashed', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d+s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d-s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
-        #ax3.axvline(x=s.median_mu_d, c='blue', linestyle='dashed', linewidth=0.5)
-        #ax3.axvline(x=s.median_low_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
-        #ax3.axvline(x=s.median_high_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
+        ax3.axvline(x=s.median_mu_d, c='blue', linestyle='dashed', linewidth=0.5)
+        ax3.axvline(x=s.median_low_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
+        ax3.axvline(x=s.median_high_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
         #whole setup
         gs.tight_layout(fig) #rect=[0, 0.1, 1, 1])
         plt.savefig('%s/three_histograms.eps' % s.pmparesultsdir)
@@ -2487,6 +2517,73 @@ class generatepmparin:
             writefile = open(saved_plot_parameters, 'w')
             pickle.dump(plot_parameter_dictionary, writefile)
             writefile.close()
+    
+    def covariance_2d_plots_with_chainconsumer(s, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], plot_bins=1):
+        """
+        corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters
+        durint to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each)
+        """
+        from numpy.random import normal, multivariate_normal
+        from chainconsumer import ChainConsumer
+        from matplotlib import pyplot as plt
+        plt.rc('text', usetex=True)
+        [PIs, mu_as, mu_ds, RAs, Decs] = s.bootstrapped_sample2measured_value()
+        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
+        #print(type(HowManyParameters))
+        data = np.array([PIs, mu_as, mu_ds])
+        if HowManyParameters > 3:
+            bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+            if not os.path.exists(bootstrapped_relative_positions_table):
+                print("%s does not exist; aborting" % bootstrapped_relative_positions_table)
+                sys.exit()
+            t_RP = Table.read(bootstrapped_relative_positions_table, format='ascii')
+            data = np.array([PIs, mu_as, mu_ds, t_RP['rRA'], t_RP['rDec']])
+            [s.value_rRA, s.error_rRA] = howfun.sample2estimate(np.array(t_RP['rRA']), 1)
+            [s.value_rDec, s.error_rDec] = howfun.sample2estimate(np.array(t_RP['rDec']), 1)
+        para_names = ['PI', 'mu_a', 'mu_d', 'rRA', 'rDec']
+        labels = [r"$\rm parallax\,(mas)$", r"$\rm \mu_{\alpha}~(mas~yr^{-1})$", r"$\rm \mu_{\delta}~(mas~yr^{-1})$", r'relative RA.\,(mas)', r'relative Decl.\,(mas)']
+        #data = data[:HowManyParameters, :]
+        #para_names = para_names[:HowManyParameters]
+        #labels = labels[:HowManyParameters]
+        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        if not os.path.exists(saved_plot_parameters):
+            print('%s does not exist; aborting' % saved_plot_parameters)
+            sys.exit()
+        readfile = open(saved_plot_parameters, 'r')
+        plot_parameter_dictionary = pickle.load(readfile)
+        readfile.close()
+        for key in plot_parameter_dictionary:
+            exec("%s = plot_parameter_dictionary[key]" % key)
+        most_probable_PI = howfun.sample2most_probable_value(PIs, binno_PI)
+        most_probable_mu_a = howfun.sample2most_probable_value(mu_as, binno_mu_a)
+        most_probable_mu_d = howfun.sample2most_probable_value(mu_ds, binno_mu_d)
+        most_probable_rRA = howfun.sample2most_probable_value(RAs, binno_RA) - s.median_RA
+        most_probable_rDec = howfun.sample2most_probable_value(Decs, binno_Dec) - s.median_Dec
+        truths = [most_probable_PI, most_probable_mu_a, most_probable_mu_d, most_probable_rRA, most_probable_rDec]
+        #truths = []
+        ## filter out the miss-fitted data falling into local max ############################
+        for i in range(HowManyParameters):
+            exec("maximum = s.value_%s+HowManySigma*s.error_%s" % (para_names[i], para_names[i]))
+            exec("minimum = s.value_%s-HowManySigma*s.error_%s" % (para_names[i], para_names[i]))
+            index = data[i, :]<maximum
+            data = data[:, index]
+            index = data[i, :]>minimum
+            data = data[:, index]
+        #for i in range(HowManyParameters):
+        #    binno = math.floor(plot_bins*0.1*(np.size(data,1))**0.5)
+        #    truths.append(howfun.sample2most_probable_value(data[i,:], binno))
+        ## make corner plot now ##############################################################
+        c = ChainConsumer().add_chain(np.transpose(data), parameters=labels[:HowManyParameters])
+        #fig = c.plotter.plot(truth=truth)
+        #outputfigure = s.pmparesultsdir + '/covariance_2d_plots_' + str(HowManyParameters) + '_parameters.pdf'
+        c.configure(summary=False, colors="#388E3C", kde=False, bins=plot_bins, sigma2d=False)
+        fig = c.plotter.plot(parameters=labels[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
+        if plot_extents != [(),(),(),(),()]:
+            fig = c.plotter.plot(parameters=labels[:HowManyParameters], extents=plot_extents[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
+        #fig.set_size_inches(3 + fig.get_size_inches())
+        plt.savefig('%s/covariance_2d_plots_%d_parameters.pdf' % (s.pmparesultsdir, HowManyParameters))
+        plt.clf()
+    
     def bootstrap_and_save_predicted_positions_at_specific_expno(s, pmparinfile, expno, bootstrapruns=10000):
         pulsitions = s.pmparesultsdir + '/.' + s.targetname + '.pmpar.in.bootstrap'
         pmparinfile = s.pmparesultsdir + '/' + pmparinfile
