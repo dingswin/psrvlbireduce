@@ -2520,8 +2520,8 @@ class generatepmparin:
     
     def covariance_2d_plots_with_chainconsumer(s, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], plot_bins=1):
         """
-        corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters
-        durint to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each)
+        corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters.
+        due to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each), need to separately determine the binno in other plot functions, in order to align the truth value to the peak of the histograms.
         """
         from numpy.random import normal, multivariate_normal
         from chainconsumer import ChainConsumer
@@ -2545,7 +2545,7 @@ class generatepmparin:
         #data = data[:HowManyParameters, :]
         #para_names = para_names[:HowManyParameters]
         #labels = labels[:HowManyParameters]
-        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' #the following passage to re-calculate most_probable_values can be omitted because they have been calculated in s.bootstrapped_sample2measured_value
         if not os.path.exists(saved_plot_parameters):
             print('%s does not exist; aborting' % saved_plot_parameters)
             sys.exit()
