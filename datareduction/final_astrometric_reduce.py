@@ -686,6 +686,7 @@ AIPS.userno   = expconfig['userno']
 numtargets    = len(expconfig["targets"])
 modeldir      = finalmodeldir
 modeltype     = "final"
+
 if options.clearcatalog:
     expconfig['clearcatalog'] = True
 if expconfig['useprelimmodels']:
@@ -730,15 +731,31 @@ if float(dualphscal_setup[0]) > 0 and dotriphscal:
 ################################################################################
 # Parse the source file and set some more variables
 ################################################################################
+gateduvfile   = expconfig['gateduvfile'] 
+ungateduvfile = expconfig['ungateduvfile']
+inbeamfiles   = expconfig['inbeamfiles']
+numinbeams    = len(inbeamfiles)
+inbeamuvdatas = expconfig['']
+targetnames   = expconfig['targetnames']
+inbeamnames   = expconfig['inbeamnames']
+phscalnames   = expconfig['phscalnames']
+ampcalsrc     = expconfig['ampcalsrc'] # here we should consider to generalize to ampcalsrcs later
+# the depreciated source file setup that would still be in use for until old data are published
 sourcefile = experiment.lower() + ".source"
 if sourcefile[0] != '/':
     sourcefile = directory + sourcefile
+if os.path.exists(sourcefile):
+    gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
+    targetnames, inbeamnames, phscalnames, ampcalsrc = parsesourcefile(sourcefile)
+    haveungated = True
+# the depreciated part ends here
 gateduvdata    = AIPSUVData(experiment.upper() + "_G", klass, 1, uvsequence)
 ungateduvdata  = AIPSUVData(experiment.upper() + "_U", klass, 1, uvsequence)
 alluvdatas     = [gateduvdata, ungateduvdata]
-gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
-targetnames, inbeamnames, phscalnames, ampcalsrc = parsesourcefile(sourcefile)
-haveungated = True
+inbeamuvdatas  = []
+for i in range(numinbeams):
+    inbeamuvdatas.append(AIPSUVData(experiment.upper() + "_I" + str(numinbeams+1), klass, 1, uvsequence))
+
 if ungateduvfile == "":
     haveungated = False
     alluvdatas = [gateduvdata]
