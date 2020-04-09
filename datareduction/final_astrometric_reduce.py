@@ -785,13 +785,26 @@ for uvdata in inbeamuvdatas:
 
 ################################################################################
 # Save a record of the time and the arguments of this run, and start the log
+# Echo inputs from two yaml files to the log
 ################################################################################
 AIPS.log = open(logfile, logmode)
 sys.stdout = Logger(AIPS.log)
 logout = open(directory + 'runlog.txt', 'a')
+logout.write(100*'=' + '\n' + 100*'=' + '\n')
 logout.write(strftime("%a, %d %b %Y %H:%M:%S +0000\n", gmtime()))
 for a in sys.argv:
     logout.write(a + ' ')
+logout.write('\n\n****** %s.yaml inputs: ******\n' % experiment)
+readfile = open(expconfigfile)
+lines = readfile.readlines()
+readfile.close()
+logout.writelines(lines)
+for targetname in targetnames:
+    logout.write('\n\n****** %s.yaml inputs: ******\n' % targetname)
+    readfile = open(configdir + '/' + targetname + '.yaml')
+    lines = readfile.readlines()
+    readfile.close()
+    logout.writelines(lines)
 logout.write('\n\n')
 logout.close()
 
