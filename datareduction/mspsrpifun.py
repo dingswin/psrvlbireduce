@@ -867,7 +867,9 @@ def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exce
     return RA2, errRA2, Dec2, errDec2
 
 class estimate_uncertainty:
-    'estimate uncertainty with direct-fitting uncertainties'
+    """
+    estimate uncertainty with direct-fitting uncertainties
+    """
     yr2d = 365.242199
     A = 1./1000/3600/180*math.pi*(1./yr2d/24/3600) #mas/yr to rad/s
     A = A*3.0857*10**16 # rad/s*kpc -> km/s, altogether mas/yr*kpc ->km/s

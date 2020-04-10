@@ -22,6 +22,123 @@ from time import gmtime, strftime
 from optparse import OptionParser
 warnings.defaultaction = "always"
 
+################################################################################
+# vlbireduce class
+################################################################################
+class vlbireduce:
+    """
+    This is a class serving as the core of the psrvlbireduce project. It is based upon Adam's well 
+    tested and versatile code. The introduction of this class would make main code short and flexible. 
+    The vision is to not only focus on VLBI data reduction for PSRPI/MSPSRPI projects, but also for 
+    other compact radio sources observed in various observing setups.
+    """
+    ## the variables that iterates during the run. this design requires the class only be called once.
+    runlevel = 1 
+    clversion = 1
+    snversion = 1
+    targetcl = 0 #used for pointing at new CL table in post-phscal stage.
+    def __init__(self, runfromlevel=1, runtolevel=999): 
+        self.runfromlevel = runfromlevel
+        self.runtolevel = runtolevel
+    def run_FRING_with_fringe_finder(self, runlevel, clversion, snversion, targetonly, expconfig, tabledir,
+            modeldir, ampcalsrc, modeltype, inbeamuvdatas): #not sure calling expconfig would be successful
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+            expconfig['ampcalscan'] > 0:
+            if not os.path.exists(tabledir + 'ampcalfring.sn') or \
+                   not interaction.yesno("Do you wish to used saved SN table for ampcal FRING?"):
+                print "Runlevel " + str(runlevel) + ": FRING'ing amplitude calibrator"
+                sumifs = False
+                sumrrll = False
+                zerorates = True
+                try:
+                    bandpassuvrange = expconfig['bandpassuvrange']
+                except KeyError:
+                    bandpassuvrange = [0, 0]
+                try:
+                    inttimesecs = expconfig['inttimesecs']
+                except KeyError:
+                    inttimesecs = 2
+                ampcalmodeldata = None
+                ampcalmodelfile = modeldir + ampcalsrc + '.clean.fits'
+                if os.path.exists(ampcalmodelfile):
+                    aipscalname = ampcalsrc
+                    if len(ampcalsrc) > 12:
+                        aipscalname = ampcalsrc[:12]
+                    print "Using " + modeltype + " model for " + ampcalsrc
+                    ampcalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                    if ampcalmodeldata.exists():
+                        ampcalmodeldata.zap()
+                    vlbatasks.fitld_image(ampcalmodelfile, ampcalmodeldata)
+                try:
+                    delaywin = expconfig['delaywindowns']
+                except KeyError:
+                    delaywin = 400
+                try:
+                    ratewin = expconfig['ratewindowmhz']
+                except KeyError:
+                    ratewin = 30
+                try:
+                    halfbandwidth = expconfig['ampcalfringhalfbandwidth']
+                except KeyError:
+                    halfbandwidth = False
+                try:
+                    dispersivefit = expconfig['ampcalfringdispersivefit']
+                except KeyError:
+                    dispersivefit = False
+                try:
+                    doexhaustive = expconfig['exhaustivefring']
+                except KeyError:
+                    doexhaustive = False
+                vlbatasks.fring(inbeamuvdatas[0], snversion, clversion, 
+                                expconfig['bandpassfringmins'], inttimesecs, ampcalsrc, expconfig['refant'],
+                                False, expconfig['bandpassfringsnr'], sumifs, ampcalmodeldata,
+                                sumrrll, bandpassuvrange, zerorates, delaywin, ratewin,
+                                doexhaustive, halfbandwidth, dispersivefit)
+                print "Still at runlevel " + str(runlevel) + ": editing FRING for ampcal calibrator"
+                vlbatasks.snsmo(inbeamuvdatas[0], 'DELA', 20, 0.0, 0.0, 10.0, snversion,
+                                expconfig['refant'])
+                snoutver = snversion+1
+                if not expconfig['skipsnedt']:
+                    vlbatasks.snedt(inbeamuvdatas[0], snversion+1)
+                    snoutver = snversion+2
+                if os.path.exists(tabledir + 'ampcalfring.sn'):
+                    os.remove(tabledir + 'ampcalfring.sn')
+                vlbatasks.writetable(inbeamuvdatas[0], 'SN', snoutver, tabledir + \
+                                     'ampcalfring.sn')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver, 'DELA', 0, 2, 4,
+                                   tabledir + 'ampcalfring.ps')
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+1)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
+        else:
+            print "Skipping FRING and SNSMO/SNEDT of ampcal FRING results"
+    
+    def run_BPASS(self, runlevel, clversion, targetonly, expconfig, tabledir, modeldir, ampcalsrc, 
+            modeltype, inbeamuvdatas, leakagedopol):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+            expconfig['ampcalscan'] > 0:
+            print "Runlevel " + str(runlevel) + ": Generating bandpass corrections"
+            if not os.path.exists(tabledir + 'bpass.bp') or not \
+               interaction.yesno("Do you wish to used saved BP table for bandpass?"):
+                ampcalmodeldata = None
+                ampcalmodelfile = modeldir + ampcalsrc + '.clean.fits'
+                if os.path.exists(ampcalmodelfile):
+                    aipscalname = ampcalsrc
+                    if len(ampcalsrc) > 12:
+                        aipscalname = ampcalsrc[:12]
+                    print "Using " + modeltype + " model for " + ampcalsrc
+                    ampcalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                    if ampcalmodeldata.exists():
+                        ampcalmodeldata.zap()
+                    vlbatasks.fitld_image(ampcalmodelfile, ampcalmodeldata)
+                vlbatasks.bpass(inbeamuvdatas[0], ampcalsrc, clversion, 
+                                expconfig['ampcalscan'], ampcalmodeldata, leakagedopol)
+                if os.path.exists(tabledir + 'bpass.bp'):
+                    os.remove(tabledir + 'bpass.bp')
+                vlbatasks.writetable(inbeamuvdatas[0], 'BP', 1, tabledir + 'bpass.bp')
+                vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
+        else:
+            print "Skipping bandpass corrections"
 
 ################################################################################
 # Little logger class to put print statements to the log file
@@ -785,7 +902,7 @@ for uvdata in inbeamuvdatas:
 
 ################################################################################
 # Save a record of the time and the arguments of this run, and start the log
-# Echo inputs from two yaml files to the log
+# Echo inputs from yaml files to the log
 ################################################################################
 AIPS.log = open(logfile, logmode)
 sys.stdout = Logger(AIPS.log)
@@ -1387,6 +1504,10 @@ if not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
     clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run FRING (bandpass calibrator) #############################################
+reducevlbi = vlbireduce(runfromlevel, runtolevel)
+reducevlbi.run_FRING_with_fringe_finder(runlevel, clversion, snversion, targetonly, expconfig, tabledir,
+            modeldir, ampcalsrc, modeltype, inbeamuvdatas)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
     expconfig['ampcalscan'] > 0:
     if not os.path.exists(tabledir + 'ampcalfring.sn') or \
@@ -1457,7 +1578,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
         vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
 else:
     print "Skipping FRING and SNSMO/SNEDT of ampcal FRING results"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Copy the FRING SN table around and apply it #################################
@@ -1615,6 +1736,9 @@ else:
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run BPASS ###################################################################
+reducevlbi.run_BPASS(runlevel, clversion, targetonly, expconfig, tabledir, modeldir, 
+        ampcalsrc, modeltype, inbeamuvdatas, leakagedopol)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
     expconfig['ampcalscan'] > 0:
     print "Runlevel " + str(runlevel) + ": Generating bandpass corrections"
@@ -1639,7 +1763,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
         vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
 else:
     print "Skipping bandpass corrections"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load BPASS ##################################################################
@@ -1660,8 +1784,10 @@ else:
     print "Skipping loading of bandpass corrections"
 
 bandpassclversion = clversion
-
 runlevel  = runlevel + 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+
+## prepare variables for FRING (phase reference calibrators) ####################
 maxphsreffringmins = -1
 maxphsrefcalibapnmins = -1
 maxphsrefcalibpnmins = -1
@@ -1684,7 +1810,7 @@ for i in range(len(phscalnames)):
     donephscalnames.append(phscal)
     doneconfigs.append(targetconfigs[i])
 dophscaldump = False
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+
 ## Run FRING (phase reference calibrators) #####################################
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
    maxphsreffringmins > 0:
