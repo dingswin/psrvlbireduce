@@ -31,6 +31,7 @@ class vlbireduce:
     tested and versatile code. The introduction of this class would make main code short and flexible. 
     The vision is to not only focus on VLBI data reduction for PSRPI/MSPSRPI projects, but also for 
     other compact radio sources observed in various observing setups.
+    The functions are largely organized in the order of time.
     """
     ## the variables that iterates during the run. this design requires the class only be called once.
     runlevel = 1 
@@ -40,6 +41,167 @@ class vlbireduce:
     def __init__(self, runfromlevel=1, runtolevel=999): 
         self.runfromlevel = runfromlevel
         self.runtolevel = runtolevel
+    def load_uv_data(self, runlevel, directory, experiment, expconfig, numinbeams, 
+            inbeamfiles, inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, 
+            targetnames, haveungated, ungateduvfile, gateduvfile):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Loading UVDATA from disk"
+            vexfile  = directory + '/' + experiment.lower() + '.vex'
+            refdate = vlbatasks.getrefdate(vexfile)
+            try:
+                cltablemins = expconfig['cltablemins']
+            except KeyError:
+                cltablemins = 0.166667
+            if not targetonly:
+                for i in range(numinbeams):
+                    os.system("rm -f %s/templink.fits" % directory)
+                    os.system("ln -s %s %s/templink.fits" % \
+                              (inbeamfiles[i], directory))
+                    if expconfig['clearcatalog'] and inbeamuvdatas[i].exists():
+                        inbeamuvdatas[i].zap()
+                    vlbatasks.fitld_vlba("%s/templink.fits" % directory, inbeamuvdatas[i], [], 0.05, refdate, cltablemins)
+            if not calonly:
+                if (expconfig['clearcatalog'] or targetonly) and gateduvdata.exists():
+                    gateduvdata.zap(True)
+                if (expconfig['clearcatalog'] or targetonly) and ungateduvdata.exists():
+                    ungateduvdata.zap(True)
+                os.system("rm -f %s/templink.fits" % directory)
+                os.system("ln -s %s %s/templink.fits" % (gateduvfile, directory))
+                vlbatasks.fitld_vlba("%s/templink.fits" % directory, gateduvdata, targetnames, 0.05, refdate, cltablemins)
+                if haveungated:
+                    os.system("rm -f %s/templink.fits" % directory)
+                    os.system("ln -s %s %s/templink.fits" % (ungateduvfile, directory))
+                    vlbatasks.fitld_vlba("%s/templink.fits" % directory, ungateduvdata, targetnames, 0.05, refdate, cltablemins)
+        else:
+            print "Skipping UVDATA load"
+    def increase_the_number_of_IFs_if_requested(self, runlevel, targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
+            klass, calonly, gateduvdata, haveungated, ungateduvdata):
+        try:
+            moriffactor = expconfig['moriffactor']
+        except KeyError:
+            moriffactor = 0
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and moriffactor > 1:
+            print "Runlevel " + str(runlevel) + ": Splitting each IF " + str(moriffactor) + " ways"
+            if not targetonly:
+                for i in range(numinbeams):
+                    newinbeamdata = AIPSUVData(experiment.upper() + "_I" + str(i+1), "MORIF", 1, uvsequence)
+                    if newinbeamdata.exists():
+                        newinbeamdata.zap()
+                    vlbatasks.morif(inbeamuvdatas[i], newinbeamdata, moriffactor)
+                    inbeamuvdatas[i].zap()
+                    newinbeamdata.rename(experiment.upper() + "_I" + str(i+1), klass, uvsequence)
+            if not calonly:
+                newgateddata = AIPSUVData(experiment.upper() + "_G", "MORIF", 1, uvsequence)
+                if newgateddata.exists():
+                    newgateddata.zap()
+                vlbatasks.morif(gateduvdata, newgateddata, moriffactor)
+                gateduvdata.zap()
+                newgateddata.rename(experiment.upper() + "_G", klass, uvsequence)
+                if haveungated:
+                    newungateddata = AIPSUVData(experiment.upper() + "_U", "MORIF", 1, uvsequence)
+                    if newungateddata.exists():
+                        newungateddata.zap()
+                    vlbatasks.morif(ungateduvdata, newungateddata, moriffactor)
+                    ungateduvdata.zap()
+                    newungateddata.rename(experiment.upper() + "_U", klass, uvsequence)
+        else:
+            print "Not running MORIF"
+    
+    def unflag_Pie_Town_if_requested(self, runlevel, expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
+            ungateduvdata, gateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and expconfig['unflagpietown']:
+            print "Runlevel " + str(runlevel) + ": Unflagging Pie Town"
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.unflagantenna(inbeamuvdatas[i], 1, 1, 9)
+            if not calonly:
+                if haveungated:
+                    vlbatasks.unflagantenna(ungateduvdata, 1, 1, 9)
+                vlbatasks.unflagantenna(gateduvdata, 1, 1, 9)
+        else:
+            print "Not unflagging Pie Town"
+    
+    def load_the_user_flags_if_any(self, runlevel, tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
+            inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Loading user flags"
+            userflagfiles = glob.glob(tabledir + '/*.flag')
+            if not targetonly:
+                userflagfile = tabledir + "additionaledit.flag"
+                if os.path.exists(userflagfile):
+                    for i in range(numinbeams):
+                        vlbatasks.userflag(inbeamuvdatas[i], 1, userflagfile)
+                for i in range(numtargets):
+                    for j in range(len(inbeamnames[i])):
+                        #for inbeamname in inbeamnames[i]:
+                        extraflagfile = tabledir + "additionaledit." + inbeamnames[i][j] + ".flag"
+                        if os.path.exists(extraflagfile):
+                            vlbatasks.userflag(inbeamuvdatas[j], 1, extraflagfile)
+            if not calonly:
+                userflagfile = tabledir + "additionaledit.flag"
+                if os.path.exists(userflagfile):
+                    vlbatasks.userflag(gateduvdata, 1, userflagfile)
+                    if haveungated:
+                        vlbatasks.userflag(ungateduvdata, 1, userflagfile)
+                for targetname in targetnames:
+                    extraflagfile = tabledir + "additionaledit." + targetname + ".flag"
+                    if os.path.exists(extraflagfile):
+                        vlbatasks.userflag(gateduvdata, 1, extraflagfile)
+                        if haveungated:
+                            vlbatasks.userflag(ungateduvdata, 1, extraflagfile)
+            if len(userflagfiles) == 0:
+                print "No user flag file - skipping"
+            for userflagfile in userflagfiles:
+                if "target" in userflagfile:
+                    print "Warning: old-style additionaledit.target.flag file no longer supported!"
+        else:
+            print "Skipping flagging from user flag file"
+    
+    def run_the_flagging_for_zero_fringe_rate_effects(self, runlevel, targetconfigs, targetonly, inbeamuvdatas,
+            haveungated, ungateduvdata, gateduvdata):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Running UVFLG for zero fringe rates"
+            try:
+                suppressionfactor = targetconfigs[0]['fringerateflagsuppressionfactor']
+            except KeyError:
+                suppressionfactor = 7
+            if not targetonly:
+                for inbeamuvdata in inbeamuvdatas:
+                    vlbatasks.fringerateflag(inbeamuvdata, 1, suppressionfactor)
+            if not calonly:
+                if haveungated:
+                    vlbatasks.fringerateflag(ungateduvdata, 1, suppressionfactor)
+                vlbatasks.fringerateflag(gateduvdata, 1, suppressionfactor)
+        else:
+            print "Skipping flagging times of zero fringe rate"
+    
+    def run_the_autoflagger_if_requested(self, runlevel, expconfig, tabledir, targetonly, numinbeams, inbeamuvdatas,
+            calonly, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and expconfig['autoflag']:
+            print "Runlevel " + str(runlevel) + ": Running autoflagger"
+            autoflagfile = tabledir + "auto.rawuvdata.flag"
+            if targetonly and (not os.path.exists(autoflagfile)):
+                print "For target-only, autoflag file %s must already exist!" % autoflagfile
+                print "Aborting!"
+                sys.exit(1)
+            if not targetonly:
+                if not os.path.exists(autoflagfile) or \
+                   not interaction.yesno("Do you wish to used saved autoflag table?"):
+                    runline =  "./autoflaggerplotter.py "
+                    runline += "--i=%d.%s_I1.UVDATA.1.1 " % (AIPS.userno, experiment.upper())
+                    runline += "--makeplot "
+                    runline += "--usepickle=%s/%s.aipsdata.pickle " % (tabledir, experiment.lower())
+                    runline += "--noint --flagfile=%s" % (autoflagfile)
+                    os.system(runline)
+                for i in range(numinbeams):
+                    vlbatasks.userflag(inbeamuvdatas[i], 1, autoflagfile)
+            if not calonly:
+                vlbatasks.userflag(gateduvdata, 1, autoflagfile)
+                if haveungated:
+                    vlbatasks.userflag(ungateduvdata, 1, autoflagfile)
+        else:
+            print "Skipping autoflagging"
+
     def run_FRING_with_fringe_finder(self, runlevel, clversion, snversion, targetonly, expconfig, tabledir,
             modeldir, ampcalsrc, modeltype, inbeamuvdatas): #not sure calling expconfig would be successful
         if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
@@ -139,7 +301,26 @@ class vlbireduce:
                 vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
         else:
             print "Skipping bandpass corrections"
-
+    
+    def load_BPASS_solutions(self, runlevel, clversion, expconfig, tabledir, calonly, 
+            gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            expconfig['ampcalscan'] > 0:
+            print "Runlevel " + str(runlevel) + ": Loading bandpass corrections"
+            if not os.path.exists(tabledir + 'bpass.bp'):
+                print "Error - bandpass table " + tabledir + 'bpass.bp does not exist'
+                sys.exit(1)
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, tabledir + 'bpass.bp', 1)
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, tabledir + 'bpass.bp', 1)
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'bpass.bp', 1)
+        else:
+            print "Skipping loading of bandpass corrections"
+        bandpassclversion = clversion
+        return bandpassclversion 
 ################################################################################
 # Little logger class to put print statements to the log file
 ################################################################################
@@ -949,6 +1130,11 @@ if zapallcaltables and runfromlevel > 1:
 runlevel = 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load the uv data ############################################################
+reducevlbi = vlbireduce(runfromlevel, runtolevel)
+reducevlbi.load_uv_data(runlevel, directory, experiment, expconfig, numinbeams, inbeamfiles, 
+        inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, targetnames, 
+        haveungated, ungateduvfile, gateduvfile)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Loading UVDATA from disk"
     vexfile  = directory + '/' + experiment.lower() + '.vex'
@@ -979,14 +1165,17 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             vlbatasks.fitld_vlba("%s/templink.fits" % directory, ungateduvdata, targetnames, 0.05, refdate, cltablemins)
 else:
     print "Skipping UVDATA load"
-
+"""
 runlevel = runlevel + 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Increase the number of IFs if requested #####################################
+reducevlbi.increase_the_number_of_IFs_if_requested(runlevel, targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
+        klass, calonly, gateduvdata, haveungated, ungateduvdata)
+"""
 try:
     moriffactor = expconfig['moriffactor']
 except KeyError:
     moriffactor = 0
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
-## Increase the number of IFs if requested #####################################
 if runfromlevel <= runlevel and runtolevel >= runlevel and moriffactor > 1:
     print "Runlevel " + str(runlevel) + ": Splitting each IF " + str(moriffactor) + " ways"
     if not targetonly:
@@ -1013,10 +1202,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and moriffactor > 1:
             newungateddata.rename(experiment.upper() + "_U", klass, uvsequence)
 else:
     print "Not running MORIF"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Unflag Pie Town if requested ################################################
+reducevlbi.unflag_Pie_Town_if_requested(runlevel, expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
+            ungateduvdata, gateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['unflagpietown']:
     print "Runlevel " + str(runlevel) + ": Unflagging Pie Town"
     if not targetonly:
@@ -1028,10 +1220,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['unflagpiet
         vlbatasks.unflagantenna(gateduvdata, 1, 1, 9)
 else:
     print "Not unflagging Pie Town"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load the user flags (if any) ################################################
+reducevlbi.load_the_user_flags_if_any(runlevel, tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
+        inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Loading user flags"
     userflagfiles = glob.glob(tabledir + '/*.flag')
@@ -1065,10 +1260,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             print "Warning: old-style additionaledit.target.flag file no longer supported!"
 else:
     print "Skipping flagging from user flag file"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run the flagging for zero-fringe rate effects ###############################
+reducevlbi.run_the_flagging_for_zero_fringe_rate_effects(runlevel, targetconfigs, targetonly, inbeamuvdatas,
+        haveungated, ungateduvdata, gateduvdata)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Running UVFLG for zero fringe rates"
     try:
@@ -1084,10 +1282,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
         vlbatasks.fringerateflag(gateduvdata, 1, suppressionfactor)
 else:
     print "Skipping flagging times of zero fringe rate"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run the autoflagger (if requested) ##########################################
+reducevlbi.run_the_autoflagger_if_requested(runlevel, expconfig, tabledir, targetonly, numinbeams,
+        inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['autoflag']:
     print "Runlevel " + str(runlevel) + ": Running autoflagger"
     autoflagfile = tabledir + "auto.rawuvdata.flag"
@@ -1112,7 +1313,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['autoflag']
             vlbatasks.userflag(ungateduvdata, 1, autoflagfile)
 else:
     print "Skipping autoflagging"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Duplicate the initial CL table ##############################################
@@ -1504,7 +1705,6 @@ if not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
     clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run FRING (bandpass calibrator) #############################################
-reducevlbi = vlbireduce(runfromlevel, runtolevel)
 reducevlbi.run_FRING_with_fringe_finder(runlevel, clversion, snversion, targetonly, expconfig, tabledir,
             modeldir, ampcalsrc, modeltype, inbeamuvdatas)
 """
@@ -1767,6 +1967,9 @@ else:
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load BPASS ##################################################################
+bandpassclversion = reducevlbi.load_BPASS_solutions(runlevel, clversion, expconfig, tabledir, 
+        calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     expconfig['ampcalscan'] > 0:
     print "Runlevel " + str(runlevel) + ": Loading bandpass corrections"
@@ -1784,6 +1987,7 @@ else:
     print "Skipping loading of bandpass corrections"
 
 bandpassclversion = clversion
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 
