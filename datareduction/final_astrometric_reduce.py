@@ -202,6 +202,349 @@ class vlbireduce:
         else:
             print "Skipping autoflagging"
 
+    def duplicate_the_initial_CL_table(self, runlevel, targetonly, numinbeams, inbeamuvdatas, gateduvdata,
+            ungateduvdata):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Duplicating CL table 1"
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.tacop(inbeamuvdatas[i], 'CL', 1, inbeamuvdatas[i], 2)
+            if not calonly:
+                vlbatasks.tacop(gateduvdata, 'CL', 1, gateduvdata, 2)
+                if haveungated:
+                    vlbatasks.tacop(ungateduvdata, 'CL', 1, ungateduvdata, 2)
+        else:
+            print "Skipping duplication of initial CL table"
+
+    def correct_positions(self, runlevel, clversion, alluvdatas, targetonly, gateduvdata, haveungated, 
+            ungateduvdata, calonly, inbeamuvdatas, expconfig):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Running CLCOR to shift sources"
+            uvdatas = alluvdatas
+            if targetonly:
+                uvdatas = [gateduvdata]
+                if haveungated:
+                    uvdatas = [gateduvdata, ungateduvdata]
+            elif calonly:
+                uvdatas = inbeamuvdatas
+            try:
+                shifts = expconfig["shifts"]
+            except KeyError:
+                shifts = []
+                print "No sources to shift"
+            for s in shifts:
+                if s == "": continue
+                srcname  = s.split(',')[0]
+                rashift  = float(s.split(',')[1])
+                decshift = float(s.split(',')[2])
+                print "Shifting " + srcname + " by " + str(rashift) + "," + str(decshift)
+                foundone = False
+                for dataset in uvdatas:
+                    present = False
+                    for row in dataset.table('SU', 1):
+                        print row.source.strip()
+                        if row.source.strip() == srcname:
+                            present = True
+                            foundone = True
+                    if present:
+                        print "About to operate on ", dataset, srcname, rashift, decshift, clversion
+                        vlbatasks.shift_source(dataset, srcname, rashift, decshift,
+                                               clversion)
+                if not foundone:
+                    print "Didn't find source " + srcname + " in any datasets!"
+                    sys.exit()
+        else:
+            print "Skipping source shifting"
+
+    def run_TECOR(self, runlevel, clversion, expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
+            calonly, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not expconfig['skiptecor']:
+            print "Runlevel " + str(runlevel) + ": Running TECOR to correct ionosphere"
+            try:
+                follow = expconfig['tecorfollow']
+            except KeyError:
+                print "Follow not specified in expconfig file, defaulting to 0.2"
+                follow = 0.2
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.correct_iono(inbeamuvdatas[i], logdir, clversion, follow)
+            if not calonly:
+                vlbatasks.correct_iono(gateduvdata, logdir, clversion, follow)
+                if haveungated:
+                    vlbatasks.correct_iono(ungateduvdata, logdir, clversion, follow)
+        else:
+            print "Skipping ionospheric corrections"
+    
+    def run_CLCOR_to_correct_EOPs(self, runlevel, clversion, targetonly, numinbeams, inbeamuvdatas, logdir,
+            calonly, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            print "Runlevel " + str(runlevel) + ": Running CLCOR to correct for EOPs"
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.correct_eops(inbeamuvdatas[i], logdir, clversion)
+            if not calonly:
+                vlbatasks.correct_eops(gateduvdata, logdir, clversion)
+                if haveungated:
+                    vlbatasks.correct_eops(ungateduvdata, logdir, clversion)
+        else:
+            print "Skipping EOP corrections"
+
+    def run_CLCOR_to_correct_PANG(self, runlevel, clversion, leakagescan, targetonly, numinbeams,
+            inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and leakagescan > 0:
+            print "Runlevel " + str(runlevel) + ": Running CLCOR to correct PANG"
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.clcor_pang(inbeamuvdatas[i], clversion)
+            if not calonly:
+                vlbatasks.clcor_pang(gateduvdata, clversion)
+                if haveungated:
+                    vlbatasks.clcor_pang(ungateduvdata, clversion)
+        else:
+            print "Skipping PANG corrections"
+    
+    def correct_for_a_priori_delays_if_available_using_CLCOR(self, runlevel, clversion, tabledir, alluvdatas,
+            targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas):
+        adelayfile = tabledir + 'aprioridelays.txt'
+        gatedadelayfile = tabledir + 'aprioridelays.gated.txt'
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel:
+            if os.path.exists(adelayfile):
+                print "Runlevel " + str(runlevel) + ": Using CLCOR to correct measured delays"
+            else:
+                print "Runlevel " + str(runlevel) + ": Not correcting a priori delays, just duplicating CL table"
+            uvdatas = alluvdatas
+            if targetonly:
+                uvdatas = [gateduvdata]
+                if haveungated:
+                    uvdatas = [gateduvdata, ungateduvdata]
+            elif calonly:
+                uvdatas = inbeamuvdatas
+            for uvdata in uvdatas:
+                vlbatasks.tacop(uvdata, 'CL', clversion, uvdata, clversion+1)
+                thisfile = adelayfile
+                if uvdata == gateduvdata and os.path.exists(gatedadelayfile):
+                    useroverride = interaction.yesno("There is an override file for a priori delays for the gated dataset! Do you wish to use this file? ONLY IF THERE WAS A MISTAKE WITH THE CLOCKS AT CORRELATION TIME!!! : ")
+                    if useroverride:
+                        thisfile = gatedadelayfile
+                if os.path.exists(thisfile):
+                    vlbatasks.clcordelaysfromfile(uvdata, thisfile, clversion+1)
+        else:
+            print "Skipping correction of a priori clock delays"
+    
+    def do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(self, runlevel, clversion, snversion,
+            expconfig, targetonly, tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas, logdir,
+            experiment):
+        try:
+            skipapcalaccor = expconfig['skipapcalaccor']
+        except KeyError:
+            skipapcalaccor = False
+        if runfromlevel <= runlevel and runtolevel >= runlevel and not skipapcalaccor:
+            print "Runlevel " + str(runlevel) + ": Doing amplitude calibration"
+            if targetonly and (not os.path.exists(tabledir + 'accor.sn') or \
+                               not os.path.exists(tabledir + 'apcal.sn')):
+                print "For target-only, the SN files must exist already - aborting!"
+                sys.exit(1)
+            uvdatas = alluvdatas
+            if targetonly:
+                uvdatas = [gateduvdata]
+                if haveungated:
+                    uvdatas = [gateduvdata, ungateduvdata]
+            elif calonly:
+                uvdatas = inbeamuvdatas
+            try:
+                accorinterpol = expconfig['accorinterpol']
+            except KeyError:
+                accorinterpol = '2PT'
+            if not targetonly and ((not os.path.exists(tabledir + 'accor.sn') and not\
+                os.path.exists(tabledir + 'apcal.sn')) or not \
+               interaction.yesno("Do you wish to used saved SN table of amplitude calibration?")):
+                for i in range(7):
+                    vlbatasks.deletetable(inbeamuvdatas[0], 'SN', i+snversion)
+                dotsysfix = False
+                try:
+                    if expconfig['allowtsysfix'] and 'HN' in inbeamuvdatas[0].antennas:
+                        dotsysfix = True
+                except KeyError:
+                    pass
+                try:
+                    accorampsmo = expconfig['accorampsmo']
+                except KeyError:
+                    accorampsmo = 0.03
+                try:
+                    apcalampsmo = expconfig['apcalampsmo']
+                except KeyError:
+                    apcalampsmo = 1.5
+                try:
+                    accorinterval = expconfig['accorinterval']
+                except KeyError:
+                    accorinterval = -2
+                try:
+                    copytsys = expconfig['copytsys']
+                except KeyError:
+                    copytsys = ""
+                if copytsys != "" and dotsysfix:
+                    print "Can't do tsys fix and copytsys!"
+                    sys.exit()
+                vlbatasks.accor(inbeamuvdatas[0], accorinterval)
+                if accorampsmo > 0:
+                    vlbatasks.snsmo(inbeamuvdatas[0], 'BOTH', 20, accorampsmo, 0.0, 0.0, snversion, expconfig['refant'], True)
+                else:
+                    vlbatasks.tacop(inbeamuvdatas[0], 'SN', snversion, inbeamuvdatas[0], snversion+1)
+                ### load .antab file if available
+                antabfile = logdir + '/' + experiment + '.antab'
+                if os.path.exists(antabfile):
+                    for uvdata in alluvdatas:
+                        vlbatasks.antab(uvdata, antabfile, 1, 1)
+                vlbatasks.apcal(inbeamuvdatas[0], snversion+2)
+                if apcalampsmo > 0:
+                    vlbatasks.snsmo(inbeamuvdatas[0], 'BOTH', 20, apcalampsmo, 0.0, 0.0, snversion+2, expconfig['refant'], True)
+                else:
+                    vlbatasks.tacop(inbeamuvdatas[0], 'SN', snversion+2, inbeamuvdatas[0], snversion+3)
+                if dotsysfix:
+                    print "Doing tsys fix"
+                    vlbatasks.fixtsys(inbeamuvdatas[0], snversion+3)
+                elif copytsys != "":
+                    groups = copytsys.split(':')
+                    for g in groups:
+                        copytsyssplit = g.split(',')
+                        if not len(copytsyssplit) == 3:
+                            print "Copytsys was " + copytsys + ", must be --copytsys=AN1,AN2,scalefactor"
+                            sys.exit()
+                        if copytsyssplit[0] == copytsyssplit[1]:
+                            ifsplit = copytsyssplit[2].split('@')
+                            if len(ifsplit) != 2 or not ifsplit[0][:2] == "if" or not ifsplit[1][:2] == "if":
+                                print "If copying between IFs of the same antenna, must use"
+                                print "--copytsys=AN,AN,ifX@ifY where X and Y are input and output IFs respectively (-1 for all)"
+                            vlbatasks.copytsys(inbeamuvdatas[0], snversion+3, copytsyssplit[0],
+                                               copytsyssplit[1], 1.0, int(ifsplit[0][2:]), int(ifsplit[1][2:]))
+                        else:
+                            vlbatasks.copytsys(inbeamuvdatas[0], snversion+3, copytsyssplit[0],
+                                               copytsyssplit[1], float(copytsyssplit[2]))
+                        if not g==groups[-1]:
+                            vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+3)
+                            vlbatasks.tacop(inbeamuvdatas[0], 'SN', snversion+4, inbeamuvdatas[0], snversion+3)
+                            vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+4)
+                else:
+                    vlbatasks.tacop(inbeamuvdatas[0], 'SN', snversion+3, inbeamuvdatas[0], snversion+4)
+                snoutver1 = snversion + 1
+                snoutver2 = snversion + 4
+                if not expconfig['skipsnedt']:
+                    vlbatasks.snedt(inbeamuvdatas[0], snversion+1)
+                    vlbatasks.snedt(inbeamuvdatas[0], snversion+4)
+                    snoutver1 = snversion+5
+                    snoutver2 = snversion+6
+                if os.path.exists(tabledir + 'accor.sn'):
+                    os.remove(tabledir + 'accor.sn')
+                if os.path.exists(tabledir + 'apcal.sn'):
+                    os.remove(tabledir + 'apcal.sn')
+                vlbatasks.writetable(inbeamuvdatas[0], 'SN', snoutver1, tabledir + 'accor.sn')
+                vlbatasks.writetable(inbeamuvdatas[0], 'SN', snoutver2, tabledir + 'apcal.sn')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver1, 'AMP', 0, 2, 4, tabledir + 'accor.ps')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver2, 'AMP', 0, 2, 4, tabledir + 'apcal.ps')
+                for i in range(7):
+                    vlbatasks.deletetable(inbeamuvdatas[0], 'SN', i+snversion)
+            for uvdata in uvdatas:
+                vlbatasks.loadtable(uvdata, tabledir + 'accor.sn', snversion)
+                vlbatasks.loadtable(uvdata, tabledir + 'apcal.sn', snversion+1)
+                vlbatasks.applysntable(uvdata, snversion, accorinterpol, clversion, expconfig['refant'])
+                vlbatasks.applysntable(uvdata, snversion+1, '2PT', clversion+1, expconfig['refant'])
+        else:
+            print "Skipping amplitude calibration"
+        if not skipapcalaccor:
+            clversion = clversion + 2
+            snversion = snversion + 2
+        return clversion, snversion
+    
+    def correct_for_primary_beam_attenuation(self, runlevel, clversion, snversion, expconfig, directory, experiment,
+            ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
+            targetnames, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not expconfig['skippbcor']:
+            print "Runlevel " + str(runlevel) + ": Doing primary beam correction"
+            vexfile  = directory + '/' + experiment.lower() + '.vex'
+            scanlist = vlbatasks.getvexscaninfo(vexfile)
+            fieldsourcenames = {}
+            fieldsourcenames[ampcalsrc] = ampcalsrc
+            if not targetonly:
+                for i in range(numinbeams):
+                    for j in range(numtargets):
+                        if i==0:
+                            fieldsourcenames[phscalnames[j]] = phscalnames[j]
+                        if len(inbeamnames[j]) > i:
+                            if expconfig['dodefaultnames']:
+                                fieldsourcenames["TARGETPT"] = inbeamnames[j][i]
+                            elif "174" in experiment:
+                                fieldsourcenames[targetnames[j][:5] + "PT"] = inbeamnames[j][i]
+                            else:
+                                fieldsourcenames[targetnames[j] + "PT"] = inbeamnames[j][i]
+                    pbsntable = tabledir + 'pbcor.cal' + str(i) + '.sn'
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion)
+                    vlbatasks.correct_primarybeam(inbeamuvdatas[i], snversion-1, i, scanlist, fieldsourcenames, False, False)
+                    if os.path.exists(pbsntable):
+                        os.remove(pbsntable)
+                    vlbatasks.writetable(inbeamuvdatas[i], 'SN', snversion, pbsntable)
+                    vlbatasks.plottops(inbeamuvdatas[i], 'SN', snversion, 'AMP', 0, 2, 4, tabledir + 'pbcor.cal' + str(i) + '.ps')
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion)
+                    vlbatasks.loadtable(inbeamuvdatas[i], pbsntable, snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion, expconfig['refant'])
+            if not calonly:
+                for i in range(numtargets):
+                    if expconfig['dodefaultnames']:
+                        fieldsourcenames["TARGETPT"] = targetnames[i]
+                    elif "174" in experiment:
+                        fieldsourcenames[targetnames[j][:5] + "PT"] = targetnames[i]
+                    else:
+                        fieldsourcenames[targetnames[i] + "PT"] = targetnames[i]
+                uvdatas = [gateduvdata]
+                if haveungated:
+                    uvdatas = [gateduvdata, ungateduvdata]
+                for uvdata in uvdatas:
+                    pbsntable = tabledir + 'pbcor.target.sn'
+                    vlbatasks.deletetable(uvdata, 'SN', snversion)
+                    vlbatasks.correct_primarybeam(uvdata, snversion-1, 0, scanlist, fieldsourcenames, False, False)
+                    if os.path.exists(pbsntable):
+                        os.remove(pbsntable)
+                    vlbatasks.writetable(uvdata, 'SN', snversion, pbsntable)
+                    vlbatasks.deletetable(uvdata, 'SN', snversion)
+                    vlbatasks.loadtable(uvdata, pbsntable, snversion)
+                    vlbatasks.applysntable(uvdata, snversion, 'SELN', clversion, expconfig['refant'])
+                vlbatasks.plottops(gateduvdata, 'SN', snversion, 'AMP', 0, 2, 4, tabledir + 'pbcor.target.ps')
+        else:
+            print "Skipping primary beam correction"
+
+    def do_PCAL_correction_and_inspect(self, runlevel, clversion, snversion, expconfig, targetonly, tabledir,
+            inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
+            print "Runlevel " + str(runlevel) + ": Doing pulse cal calibration"
+            if targetonly and (not os.path.exists(tabledir + 'pccor.sn')):
+                print "For target-only, the PC file must exist already - aborting!"
+                sys.exit(1)
+            if  not (targetonly or (os.path.exists(tabledir + 'pccor.sn') and \
+                                    interaction.yesno("Do you wish to used saved SN table " + \
+                                          "for pulse cal?"))):
+                try:
+                    inbeamuvdatas[0].table('SN', snversion).zap()
+                except IOError:
+                    print "No need to delete old SN table"
+                vlbatasks.pccor(inbeamuvdatas[0], ampcalsrc, snversion, expconfig['ampcalscan'], expconfig['refant'])
+                if os.path.exists(tabledir + 'pccor.sn'):
+                    os.remove(tabledir + 'pccor.sn')
+                vlbatasks.writetable(inbeamuvdatas[0], 'SN', snversion, tabledir + 'pccor.sn')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snversion, 'PHAS', 0, 2, 4, tabledir + 'pccor.ps')
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, tabledir + 'pccor.sn', snversion)
+                vlbatasks.applysntable(gateduvdata, snversion, '2PT', clversion, expconfig['refant'])
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, tabledir + 'pccor.sn', snversion)
+                    vlbatasks.applysntable(ungateduvdata, snversion, '2PT', clversion, expconfig['refant'])
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'pccor.sn', snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion, expconfig['refant'])
+        else:
+            print "Skipping pulse cal corrections"
+
     def run_FRING_with_fringe_finder(self, runlevel, clversion, snversion, targetonly, expconfig, tabledir,
             modeldir, ampcalsrc, modeltype, inbeamuvdatas): #not sure calling expconfig would be successful
         if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
@@ -274,7 +617,149 @@ class vlbireduce:
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
         else:
             print "Skipping FRING and SNSMO/SNEDT of ampcal FRING results"
+
+    def copy_the_FRING_SN_table_around_and_apply_it(self, runlevel, clversion, snversion, expconfig, targetonly,
+            tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and expconfig['ampcalscan'] > 0:
+            print "Runlevel " + str(runlevel) + ": Loading ampcal FRING SN table & calibrating"
+            if targetonly and (not os.path.exists(tabledir + 'ampcalfring.sn')):
+                print "For target-only, the SN file must exist already - aborting!"
+                sys.exit(1)
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'ampcalfring.sn', snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion,
+                                           expconfig['refant'], [], 'CALP')
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, tabledir + 'ampcalfring.sn', snversion)
+                vlbatasks.applysntable(gateduvdata, snversion, '2PT', clversion, 
+                                       expconfig['refant'], [], 'CALP')
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, tabledir + 'ampcalfring.sn', snversion)
+                    vlbatasks.applysntable(ungateduvdata, snversion, '2PT', clversion, 
+                                           expconfig['refant'], [], 'CALP')
+        else:
+            print "Skipping calibration of ampcal FRING results"
+
+    def run_xpoldelaycal(self, runlevel, clversion, tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource):
+        xpolsnfilename = tabledir + '/xpolfring.sn'
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+            xpolscan > 0:
+            if not os.path.exists(xpolsnfilename) or \
+               not interaction.yesno("Do you wish to used saved SN table for Xpol cal?"):
+                print "Runlevel " + str(runlevel) + ": Calculating XPOL delays"
+                try:
+                    inttimesecs = expconfig['inttimesecs']
+                except KeyError:
+                    inttimesecs = 2
+                try:
+                    xpolsolintmins = expconfig['xpolsolintmins']
+                except KeyError:
+                    xpolsolintmins = 3
+                try:
+                    delaywin = expconfig['delaywindowns']
+                except KeyError:
+                    delaywin = 400
+                try:
+                    ratewin = expconfig['ratewindowmhz']
+                except KeyError:
+                    ratewin = 30
+                if os.path.exists(xpolsnfilename):
+                    os.remove(xpolsnfilename)
+                xpolmodel = AIPSImage("XPOLSRC","CLNMOD",1,1)
+                if xpolmodel.exists():
+                    xpolmodel.zap()
+                xpolmodelfile = modeldir + '/' + xpolsource + ".clean.fits"
+                if not os.path.exists(xpolmodelfile):
+                    print xpolmodelfile, "doesn't exit: must have model for xpol calibration"
+                    sys.exit()
+                vlbatasks.fitld_image(xpolmodelfile, xpolmodel)
+                print "int time in seconds is ", inttimesecs
+                vlbatasks.xpoldelaycal(inbeamuvdatas[0], clversion, expconfig['refant'], 
+                                       xpolsource, xpolscan, xpolmodel, xpolsolintmins, 
+                                       inttimesecs, xpolsnfilename, delaywin, ratewin)
+        else:
+            print "Skipping determining xpoldelays"
+        return xpolsnfilename
     
+    def load_and_apply_xpoldelaycal(self, runlevel, clversion, snversion, xpolscan, targetonly, numinbeams,
+            inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and xpolscan > 0:
+            print "Runlevel " + str(runlevel) + ": Loading XPOL CAL FRING SN table & calibrating"
+            if targetonly and (not os.path.exists(xpolsnfilename)):
+                print "For target-only, the SN file must exist already - aborting!"
+                sys.exit(1)
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], xpolsnfilename, snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion,
+                                           expconfig['refant'])
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, xpolsnfilename, snversion)
+                vlbatasks.applysntable(gateduvdata, snversion, '2PT', clversion,
+                                       expconfig['refant'])
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, xpolsnfilename, snversion)
+                    vlbatasks.applysntable(ungateduvdata, snversion, '2PT', clversion,
+                                           expconfig['refant'])
+        else:
+            print "Skipping calibration of xpolcal cross-pol FRING results"
+
+    def run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(self, runlevel, clversion, targetonly, leakagescan,
+            tabledir, modeldir, leakagesource, inbeamuvdatas, expconfig, directory, experiment, leakageuvrange, leakageweightit):
+        leakagefilename = tabledir + "/leakage.an"
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+            leakagescan > 0:
+            if not os.path.exists(leakagefilename) or \
+                   not interaction.yesno("Do you wish to used saved AN table for leakage cal?"):
+                print "Runlevel " + str(runlevel) + ": Running leakage cal"
+                if os.path.exists(leakagefilename):
+                    os.remove(leakagefilename)
+                leakagemodel = AIPSImage("LEAKSRC","CLNMOD",1,1)
+                if leakagemodel.exists():
+                    leakagemodel.zap()
+                leakagemodelfile = modeldir + '/' + leakagesource + ".clean.fits"
+                leakageoutputfile = directory + '/' + experiment + "_" + leakagesource + "_leakagecal_uv.fits"
+                if not os.path.exists(leakagemodelfile):
+                    print leakagemodelfile, "doesn't exit: must have model for leakage calibration"
+                    sys.exit()
+                vlbatasks.fitld_image(leakagemodelfile, leakagemodel)
+                try:
+                    leakageacalmins = expconfig['leakageampcalmins']
+                except KeyError:
+                    leakageacalmins = 0.3333333
+                try:
+                    leakagepcalmins = expconfig['leakagephscalmins']
+                except KeyError:
+                    leakagepcalmins = 0.02
+                hasbptable = False
+                vlbatasks.leakagecalc(inbeamuvdatas[0], leakagesource, leakagemodel, leakagefilename, 
+                            expconfig['refant'], leakageacalmins, leakagepcalmins, leakagescan, clversion,
+                            hasbptable, leakageoutputfile, leakageuvrange, leakageweightit)
+        else:
+            print "Skipping calibration of leakage"
+        return leakagefilename
+    
+    def load_up_the_leakage_calibrated_AN_table(self, runlevel, leakagescan, targetonly, xpolsnfilename, numinbeams,
+            inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and leakagescan > 0:
+            print "Runlevel " + str(runlevel) + ": Loading leakage-calculated AN table"
+            if targetonly and (not os.path.exists(xpolsnfilename)):
+                print "For target-only, the SN file must exist already - aborting!"
+                sys.exit(1)
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[i], "AN", 1)
+                    vlbatasks.loadtable(inbeamuvdatas[i], leakagefilename, 1)
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, "AN", 1)
+                vlbatasks.loadtable(gateduvdata, leakagefilename, 1)
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, "AN", 1)
+                    vlbatasks.loadtable(ungateduvdata, leakagefilename, 1)
+        else:
+            print "Skipping loading the leakage calibrated AN table"
+
     def run_BPASS(self, runlevel, clversion, targetonly, expconfig, tabledir, modeldir, ampcalsrc, 
             modeltype, inbeamuvdatas, leakagedopol):
         if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
@@ -1317,6 +1802,9 @@ else:
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Duplicate the initial CL table ##############################################
+reducevlbi.duplicate_the_initial_CL_table(runlevel, targetonly, numinbeams, inbeamuvdatas, gateduvdata,
+            ungateduvdata)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Duplicating CL table 1"
     if not targetonly:
@@ -1328,11 +1816,14 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             vlbatasks.tacop(ungateduvdata, 'CL', 1, ungateduvdata, 2)
 else:
     print "Skipping duplication of initial CL table"
-
+"""
 runlevel = runlevel + 1
 clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Correct positions ###########################################################
+reducevlbi.correct_positions(runlevel, clversion, alluvdatas, targetonly, gateduvdata, haveungated, 
+            ungateduvdata, calonly, inbeamuvdatas, expconfig)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Running CLCOR to shift sources"
     uvdatas = alluvdatas
@@ -1370,10 +1861,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             sys.exit()
 else:
     print "Skipping source shifting"
-
+"""
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run TECOR ###################################################################
+reducevlbi.run_TECOR(runlevel, clversion, expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
+            calonly, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and not expconfig['skiptecor']:
     print "Runlevel " + str(runlevel) + ": Running TECOR to correct ionosphere"
     try:
@@ -1390,12 +1884,15 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not expconfig['skipte
             vlbatasks.correct_iono(ungateduvdata, logdir, clversion, follow)
 else:
     print "Skipping ionospheric corrections"
-
+"""
 runlevel  = runlevel + 1
 if not expconfig['skiptecor']:
     clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run CLCOR to correct EOPs ###################################################
+reducevlbi.run_CLCOR_to_correct_EOPs(runlevel, clversion, targetonly, numinbeams, inbeamuvdatas, logdir,
+            calonly, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Running CLCOR to correct for EOPs"
     if not targetonly:
@@ -1407,9 +1904,11 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             vlbatasks.correct_eops(ungateduvdata, logdir, clversion)
 else:
     print "Skipping EOP corrections"
-
+"""
 runlevel  = runlevel + 1
 clversion = clversion + 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## prepare leakage-related variables ############################################
 leakagedopol = 0
 try:
     xpolscan = expconfig['xpolscan']
@@ -1436,8 +1935,10 @@ try:
     leakageweightit = expconfig['leakageweightit']
 except KeyError:
     leakageweightit = 0
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run CLCOR to correct PANG ###################################################
+reducevlbi.run_CLCOR_to_correct_PANG(runlevel, clversion, leakagescan, targetonly, numinbeams,
+            inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
     print "Runlevel " + str(runlevel) + ": Running CLCOR to correct PANG"
     if not targetonly:
@@ -1449,14 +1950,17 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
             vlbatasks.clcor_pang(ungateduvdata, clversion)
 else:
     print "Skipping PANG corrections"
-
+"""
 runlevel  = runlevel + 1
 if leakagescan > 0:
     clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Correct for a priori delays if available using CLCOR ########################
+reducevlbi.correct_for_a_priori_delays_if_available_using_CLCOR(runlevel, clversion, tabledir, alluvdatas,
+            targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas)
+"""
 adelayfile = tabledir + 'aprioridelays.txt'
 gatedadelayfile = tabledir + 'aprioridelays.gated.txt'
-## Correct for a priori delays if available using CLCOR ########################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     if os.path.exists(adelayfile):
         print "Runlevel " + str(runlevel) + ": Using CLCOR to correct measured delays"
@@ -1480,15 +1984,19 @@ if runfromlevel <= runlevel and runtolevel >= runlevel:
             vlbatasks.clcordelaysfromfile(uvdata, thisfile, clversion+1)
 else:
     print "Skipping correction of a priori clock delays"
-
+"""
 runlevel  = runlevel + 1
 clversion = clversion + 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Do the amplitude calibration (either load existing table or do and then edit) and inspect
+[clversion, snversion] = reducevlbi.do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(runlevel, 
+        clversion, snversion, expconfig, targetonly, tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, 
+        inbeamuvdatas, logdir, experiment)
+"""
 try:
     skipapcalaccor = expconfig['skipapcalaccor']
 except KeyError:
     skipapcalaccor = False
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
-## Do the amplitude calibration (either load existing table or do and then edit) and inspect
 if runfromlevel <= runlevel and runtolevel >= runlevel and not skipapcalaccor:
     print "Runlevel " + str(runlevel) + ": Doing amplitude calibration"
     if targetonly and (not os.path.exists(tabledir + 'accor.sn') or \
@@ -1602,12 +2110,17 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not skipapcalaccor:
 else:
     print "Skipping amplitude calibration"
 
-runlevel  = runlevel + 1
 if not skipapcalaccor:
     clversion = clversion + 2
     snversion = snversion + 2
+"""
+runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Correct for primary beam attenuation ########################################
+reducevlbi.correct_for_primary_beam_attenuation(runlevel, clversion, snversion, expconfig, directory, experiment,
+            ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
+            targetnames, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and not expconfig['skippbcor']:
     print "Runlevel " + str(runlevel) + ": Doing primary beam correction"
     vexfile  = directory + '/' + experiment.lower() + '.vex'
@@ -1660,13 +2173,16 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not expconfig['skippb
         vlbatasks.plottops(gateduvdata, 'SN', snversion, 'AMP', 0, 2, 4, tabledir + 'pbcor.target.ps')
 else:
     print "Skipping primary beam correction"
-
+"""
 runlevel  = runlevel + 1
 if not expconfig['skippbcor']:
     clversion = clversion + 1
     snversion = snversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Do PCAL correction and inspect ##############################################
+reducevlbi.do_PCAL_correction_and_inspect(runlevel, clversion, snversion, expconfig, targetonly, tabledir,
+            inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
     print "Runlevel " + str(runlevel) + ": Doing pulse cal calibration"
@@ -1698,7 +2214,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
             vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion, expconfig['refant'])
 else:
     print "Skipping pulse cal corrections"
-
+"""
 runlevel  = runlevel + 1
 if not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
     snversion = snversion + 1
@@ -1782,6 +2298,9 @@ else:
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Copy the FRING SN table around and apply it #################################
+reducevlbi.copy_the_FRING_SN_table_around_and_apply_it(runlevel, clversion, snversion, expconfig, targetonly,
+            tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['ampcalscan'] > 0:
     print "Runlevel " + str(runlevel) + ": Loading ampcal FRING SN table & calibrating"
     if targetonly and (not os.path.exists(tabledir + 'ampcalfring.sn')):
@@ -1802,14 +2321,16 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and expconfig['ampcalscan
                                    expconfig['refant'], [], 'CALP')
 else:
     print "Skipping calibration of ampcal FRING results"
-
+"""
 runlevel  = runlevel + 1
 if expconfig['ampcalscan'] > 0:
     snversion = snversion + 1
     clversion = clversion + 1
-xpolsnfilename = tabledir + '/xpolfring.sn'
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run xpoldelaycal ############################################################
+xpolsnfilename = reducevlbi.run_xpoldelaycal(runlevel, clversion, tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource)
+"""
+xpolsnfilename = tabledir + '/xpolfring.sn'
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
     xpolscan > 0:
     if not os.path.exists(xpolsnfilename) or \
@@ -1847,10 +2368,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
                                inttimesecs, xpolsnfilename, delaywin, ratewin)
 else:
     print "Skipping determining xpoldelays"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load and apply xpoldelaycal #################################################
+reducevlbi.load_and_apply_xpoldelaycal(runlevel, clversion, snversion, xpolscan, targetonly, numinbeams,
+            inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and xpolscan > 0:
     print "Runlevel " + str(runlevel) + ": Loading XPOL CAL FRING SN table & calibrating"
     if targetonly and (not os.path.exists(xpolsnfilename)):
@@ -1871,14 +2395,18 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and xpolscan > 0:
                                    expconfig['refant'])
 else:
     print "Skipping calibration of xpolcal cross-pol FRING results"
-
-## Run leakagecal on the leakage calibrator and save AN file ###################
+"""
 runlevel  = runlevel + 1
 if xpolscan > 0:
     snversion += 1 
     clversion += 1
-leakagefilename = tabledir + "/leakage.an"
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Run leakagecal on the leakage calibrator and save AN file ###################
+leakagefilename = reducevlbi.run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(runlevel, clversion, targetonly,
+        leakagescan, tabledir, modeldir, leakagesource, inbeamuvdatas, expconfig, directory, experiment, leakageuvrange,
+        leakageweightit)
+"""
+leakagefilename = tabledir + "/leakage.an"
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
     leakagescan > 0:
     if not os.path.exists(leakagefilename) or \
@@ -1909,10 +2437,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
                     hasbptable, leakageoutputfile, leakageuvrange, leakageweightit)
 else:
     print "Skipping calibration of leakage"
-
-## Load up the leakage-calibrated AN table #####################################
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Load up the leakage-calibrated AN table #####################################
+reducevlbi.load_up_the_leakage_calibrated_AN_table(runlevel, leakagescan, targetonly, xpolsnfilename, numinbeams,
+            inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
     print "Runlevel " + str(runlevel) + ": Loading leakage-calculated AN table"
     if targetonly and (not os.path.exists(xpolsnfilename)):
@@ -1930,7 +2461,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
             vlbatasks.loadtable(ungateduvdata, leakagefilename, 1)
 else:
     print "Skipping loading the leakage calibrated AN table"
-
+"""
 ## Remember to set dopol=2 on everything hereon!!!!
 
 runlevel  = runlevel + 1
