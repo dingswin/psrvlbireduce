@@ -806,6 +806,198 @@ class vlbireduce:
             print "Skipping loading of bandpass corrections"
         bandpassclversion = clversion
         return bandpassclversion 
+
+    def run_FRING_with_phase_reference_calibrators(self, runlevel, clversion, snversion, targetonly, maxphsreffringmins,
+            tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, leakagedopol, inbeamuvdatas):
+        dophscaldump = False
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+           maxphsreffringmins > 0:
+            if not os.path.exists(tabledir + 'phsreffring.sn') or \
+                   not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
+                print "Runlevel " + str(runlevel) + ": FRING'ing phase calibrator"
+                for phscal, config in zip(donephscalnames, doneconfigs):
+                    phscalmodeldata = None
+                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    if os.path.exists(phscalmodelfile):
+                        aipscalname = phscal
+                        if len(phscal) > 12:
+                            aipscalname = phscal[:12]
+                        print "Using " + modeltype + " model for " + phscal
+                        phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                        if phscalmodeldata.exists():
+                            phscalmodeldata.zap()
+                        vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
+                    else:
+                        print "Currently no " + modeltype + " model for " + phscal
+                        if modeltype == "preliminary":
+                            try:
+                                allowphscalpointmodel = expconfig['allowphscalpointmodel']
+                                if not allowphscalpointmodel:
+                                    print "Using a point source, will dump output after FRING"
+                                    dophscaldump = True
+                            except KeyError:
+                                print "Using a point source, will dump output after FRING"
+                                dophscaldump = True
+                        else:
+                            print "Aborting!"
+                            sys.exit()
+                    doband = True
+                    if expconfig['ampcalscan'] <= 0:
+                        doband = False
+                    try:
+                        phsrefuvrange = config['phsrefuvrange']
+                    except KeyError:
+                        phsrefuvrange = [0, 0]
+                    try:
+                        delaywin = expconfig['delaywindowns']
+                    except KeyError:
+                        delaywin = 400
+                    try:
+                        ratewin = expconfig['ratewindowmhz']
+                    except KeyError:
+                        ratewin = 30
+                    try:
+                        sumifs = config['phsreffringsumifs']
+                        if expconfig['ampcalscan'] <= 0 and "bd152" in experiment:
+                            print "Overriding sumifs because no amp cal fring was done"
+                            sumifs = False
+                    except KeyError:
+                        sumifs = False
+                    try:
+                        ratemwf = config['phsreffringratemwfhz']
+                    except KeyError:
+                        ratemwf = 10
+                    try:
+                        delaymwf = config['phsreffringdelaymwfns']
+                    except KeyError:
+                        delaymwf = 10
+                    try:
+                        sumrrll = config['phsreffringsumpols']
+                    except KeyError:
+                        sumrrll = False
+                    try:
+                        halfbandwidth = config['phsreffringhalfbandwidth']
+                    except KeyError:
+                        halfbandwidth = False
+                    try:
+                        dispersivefit = config['phsreffringdispersivefit']
+                    except KeyError:
+                        dispersivefit = False
+                    try:
+                        inttimesecs = expconfig['inttimesecs']
+                    except KeyError:
+                        inttimesecs = 2
+                    try:
+                        doexhaustive = expconfig['exhaustivefring']
+                    except KeyError:
+                        doexhaustive = False
+                    print "Delay and rate windows: ", delaywin, ratewin
+                    print "UV range: ", phsrefuvrange
+                    vlbatasks.fring(inbeamuvdatas[0], snversion, clversion,  
+                                    config['phsreffringmins'], inttimesecs, phscal, 
+                                    expconfig['refant'], doband, 
+                                    config['phsreffringsnr'], sumifs, phscalmodeldata,
+                                    sumrrll, phsrefuvrange,False,delaywin,ratewin,
+                                    doexhaustive, halfbandwidth, dispersivefit, leakagedopol)
+                try:
+                    dosnsmo = config['dosnsmo']
+                except KeyError:
+                    dosnsmo = True
+                try:
+                    smoothedrefant = expconfig['smoothedrefant']
+                except KeyError:
+                    smoothedrefant = expconfig['refant']
+                try:
+                    mwfminutes = config['mwfminutes']
+                except:
+                    mwfminutes = 20
+                snoutver = snversion
+                if dosnsmo:
+                    #vlbatasks.snsmo(inbeamuvdatas[0], 'DELA', 20, 0.0, 0.0, 10.0, snversion,
+                    #                smoothedrefant, True)
+                    if sumifs:
+                        doratesmoothing = False
+                        ratesmoothingmins = 0.0
+                    else:
+                        doratesmoothing = True
+                        ratesmoothingmins = 3.0
+                    vlbatasks.snmwfclip(inbeamuvdatas[0], mwfminutes, 0.0, 0.0, delaymwf, ratemwf, snversion,
+                                        smoothedrefant, doratesmoothing, ratesmoothingmins)
+                    snoutver = snversion+1
+                if not expconfig['skipsnedt']:
+                    vlbatasks.snedt(inbeamuvdatas[0], snoutver)
+                    snoutver += 1
+                if os.path.exists(tabledir + 'phsreffring.sn'):
+                    os.remove(tabledir + 'phsreffring.sn')
+                vlbatasks.writetable(inbeamuvdatas[0], 'SN', snoutver, tabledir + \
+                                     'phsreffring.sn')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver, 'DELA', 0, 2, 4,
+                                   tabledir + 'phsreffring.delay.ps')
+                vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver, 'RATE', 0, 2, 4,
+                                   tabledir + 'phsreffring.rate.ps')
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+1)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
+        else:
+            print "Skipping FRING and SNSMO/SNEDT of FRING results"
+        return dophscaldump
+
+    def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, clversion, snversion, runlevel, targetonly, tabledir, expconfig,
+            numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins, directory, experiment,
+            leakagedopol):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and maxphsreffringmins > 0:
+            print "Runlevel " + str(runlevel) + ": Loading phsref FRING SN table & calibrating"
+            if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
+                print "For target-only, the SN file must exist already - aborting!"
+                sys.exit(1)
+            try:
+                interptype = expconfig['phsreffringinterp']
+            except KeyError:
+                interptype = 'AMBG'
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'phsreffring.sn', snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, interptype, clversion, 
+                                           expconfig['refant'])
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, tabledir + 'phsreffring.sn', snversion)
+                vlbatasks.applysntable(gateduvdata, snversion, interptype, clversion, 
+                                       expconfig['refant'])
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, tabledir + 'phsreffring.sn', snversion)
+                    vlbatasks.applysntable(ungateduvdata, snversion, interptype, clversion, 
+                                           expconfig['refant'])
+        else:
+            print "Skipping calibration of FRING results"
+
+        if maxphsreffringmins > 0:
+            snversion = snversion + 1
+            clversion = clversion + 1
+        print donephscalnames
+        
+        if dophscaldump: # Need to dump out the phs cal sources so we can make models of them
+            for phscal in donephscalnames:
+                for i in range(20): #Clear any old CALIB split catalog entries
+                    phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
+                    if phscal_uv_data.exists():
+                        phscal_uv_data.zap()
+                phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
+                rawuvoutputfile = directory + experiment.upper() + '_' + \
+                                           phscal + ".formodeling.uv.fits"
+                doband = False
+                domulti = False
+                if expconfig['ampcalscan'] > 0:
+                    doband = True
+                combineifs = False
+                beginif = -1
+                endif = -1
+                vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                                     doband, beginif, endif, combineifs, leakagedopol)
+                vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
+            print "UV datasets of the phase reference sources have been written out to model"
+            sys.exit()
+        return clversion, snversion
+
 ################################################################################
 # Little logger class to put print statements to the log file
 ################################################################################
@@ -2544,9 +2736,12 @@ for i in range(len(phscalnames)):
         continue
     donephscalnames.append(phscal)
     doneconfigs.append(targetconfigs[i])
-dophscaldump = False
 
 ## Run FRING (phase reference calibrators) #####################################
+dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(runlevel, clversion, snversion, targetonly, maxphsreffringmins,
+        tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, leakagedopol, inbeamuvdatas)
+"""
+dophscaldump = False
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
    maxphsreffringmins > 0:
     if not os.path.exists(tabledir + 'phsreffring.sn') or \
@@ -2677,10 +2872,14 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
         vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
 else:
     print "Skipping FRING and SNSMO/SNEDT of FRING results"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Copy the phsref FRING SN table around and apply it ##########################
+[clversion, snversion] = reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(clversion, snversion, runlevel, targetonly,
+        tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins,
+        directory, experiment, leakagedopol)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and maxphsreffringmins > 0:
     print "Runlevel " + str(runlevel) + ": Loading phsref FRING SN table & calibrating"
     if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
@@ -2706,7 +2905,6 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and maxphsreffringmins > 
 else:
     print "Skipping calibration of FRING results"
 
-runlevel  = runlevel + 1
 if maxphsreffringmins > 0:
     snversion = snversion + 1
     clversion = clversion + 1
@@ -2743,7 +2941,8 @@ if dophscaldump: # Need to dump out the phs cal sources so we can make models of
         vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
     print "UV datasets of the phase reference sources have been written out to model"
     sys.exit()
-
+"""
+runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run phase CALIB on the phase reference sources ##############################
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
