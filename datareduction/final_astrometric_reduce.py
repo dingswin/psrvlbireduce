@@ -998,6 +998,267 @@ class vlbireduce:
             sys.exit()
         return clversion, snversion
 
+    def run_phase_CALIB_on_the_phase_reference_sources(self, runlevel, clversion, maxphsrefcalibpnmins, donephscalnames,
+            tabledir, targetonly, doneconfigs, inbeamuvdatas, leakagedopol, expconfig, modeltype):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxphsrefcalibpnmins > 0:
+            haveall = True
+            for phscal in donephscalnames:
+                calibtablepath = tabledir + phscal + '.calibpn.sn'
+                if not os.path.exists(calibtablepath):
+                    haveall = False
+            if not targetonly and (not haveall or \
+                   not interaction.yesno("Do you wish to use saved SN table for phsref phase CALIB?")):
+                print "Runlevel " + str(runlevel) + ": Running CALIB on phsref sources"
+                for phscal, config in zip(donephscalnames, doneconfigs):
+                    for i in range(20): #Clear any old CALIB split catalog entries
+                        phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
+                        if phscal_uv_data.exists():
+                            phscal_uv_data.zap()
+                    phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
+                    doband = False
+                    domulti = False
+                    if expconfig['ampcalscan'] > 0:
+                        doband = True
+                    combineifs = False
+                    beginif = -1
+                    endif = -1
+                    vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                                         doband, beginif, endif, combineifs, leakagedopol)
+                    phscal_uv_data.table('NX', 1).zap()
+                    phscalmodeldata = None
+                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    try:
+                        phsrefuvrange = config['phsrefuvrange']
+                    except KeyError:
+                        phsrefuvrange = [0, 0]
+                    try:
+                        phsrefweightit = expconfig['phsrefcalibpnweightit']
+                    except KeyError:
+                        phsrefweightit = 0
+                    if os.path.exists(phscalmodelfile):
+                        print "Using " + modeltype + " model for " + phscal
+                        aipscalname = phscal
+                        if len(phscal) > 12:
+                            aipscalname = phscal[:12]
+                        phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                        if phscalmodeldata.exists():
+                            phscalmodeldata.zap()
+                        vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
+                    else:
+                        print "Currently no " + modeltype + " model for " + phscal + '; aborting!'
+                        sys.exit()
+                    calibsoltype = config['phsrefcalibpntype']
+                    calibtablepath = tabledir + phscal + '.calibpn.sn'
+                    try:
+                        flagwheremodelbelow = expconfig['phsrefminmodelflux'] #Jy
+                    except KeyError:
+                        flagwheremodelbelow = -1
+                    vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
+                                                 1, expconfig['refant'], False, 
+                                                 config['phsrefcalibpnmins'],
+                                                 False, calibsoltype, 
+                                                 config['phsrefcalibpnsnr'], False,
+                                                 phsrefuvrange, phsrefweightit,
+                                                 flagwheremodelbelow)
+                    snoutver = 1
+                    if not expconfig['skipsnedt']:
+                        snoutver = 2
+                        vlbatasks.snedt(phscal_uv_data, 1)
+                    else:
+                        snoutver = 2
+                        vlbatasks.snsmo(phscal_uv_data, 'AMP', 300, 0.20, 0.0, 0.0, 1, expconfig['refant'])
+                    if os.path.exists(calibtablepath):
+                        os.remove(calibtablepath)
+                    vlbatasks.writetable(phscal_uv_data, 'SN', snoutver, calibtablepath)
+                    vlbatasks.plottops(phscal_uv_data, 'SN', snoutver, 'PHAS', 0, 2, 4,
+                                       tabledir + phscal + '.calibpn.phs.ps')
+                    phscal_uv_data.zap()
+        else:
+            print "Skipping phase cal CALIB on the phase reference sources"
+
+    def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self, runlevel, clversion, snversion, maxphsrefcalibpnmins,
+            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, donephscalnames,
+            tabledir, expconfig):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxphsrefcalibpnmins > 0:
+            print "Runlevel " + str(runlevel) + ": Loading phs ref PN CALIB " + \
+                  "solutions and applying"
+            sncount = 0
+            for phscal in phscalnames:
+                if not targetonly:
+                    for i in range(numinbeams):
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                if not calonly:
+                    vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                    if haveungated:
+                        vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                sncount += 1
+            sncount = 0
+            for phscal in donephscalnames:
+                calibtablepath = tabledir + phscal + '.calibpn.sn'
+                if targetonly and (not os.path.exists(calibtablepath)):
+                    print "For target-only, the SN file must exist already - aborting!"
+                    sys.exit(1)
+                if not targetonly:
+                    for i in range(numinbeams):
+                        vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
+                                            snversion+sncount)
+                if not calonly:
+                    vlbatasks.loadtable(gateduvdata, calibtablepath,
+                                        snversion+sncount)
+                    if haveungated:
+                        vlbatasks.loadtable(ungateduvdata, calibtablepath,
+                                            snversion+sncount)
+                sncount += 1
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, 
+                                            expconfig['refant'])
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                vlbatasks.mergesntables(gateduvdata, snversion, sncount, 
+                                        expconfig['refant'])
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount, 
+                                            expconfig['refant'])
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+1)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, 'SELF', 
+                                           clversion, expconfig['refant'])
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, 'CL', clversion+1)
+                vlbatasks.applysntable(gateduvdata, snversion+sncount, 'SELF', 
+                                       clversion, expconfig['refant'])
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+1)
+                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, 'SELF', 
+                                           clversion, expconfig['refant'])
+        else:
+            print "Skipping loading/application of phase reference source phase CALIB solutions"
+            sncount = 0
+            if maxphsrefcalibpnmins > 0:
+                sncount += len(donephscalnames)
+
+        if maxphsrefcalibpnmins > 0:
+            snversion = snversion + sncount + 1
+            clversion = clversion + 1
+        return clversion, snversion
+
+    def run_amp_CALIB_on_the_phase_reference_sources(self, runlevel, clversion, targetconfigs, maxphsrefcalibapnmins,
+            tabledir, targetonly, expconfig, inbeamuvdatas, leakagedopol, modeldir, modeltype):
+        #prepare two variables for amp CALIB on the phase calibrators
+        donephscalnames = []
+        doneconfigs = []
+        for i in range(len(phscalnames)):
+            phscal = phscalnames[i]
+            try:
+                if phscal in donephscalnames or targetconfigs[i]['phsrefcalibapnmins'] < 0:
+                    continue
+                donephscalnames.append(phscal)
+                doneconfigs.append(targetconfigs[i])
+            except KeyError:
+                continue
+
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxphsrefcalibapnmins > 0:
+            haveall = True
+            for phscal in donephscalnames:
+                calibtablepath = tabledir + phscal + '.calibapn.sn'
+                if not os.path.exists(calibtablepath):
+                    haveall = False
+            if not targetonly and (not haveall or \
+                   not interaction.yesno("Do you wish to used saved SN table for phsref amp CALIB?")):
+                print "Runlevel " + str(runlevel) + ": Running CALIB on phsref sources"
+                for phscal, config in zip(donephscalnames, doneconfigs):
+                    for i in range(20): #Clear any old CALIB split catalog entries
+                        phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
+                        if phscal_uv_data.exists():
+                            phscal_uv_data.zap()
+                    phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
+                    doband = False
+                    domulti = False
+                    if expconfig['ampcalscan'] > 0:
+                        doband = True
+                    combineifs = False
+                    beginif = -1
+                    endif = -1
+                    vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                                         doband, beginif, endif, combineifs, leakagedopol)
+                    phscal_uv_data.table('NX', 1).zap()
+                    phscalmodeldata = None
+                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    try:
+                        phsrefuvrange = config['phsrefuvrange']
+                    except KeyError:
+                        phsrefuvrange = [0, 0]
+                    try:
+                        phsrefweightit = expconfig['phsrefcalibapnweightit']
+                    except KeyError:
+                        phsrefweightit = 0
+                    try:
+                        flagwheremodelbelow = expconfig['phsrefminmodelflux'] #Jy
+                    except KeyError:
+                        flagwheremodelbelow = -1
+                    if os.path.exists(phscalmodelfile):
+                        print "Using " + modeltype + " model for " + phscal
+                        aipscalname = phscal
+                        if len(phscal) > 12:
+                            aipscalname = phscal[:12]
+                        phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                        if phscalmodeldata.exists():
+                            phscalmodeldata.zap()
+                        vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
+                    else:
+                        print "Currently no " + modeltype + " model for " + phscal + '; aborting!'
+                        sys.exit()
+                    calibsoltype = config['phsrefcalibapntype']
+                    calibtablepath = tabledir + phscal + '.calibapn.sn'
+                    try:
+                        normalise = config['phsrefcalibapnnorm']
+                    except KeyError:
+                        normalise = False
+                    phsrefcalibapnclip = -1
+                    try:
+                        phsrefcalibapnclip = config['phsrefcalibapnclip']
+                    except KeyError:
+                        phsrefcalibapnclip = 0.2
+                    try: 
+                        tmpphsrefcalibapnclip = expconfig['phsrefcalibapnclip']
+                        if phsrefcalibapnclip > 0:
+                           print "Overriding default value of phsrefcalibapnclip (", phsrefcalibapnclip, ") for this source with", tmpphsrefcalibapnclip
+                        phsrefcalibapnclip = tmpphsrefcalibapnclip
+                    except KeyError:
+                        pass
+                    vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
+                                                 1, expconfig['refant'], True,
+                                                 config['phsrefcalibapnmins'],
+                                                 False, calibsoltype,
+                                                 config['phsrefcalibapnsnr'], False,
+                                                 phsrefuvrange, phsrefweightit,
+                                                 flagwheremodelbelow, normalise)
+                    snoutver = 1
+                    if not expconfig['skipsnedt']:
+                        snoutver = 2
+                        vlbatasks.snedt(phscal_uv_data, 1)
+                    else:
+                        snoutver = 2
+                        vlbatasks.snsmo(phscal_uv_data, 'AMP', 300, phsrefcalibapnclip, 0.0, 0.0, 1, expconfig['refant'])
+                    if os.path.exists(calibtablepath):
+                        os.remove(calibtablepath)
+                    vlbatasks.writetable(phscal_uv_data, 'SN', snoutver, calibtablepath)
+                    vlbatasks.plottops(phscal_uv_data, 'SN', snoutver, 'AMP', 0, 2, 4,
+                                       tabledir + phscal + '.calibapn.amp.ps')
+                    vlbatasks.plottops(phscal_uv_data, 'SN', snoutver, 'PHAS', 0, 2, 4,
+                                       tabledir + phscal + '.calibapn.phs.ps')
+                    phscal_uv_data.zap()
+        else:
+            print "Skipping amp cal CALIB on the phase reference sources"
+        return donephscalnames
+
 ################################################################################
 # Little logger class to put print statements to the log file
 ################################################################################
@@ -2945,6 +3206,9 @@ if dophscaldump: # Need to dump out the phs cal sources so we can make models of
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Run phase CALIB on the phase reference sources ##############################
+reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(runlevel, clversion, maxphsrefcalibpnmins, donephscalnames,
+            tabledir, targetonly, doneconfigs, inbeamuvdatas, leakagedopol, expconfig, modeltype)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibpnmins > 0:
     haveall = True
@@ -3021,10 +3285,14 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
             phscal_uv_data.zap()
 else:
     print "Skipping phase cal CALIB on the phase reference sources"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load all the phase CALIB solutions #########################################
+[clversion, snversion] = reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(runlevel, clversion,
+        snversion, maxphsrefcalibpnmins, phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata,
+        haveungated, ungateduvdata, donephscalnames, tabledir, expconfig)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibpnmins > 0:
     print "Runlevel " + str(runlevel) + ": Loading phs ref PN CALIB " + \
@@ -3088,10 +3356,16 @@ else:
     if maxphsrefcalibpnmins > 0:
         sncount += len(donephscalnames)
 
-runlevel += 1
 if maxphsrefcalibpnmins > 0:
     snversion = snversion + sncount + 1
     clversion = clversion + 1
+"""
+runlevel += 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+## Run amp CALIB on the phase reference sources ################################
+donephscalnames = reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(runlevel, clversion, targetconfigs,
+        maxphsrefcalibapnmins, tabledir, targetonly, expconfig, inbeamuvdatas, leakagedopol, modeldir, modeltype)
+"""
 donephscalnames = []
 doneconfigs = []
 for i in range(len(phscalnames)):
@@ -3103,8 +3377,7 @@ for i in range(len(phscalnames)):
         doneconfigs.append(targetconfigs[i])
     except KeyError:
         continue
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
-## Run amp CALIB on the phase reference sources ################################
+
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibapnmins > 0:
     haveall = True
@@ -3199,7 +3472,7 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
             phscal_uv_data.zap()
 else:
     print "Skipping amp cal CALIB on the phase reference sources"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load all the amp CALIB solutions ###########################################
