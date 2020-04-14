@@ -1259,6 +1259,111 @@ class vlbireduce:
             print "Skipping amp cal CALIB on the phase reference sources"
         return donephscalnames
 
+    def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self, runlevel, clversion, snversion, maxphsrefcalibapnmins,
+            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, donephscalnames,
+            tabledir, expconfig):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxphsrefcalibapnmins > 0:
+            print "Runlevel " + str(runlevel) + ": Loading phs ref APN CALIB " + \
+                  "solutions and applying"
+            sncount = 0
+            for phscal in phscalnames:
+                if not targetonly:
+                    for i in range(numinbeams):
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                if not calonly:
+                    vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                    if haveungated:
+                        vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                sncount += 1
+            sncount = 0
+            for phscal in donephscalnames:
+                calibtablepath = tabledir + phscal + '.calibapn.sn'
+                if targetonly and (not os.path.exists(calibtablepath)):
+                    print "For target-only, the SN file must exist already - aborting!"
+                    sys.exit(1)
+                if not targetonly:
+                    for i in range(numinbeams):
+                        vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
+                                            snversion+sncount)
+                if not calonly:
+                    vlbatasks.loadtable(gateduvdata, calibtablepath,
+                                        snversion+sncount)
+                    if haveungated:
+                        vlbatasks.loadtable(ungateduvdata, calibtablepath,
+                                            snversion+sncount)
+                sncount += 1
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount,
+                                            expconfig['refant'])
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                vlbatasks.mergesntables(gateduvdata, snversion, sncount,
+                                        expconfig['refant'])
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount,
+                                            expconfig['refant'])
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+1)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, 'SELF',
+                                           clversion, expconfig['refant'])
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, 'CL', clversion+1)
+                vlbatasks.applysntable(gateduvdata, snversion+sncount, 'SELF',
+                                       clversion, expconfig['refant'])
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+1)
+                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, 'SELF',
+                                           clversion, expconfig['refant'])
+        else:
+            print "Skipping loading/application of phase reference source amp CALIB solutions"
+            sncount = 0
+            if maxphsrefcalibapnmins > 0:
+                sncount += len(donephscalnames)
+
+        if maxphsrefcalibapnmins > 0:
+            snversion = snversion + sncount + 1
+            clversion = clversion + 1
+        return clversion, snversion
+
+    def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, runlevel, clversion, expconfig,
+            targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas, leakagedopol, donephscalnames):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+           expconfig['writerawinbeam']:
+            print "Runlevel " + str(runlevel) + ": Writing raw inbeam outputs"
+            if not targetonly: # Make a "raw" inbeam fileset if required
+                for i in range(numtargets):
+                    count = 0
+                    subtractif = 0
+                    if targetconfigs[i]['skiplastif']:
+                        subtractif = 1
+                    for inbeamsrc in inbeamnames[i]:
+                        aipssrcname = inbeamsrc
+                        if len(inbeamsrc) > 12:
+                            aipssrcname = inbeamsrc[:12]
+                        rawuvoutputfile =  directory + experiment.upper() + '_' + \
+                                           inbeamsrc + ".formodeling.uv.fits"
+                        splitdata = AIPSUVData(aipssrcname, 'NOIB', 1, 1)
+                        if splitdata.exists():
+                            splitdata.zap()
+                        uvdata = inbeamuvdatas[count] #uvdata is defined but not used!!
+                        doband = False
+                        domulti = False
+                        if expconfig['ampcalscan'] > 0:
+                            doband = True
+                        combineifs = False
+                        vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', donephscalnames[-1], 1,
+                                             domulti, doband, beginif, endif-subtractif, 
+                                             combineifs, leakagedopol)
+                        vlbatasks.writedata(splitdata, rawuvoutputfile, True)
+                        count += 1
+        else:
+            print "Skipping dump of raw inbeam data (pre-selfcal)"
+
 ################################################################################
 # Little logger class to put print statements to the log file
 ################################################################################
@@ -3476,6 +3581,10 @@ else:
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Load all the amp CALIB solutions ###########################################
+[clversion, snversion] = reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(runlevel, clversion,
+        snversion, maxphsrefcalibapnmins, phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata,
+        ungateduvdata, haveungated, donephscalnames, tabledir, expconfig)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibapnmins > 0:
     print "Runlevel " + str(runlevel) + ": Loading phs ref APN CALIB " + \
@@ -3538,7 +3647,15 @@ else:
     sncount = 0
     if maxphsrefcalibapnmins > 0:
         sncount += len(donephscalnames)
-        
+
+if maxphsrefcalibapnmins > 0:
+    snversion = snversion + sncount + 1
+    clversion = clversion + 1
+"""
+runlevel  = runlevel + 1
+printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+   
+## prepare some variables for operations on inbeam calibrators ###########################    
 doneinbeams = []
 inbeamfilenums = []
 secondaryinbeams = []
@@ -3605,12 +3722,10 @@ for primaryinbeam in primaryinbeams:
         print doneinbeams
         sys.exit()
  
-runlevel  = runlevel + 1
-if maxphsrefcalibapnmins > 0:
-    snversion = snversion + sncount + 1
-    clversion = clversion + 1
-printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Generate a raw (no phase selfcal) inbeam dataset if requested ##############
+reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(runlevel, clversion, expconfig,
+            targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas, leakagedopol, donephscalnames)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
    expconfig['writerawinbeam']:
     print "Runlevel " + str(runlevel) + ": Writing raw inbeam outputs"
@@ -3635,14 +3750,15 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
                 if expconfig['ampcalscan'] > 0:
                     doband = True
                 combineifs = False
-                vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1,
+                #vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1,
+                vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', donephscalnames[-1], 1, #here using 'phscal' is quite vague
                                      domulti, doband, beginif, endif-subtractif, 
                                      combineifs, leakagedopol)
                 vlbatasks.writedata(splitdata, rawuvoutputfile, True)
                 count += 1
 else:
     print "Skipping dump of raw inbeam data (pre-selfcal)"
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 ## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
