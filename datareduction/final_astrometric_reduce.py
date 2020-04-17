@@ -1606,6 +1606,97 @@ class vlbireduce:
             targetcl += 1
         return snversion, targetcl
 
+    def do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(self, runlevel, clversion, targetcl, maxinbeamcalibsp1mins,
+            secondaryinbeams, secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+            targetonly, calonly, beginif, endif, targetnames, leakagedopol, numtargets):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxinbeamcalibsp1mins > 0:
+            print "Runlevel " + str(runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
+            tocalnames, tocalindices = inbeamselfcal(secondaryinbeams, secondaryfilenums, 
+                                       inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
+                                       modeldir, modeltype, targetonly,
+                                       calonly, beginif, endif, False, True, True, 
+                                       clversion+targetcl, targetnames, leakagedopol)
+        else:
+            print "Skipping secondary inbeam phase-only selfcal (combined IFs)"
+            tocalnames = []
+            tocalindices = []
+            for i in range(numtargets):
+                config = targetconfigs[i]
+                try:
+                    if config['inbeamcalibsp1mins'] > 0:
+                        tocalnames.append(targetconfigs[i]['secondaryinbeam'])
+                        tocalindices.append(i)
+                except KeyError:
+                    continue
+        return tocalnames, tocalindices
+
+    def load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(self, runlevel, clversion, snversion, targetcl,
+            maxinbeamcalibsp1mins, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly,
+            calonly, inbeamnames, targetnames):
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+            maxinbeamcalibsp1mins > 0:
+            print "Runlevel " + str(runlevel) + ": Applying secondary inbeam CALIB sp1 sols"
+            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+                                       targetconfigs, targetonly, calonly, False, True, True,
+                                       clversion+targetcl, snversion, inbeamnames, targetnames)
+        else:
+            print "Skipping application of secondary inbeam phase-only selfcal (combined IFs)"
+            if maxinbeamcalibsp1mins > 0:
+                sncount = len(tocalnames) + 1
+            else:
+                sncount = 0
+
+        if maxinbeamcalibsp1mins > 0:
+            snversion = snversion + sncount
+            targetcl += 1
+        return snversion, targetcl
+
+    def calculate_the_scintillation_correction(self, runlevel, clversion, snversion, targetcl, numtargets, targetconfigs,
+            tabledir, targetnames, expconfig, gateduvdata, leakagedopol, numifs):
+        scinttablepaths = []
+        maxscintcorrmins = -1
+        for i in range(numtargets):
+            scinttablepaths.append(tabledir + targetnames[i] + '.scintcorrect.sn')
+            if targetconfigs[i]['scintcorrmins'] > maxscintcorrmins:
+                maxscintcorrmins = targetconfigs[i]['scintcorrmins']
+
+        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and maxscintcorrmins > 0:
+            print "Doing scintillation correction"
+            for i in range(numtargets):
+                pspath = tabledir + targetnames[i]+ '.scintcorr.ps'
+                try:
+                    noscintcorr = expconfig['noscintcorr']
+                except KeyError:
+                    noscintcorr = False
+                if targetconfigs[i]['scintcorrmins'] > 0 and not noscintcorr:
+                    splituvdata = AIPSUVData(targetnames[i], "SCINT", 1, 1)
+                    if splituvdata.exists():
+                        splituvdata.zap()
+                    doband = False
+                    domulti = False
+                    if expconfig['ampcalscan'] > 0:
+                        doband = True
+                    combineifs = False
+                    beginif = -1
+                    endif = -1
+                    vlbatasks.splittoseq(gateduvdata, clversion+targetcl, 'SCINT', 
+                                         targetnames[i], 1, domulti, doband, 
+                                         beginif, endif, combineifs, leakagedopol)
+                    vlbatasks.wizCorrectScint(gateduvdata, 1, snversion, splituvdata,
+                                              targetconfigs[i]['scintcorrmins'], 
+                                              scinttablepaths[i])
+                    vlbatasks.plottops(gateduvdata, 'SN', snversion, 'AMP', numifs, 1, 
+                                       numifs, pspath)
+                    vlbatasks.deletetable(gateduvdata, 'SN', snversion)
+                else:
+                    os.system("rm -f " + scinttablepaths[i])
+                    os.system("rm -f " + pspath)
+
+        else:
+            print "Skipping scintillation correction calculation"
+        return scinttablepaths
+
 ################################################################################
 # Little logger class to put print statements to the log file
 ################################################################################
@@ -4276,6 +4367,10 @@ if maxinbeamcalibapnmins > 0:
 runlevel = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Do a secondary phase selfcal on the inbeam(s) if requested #################
+[tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(runlevel, clversion, targetcl,
+        maxinbeamcalibsp1mins, secondaryinbeams, secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+        targetonly, calonly, beginif, endif, targetnames, leakagedopol, numtargets)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxinbeamcalibsp1mins > 0:
     print "Runlevel " + str(runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
@@ -4296,10 +4391,14 @@ else:
                 tocalindices.append(i)
         except KeyError:
             continue
-
+"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Load all the inbeam CALIB solutions ########################################
+[snversion, targetcl] = reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(runlevel, clversion, snversion, targetcl,
+            maxinbeamcalibsp1mins, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly,
+            calonly, inbeamnames, targetnames)
+"""
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxinbeamcalibsp1mins > 0:
     print "Runlevel " + str(runlevel) + ": Applying secondary inbeam CALIB sp1 sols"
@@ -4313,18 +4412,23 @@ else:
     else:
         sncount = 0
 
-runlevel = runlevel + 1
 if maxinbeamcalibsp1mins > 0:
     snversion = snversion + sncount
     targetcl += 1
+"""
+runlevel = runlevel + 1
+printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
+## Calculate the scintillation correction #####################################
+scinttablepaths = reducevlbi.calculate_the_scintillation_correction(runlevel, clversion, snversion, targetcl, numtargets, targetconfigs,
+            tabledir, targetnames, expconfig, gateduvdata, leakagedopol, numifs)
+"""
 scinttablepaths = []
 maxscintcorrmins = -1
 for i in range(numtargets):
     scinttablepaths.append(tabledir + targetnames[i] + '.scintcorrect.sn')
     if targetconfigs[i]['scintcorrmins'] > maxscintcorrmins:
         maxscintcorrmins = targetconfigs[i]['scintcorrmins']
-printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
-## Calculate the scintillation correction #####################################
+
 if runfromlevel <= runlevel and runtolevel >= runlevel and maxscintcorrmins > 0:
     print "Doing scintillation correction"
     for i in range(numtargets):
@@ -4359,10 +4463,12 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and maxscintcorrmins > 0:
 
 else:
     print "Skipping scintillation correction calculation"
-
-## Scintillation correction is applied later at the stage of the final split
-
+"""
+# Scintillation correction is applied later at the stage of the final split !!! 
 runlevel += 1
+printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
+
+## prepare variables for final split ##############################################
 for i in range(20): #Clear any old FINAL split catalog entries
     for j in range(numtargets):
         for inbeamsrc in inbeamnames[j]:
@@ -4434,7 +4540,6 @@ for i in range(numtargets):
         inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
         dividedinbeamuvfiles[i].append(dfile)
         icount += 1
-printTableAndRunlevel(runlevel, snversion, clversion+targetcl, inbeamuvdatas[0])
 ## Split, image and write all three ############################################
 if runfromlevel <= runlevel and runtolevel >= runlevel:
     print "Runlevel " + str(runlevel) + ": Splitting and writing final images"
