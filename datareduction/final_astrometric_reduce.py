@@ -44,7 +44,7 @@ class support_vlbireduce(object):
     def __init__(self, runfromlevel, runtolevel): 
         self.runfromlevel = runfromlevel
         self.runtolevel = runtolevel
-    def printTableAndRunlevel(runlevel, snversion, clversion, uvdata):
+    def printTableAndRunlevel(self, runlevel, snversion, clversion, uvdata):
         maxclversion = -1
         maxsnversion = -1
         if uvdata.exists():
@@ -60,7 +60,7 @@ class support_vlbireduce(object):
                   (snversion, maxsnversion)
         print prtstr + prtstr2
 
-    def parsesourcefile(sourcefile):
+    def parsesourcefile(self, sourcefile):
         sourcein = open(sourcefile)
         sourcelines = sourcein.readlines()
         sourcein.close()
@@ -149,7 +149,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping UVDATA load"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     def increase_the_number_of_IFs_if_requested(self, targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
             klass, calonly, gateduvdata, haveungated, ungateduvdata):
         try:
@@ -183,7 +183,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Not running MORIF"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def unflag_Pie_Town_if_requested(self, expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
             ungateduvdata, gateduvdata, haveungated):
@@ -199,7 +199,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Not unflagging Pie Town"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def load_the_user_flags_if_any(self, tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
             inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated):
@@ -237,7 +237,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping flagging from user flag file"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_the_flagging_for_zero_fringe_rate_effects(self, targetconfigs, targetonly, inbeamuvdatas,
             haveungated, ungateduvdata, gateduvdata):
@@ -257,7 +257,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping flagging times of zero fringe rate"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_the_autoflagger_if_requested(self, expconfig, tabledir, targetonly, numinbeams, inbeamuvdatas,
             calonly, gateduvdata, ungateduvdata, haveungated):
@@ -286,7 +286,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping autoflagging"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def duplicate_the_initial_CL_table(self, targetonly, numinbeams, inbeamuvdatas, gateduvdata,
             ungateduvdata):
@@ -303,7 +303,7 @@ class vlbireduce(support_vlbireduce):
             print "Skipping duplication of initial CL table"
         self.runlevel += 1
         self.clversion += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def correct_positions(self, alluvdatas, targetonly, gateduvdata, haveungated, 
             ungateduvdata, calonly, inbeamuvdatas, expconfig):
@@ -345,7 +345,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping source shifting"
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_TECOR(self, expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
@@ -369,7 +369,7 @@ class vlbireduce(support_vlbireduce):
         self.runlevel += 1
         if not expconfig['skiptecor']:
             self.clversion += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_CLCOR_to_correct_EOPs(self, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
@@ -386,7 +386,7 @@ class vlbireduce(support_vlbireduce):
             print "Skipping EOP corrections"
         self.runlevel += 1
         self.clversion += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_CLCOR_to_correct_PANG(self, leakagescan, targetonly, numinbeams,
             inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
@@ -404,7 +404,7 @@ class vlbireduce(support_vlbireduce):
         self.runlevel += 1
         if leakagescan > 0:
             self.clversion += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def correct_for_a_priori_delays_if_available_using_CLCOR(self, tabledir, alluvdatas,
             targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas):
@@ -435,7 +435,7 @@ class vlbireduce(support_vlbireduce):
             print "Skipping correction of a priori clock delays"
         self.runlevel += 1
         self.clversion += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(self, expconfig, targetonly,
             tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas, logdir, experiment):
@@ -560,7 +560,7 @@ class vlbireduce(support_vlbireduce):
             self.snversion += 2
         
         self.runlevel += 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def correct_for_primary_beam_attenuation(self, expconfig, directory, experiment,
             ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
@@ -621,7 +621,7 @@ class vlbireduce(support_vlbireduce):
         if not expconfig['skippbcor']:
             self.clversion = self.clversion + 1
             self.snversion = self.snversion + 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def do_PCAL_correction_and_inspect(self, expconfig, targetonly, tabledir,
             inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams):
@@ -660,7 +660,7 @@ class vlbireduce(support_vlbireduce):
         if not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
             self.snversion = self.snversion + 1
             self.clversion = self.clversion + 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_FRING_with_fringe_finder(self, targetonly, expconfig, tabledir,
             modeldir, ampcalsrc, modeltype, inbeamuvdatas): #not sure calling expconfig would be successful
@@ -735,7 +735,7 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping FRING and SNSMO/SNEDT of ampcal FRING results"
         self.runlevel  = self.runlevel + 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def copy_the_FRING_SN_table_around_and_apply_it(self, expconfig, targetonly,
             tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata):
@@ -763,15 +763,15 @@ class vlbireduce(support_vlbireduce):
         if expconfig['ampcalscan'] > 0:
             self.snversion = self.snversion + 1
             self.clversion = self.clversion + 1
-        printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_xpoldelaycal(self, runlevel, clversion, tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource):
+    def run_xpoldelaycal(self, tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource, inbeamuvdatas):
         xpolsnfilename = tabledir + '/xpolfring.sn'
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             xpolscan > 0:
             if not os.path.exists(xpolsnfilename) or \
                not interaction.yesno("Do you wish to used saved SN table for Xpol cal?"):
-                print "Runlevel " + str(runlevel) + ": Calculating XPOL delays"
+                print "Runlevel " + str(self.runlevel) + ": Calculating XPOL delays"
                 try:
                     inttimesecs = expconfig['inttimesecs']
                 except KeyError:
@@ -799,44 +799,51 @@ class vlbireduce(support_vlbireduce):
                     sys.exit()
                 vlbatasks.fitld_image(xpolmodelfile, xpolmodel)
                 print "int time in seconds is ", inttimesecs
-                vlbatasks.xpoldelaycal(inbeamuvdatas[0], clversion, expconfig['refant'], 
+                vlbatasks.xpoldelaycal(inbeamuvdatas[0], self.clversion, expconfig['refant'], 
                                        xpolsource, xpolscan, xpolmodel, xpolsolintmins, 
                                        inttimesecs, xpolsnfilename, delaywin, ratewin)
         else:
             print "Skipping determining xpoldelays"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return xpolsnfilename
     
-    def load_and_apply_xpoldelaycal(self, runlevel, clversion, snversion, xpolscan, targetonly, numinbeams,
+    def load_and_apply_xpoldelaycal(self, xpolscan, targetonly, numinbeams,
             inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and xpolscan > 0:
-            print "Runlevel " + str(runlevel) + ": Loading XPOL CAL FRING SN table & calibrating"
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and xpolscan > 0:
+            print "Runlevel " + str(self.runlevel) + ": Loading XPOL CAL FRING SN table & calibrating"
             if targetonly and (not os.path.exists(xpolsnfilename)):
                 print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.loadtable(inbeamuvdatas[i], xpolsnfilename, snversion)
-                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, '2PT', clversion,
+                    vlbatasks.loadtable(inbeamuvdatas[i], xpolsnfilename, self.snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, '2PT', self.clversion,
                                            expconfig['refant'])
             if not calonly:
-                vlbatasks.loadtable(gateduvdata, xpolsnfilename, snversion)
-                vlbatasks.applysntable(gateduvdata, snversion, '2PT', clversion,
+                vlbatasks.loadtable(gateduvdata, xpolsnfilename, self.snversion)
+                vlbatasks.applysntable(gateduvdata, self.snversion, '2PT', self.clversion,
                                        expconfig['refant'])
                 if haveungated:
-                    vlbatasks.loadtable(ungateduvdata, xpolsnfilename, snversion)
-                    vlbatasks.applysntable(ungateduvdata, snversion, '2PT', clversion,
+                    vlbatasks.loadtable(ungateduvdata, xpolsnfilename, self.snversion)
+                    vlbatasks.applysntable(ungateduvdata, self.snversion, '2PT', self.clversion,
                                            expconfig['refant'])
         else:
             print "Skipping calibration of xpolcal cross-pol FRING results"
+        self.runlevel  = self.runlevel + 1
+        if xpolscan > 0:
+            self.snversion += 1 
+            self.clversion += 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(self, runlevel, clversion, targetonly, leakagescan,
+    def run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(self, targetonly, leakagescan,
             tabledir, modeldir, leakagesource, inbeamuvdatas, expconfig, directory, experiment, leakageuvrange, leakageweightit):
         leakagefilename = tabledir + "/leakage.an"
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             leakagescan > 0:
             if not os.path.exists(leakagefilename) or \
                    not interaction.yesno("Do you wish to used saved AN table for leakage cal?"):
-                print "Runlevel " + str(runlevel) + ": Running leakage cal"
+                print "Runlevel " + str(self.runlevel) + ": Running leakage cal"
                 if os.path.exists(leakagefilename):
                     os.remove(leakagefilename)
                 leakagemodel = AIPSImage("LEAKSRC","CLNMOD",1,1)
@@ -858,16 +865,18 @@ class vlbireduce(support_vlbireduce):
                     leakagepcalmins = 0.02
                 hasbptable = False
                 vlbatasks.leakagecalc(inbeamuvdatas[0], leakagesource, leakagemodel, leakagefilename, 
-                            expconfig['refant'], leakageacalmins, leakagepcalmins, leakagescan, clversion,
+                            expconfig['refant'], leakageacalmins, leakagepcalmins, leakagescan, self.clversion,
                             hasbptable, leakageoutputfile, leakageuvrange, leakageweightit)
         else:
             print "Skipping calibration of leakage"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return leakagefilename
     
-    def load_up_the_leakage_calibrated_AN_table(self, runlevel, leakagescan, targetonly, xpolsnfilename, numinbeams,
+    def load_up_the_leakage_calibrated_AN_table(self, leakagescan, targetonly, xpolsnfilename, numinbeams,
             inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and leakagescan > 0:
-            print "Runlevel " + str(runlevel) + ": Loading leakage-calculated AN table"
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and leakagescan > 0:
+            print "Runlevel " + str(self.runlevel) + ": Loading leakage-calculated AN table"
             if targetonly and (not os.path.exists(xpolsnfilename)):
                 print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
@@ -883,12 +892,14 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.loadtable(ungateduvdata, leakagefilename, 1)
         else:
             print "Skipping loading the leakage calibrated AN table"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_BPASS(self, runlevel, clversion, targetonly, expconfig, tabledir, modeldir, ampcalsrc, 
+    def run_BPASS(self, targetonly, expconfig, tabledir, modeldir, ampcalsrc, 
             modeltype, inbeamuvdatas, leakagedopol):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             expconfig['ampcalscan'] > 0:
-            print "Runlevel " + str(runlevel) + ": Generating bandpass corrections"
+            print "Runlevel " + str(self.runlevel) + ": Generating bandpass corrections"
             if not os.path.exists(tabledir + 'bpass.bp') or not \
                interaction.yesno("Do you wish to used saved BP table for bandpass?"):
                 ampcalmodeldata = None
@@ -902,7 +913,7 @@ class vlbireduce(support_vlbireduce):
                     if ampcalmodeldata.exists():
                         ampcalmodeldata.zap()
                     vlbatasks.fitld_image(ampcalmodelfile, ampcalmodeldata)
-                vlbatasks.bpass(inbeamuvdatas[0], ampcalsrc, clversion, 
+                vlbatasks.bpass(inbeamuvdatas[0], ampcalsrc, self.clversion, 
                                 expconfig['ampcalscan'], ampcalmodeldata, leakagedopol)
                 if os.path.exists(tabledir + 'bpass.bp'):
                     os.remove(tabledir + 'bpass.bp')
@@ -910,12 +921,14 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
         else:
             print "Skipping bandpass corrections"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
-    def load_BPASS_solutions(self, runlevel, clversion, expconfig, tabledir, calonly, 
+    def load_BPASS_solutions(self, expconfig, tabledir, calonly, 
             gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             expconfig['ampcalscan'] > 0:
-            print "Runlevel " + str(runlevel) + ": Loading bandpass corrections"
+            print "Runlevel " + str(self.runlevel) + ": Loading bandpass corrections"
             if not os.path.exists(tabledir + 'bpass.bp'):
                 print "Error - bandpass table " + tabledir + 'bpass.bp does not exist'
                 sys.exit(1)
@@ -928,17 +941,19 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'bpass.bp', 1)
         else:
             print "Skipping loading of bandpass corrections"
-        bandpassclversion = clversion
+        bandpassclversion = self.clversion
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return bandpassclversion 
 
-    def run_FRING_with_phase_reference_calibrators(self, runlevel, clversion, snversion, targetonly, maxphsreffringmins,
+    def run_FRING_with_phase_reference_calibrators(self, targetonly, maxphsreffringmins,
             tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, leakagedopol, inbeamuvdatas):
         dophscaldump = False
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and not targetonly and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
            maxphsreffringmins > 0:
             if not os.path.exists(tabledir + 'phsreffring.sn') or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
-                print "Runlevel " + str(runlevel) + ": FRING'ing phase calibrator"
+                print "Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator"
                 for phscal, config in zip(donephscalnames, doneconfigs):
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + '.clean.fits'
@@ -1017,7 +1032,7 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = False
                     print "Delay and rate windows: ", delaywin, ratewin
                     print "UV range: ", phsrefuvrange
-                    vlbatasks.fring(inbeamuvdatas[0], snversion, clversion,  
+                    vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
                                     config['phsreffringmins'], inttimesecs, phscal, 
                                     expconfig['refant'], doband, 
                                     config['phsreffringsnr'], sumifs, phscalmodeldata,
@@ -1035,9 +1050,9 @@ class vlbireduce(support_vlbireduce):
                     mwfminutes = config['mwfminutes']
                 except:
                     mwfminutes = 20
-                snoutver = snversion
+                snoutver = self.snversion
                 if dosnsmo:
-                    #vlbatasks.snsmo(inbeamuvdatas[0], 'DELA', 20, 0.0, 0.0, 10.0, snversion,
+                    #vlbatasks.snsmo(inbeamuvdatas[0], 'DELA', 20, 0.0, 0.0, 10.0, self.snversion,
                     #                smoothedrefant, True)
                     if sumifs:
                         doratesmoothing = False
@@ -1045,9 +1060,9 @@ class vlbireduce(support_vlbireduce):
                     else:
                         doratesmoothing = True
                         ratesmoothingmins = 3.0
-                    vlbatasks.snmwfclip(inbeamuvdatas[0], mwfminutes, 0.0, 0.0, delaymwf, ratemwf, snversion,
+                    vlbatasks.snmwfclip(inbeamuvdatas[0], mwfminutes, 0.0, 0.0, delaymwf, ratemwf, self.snversion,
                                         smoothedrefant, doratesmoothing, ratesmoothingmins)
-                    snoutver = snversion+1
+                    snoutver = self.snversion+1
                 if not expconfig['skipsnedt']:
                     vlbatasks.snedt(inbeamuvdatas[0], snoutver)
                     snoutver += 1
@@ -1059,18 +1074,20 @@ class vlbireduce(support_vlbireduce):
                                    tabledir + 'phsreffring.delay.ps')
                 vlbatasks.plottops(inbeamuvdatas[0], 'SN', snoutver, 'RATE', 0, 2, 4,
                                    tabledir + 'phsreffring.rate.ps')
-                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion)
-                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+1)
-                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+1)
+                vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+2)
         else:
             print "Skipping FRING and SNSMO/SNEDT of FRING results"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return dophscaldump
 
-    def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, clversion, snversion, runlevel, targetonly, tabledir, expconfig,
+    def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, targetonly, tabledir, expconfig,
             numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins, directory, experiment,
             leakagedopol):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and maxphsreffringmins > 0:
-            print "Runlevel " + str(runlevel) + ": Loading phsref FRING SN table & calibrating"
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and maxphsreffringmins > 0:
+            print "Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
                 print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
@@ -1080,23 +1097,23 @@ class vlbireduce(support_vlbireduce):
                 interptype = 'AMBG'
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'phsreffring.sn', snversion)
-                    vlbatasks.applysntable(inbeamuvdatas[i], snversion, interptype, clversion, 
+                    vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'phsreffring.sn', self.snversion)
+                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, interptype, self.clversion, 
                                            expconfig['refant'])
             if not calonly:
-                vlbatasks.loadtable(gateduvdata, tabledir + 'phsreffring.sn', snversion)
-                vlbatasks.applysntable(gateduvdata, snversion, interptype, clversion, 
+                vlbatasks.loadtable(gateduvdata, tabledir + 'phsreffring.sn', self.snversion)
+                vlbatasks.applysntable(gateduvdata, self.snversion, interptype, self.clversion, 
                                        expconfig['refant'])
                 if haveungated:
-                    vlbatasks.loadtable(ungateduvdata, tabledir + 'phsreffring.sn', snversion)
-                    vlbatasks.applysntable(ungateduvdata, snversion, interptype, clversion, 
+                    vlbatasks.loadtable(ungateduvdata, tabledir + 'phsreffring.sn', self.snversion)
+                    vlbatasks.applysntable(ungateduvdata, self.snversion, interptype, self.clversion, 
                                            expconfig['refant'])
         else:
             print "Skipping calibration of FRING results"
 
         if maxphsreffringmins > 0:
-            snversion = snversion + 1
-            clversion = clversion + 1
+            self.snversion = self.snversion + 1
+            self.clversion = self.clversion + 1
         print donephscalnames
         
         if dophscaldump: # Need to dump out the phs cal sources so we can make models of them
@@ -1115,16 +1132,17 @@ class vlbireduce(support_vlbireduce):
                 combineifs = False
                 beginif = -1
                 endif = -1
-                vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
                                      doband, beginif, endif, combineifs, leakagedopol)
                 vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
             print "UV datasets of the phase reference sources have been written out to model"
             sys.exit()
-        return clversion, snversion
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_phase_CALIB_on_the_phase_reference_sources(self, runlevel, clversion, maxphsrefcalibpnmins, donephscalnames,
+    def run_phase_CALIB_on_the_phase_reference_sources(self, maxphsrefcalibpnmins, donephscalnames,
             tabledir, targetonly, doneconfigs, inbeamuvdatas, leakagedopol, expconfig, modeltype):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxphsrefcalibpnmins > 0:
             haveall = True
             for phscal in donephscalnames:
@@ -1133,7 +1151,7 @@ class vlbireduce(support_vlbireduce):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to use saved SN table for phsref phase CALIB?")):
-                print "Runlevel " + str(runlevel) + ": Running CALIB on phsref sources"
+                print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
                 for phscal, config in zip(donephscalnames, doneconfigs):
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
@@ -1147,7 +1165,7 @@ class vlbireduce(support_vlbireduce):
                     combineifs = False
                     beginif = -1
                     endif = -1
-                    vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                    vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
                                          doband, beginif, endif, combineifs, leakagedopol)
                     phscal_uv_data.table('NX', 1).zap()
                     phscalmodeldata = None
@@ -1200,23 +1218,25 @@ class vlbireduce(support_vlbireduce):
                     phscal_uv_data.zap()
         else:
             print "Skipping phase cal CALIB on the phase reference sources"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self, runlevel, clversion, snversion, maxphsrefcalibpnmins,
+    def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self, maxphsrefcalibpnmins,
             phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, donephscalnames,
             tabledir, expconfig):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxphsrefcalibpnmins > 0:
-            print "Runlevel " + str(runlevel) + ": Loading phs ref PN CALIB " + \
+            print "Runlevel " + str(self.runlevel) + ": Loading phs ref PN CALIB " + \
                   "solutions and applying"
             sncount = 0
             for phscal in phscalnames:
                 if not targetonly:
                     for i in range(numinbeams):
-                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion+sncount)
                 if not calonly:
-                    vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                    vlbatasks.deletetable(gateduvdata, 'SN', self.snversion+sncount)
                     if haveungated:
-                        vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                        vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
                 sncount += 1
             sncount = 0
             for phscal in donephscalnames:
@@ -1227,40 +1247,40 @@ class vlbireduce(support_vlbireduce):
                 if not targetonly:
                     for i in range(numinbeams):
                         vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
-                                            snversion+sncount)
+                                            self.snversion+sncount)
                 if not calonly:
                     vlbatasks.loadtable(gateduvdata, calibtablepath,
-                                        snversion+sncount)
+                                        self.snversion+sncount)
                     if haveungated:
                         vlbatasks.loadtable(ungateduvdata, calibtablepath,
-                                            snversion+sncount)
+                                            self.snversion+sncount)
                 sncount += 1
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
-                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, 
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion+sncount)
+                    vlbatasks.mergesntables(inbeamuvdatas[i], self.snversion, sncount, 
                                             expconfig['refant'])
             if not calonly:
-                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-                vlbatasks.mergesntables(gateduvdata, snversion, sncount, 
+                vlbatasks.deletetable(gateduvdata, 'SN', self.snversion+sncount)
+                vlbatasks.mergesntables(gateduvdata, self.snversion, sncount, 
                                         expconfig['refant'])
                 if haveungated:
-                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount, 
+                    vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
+                    vlbatasks.mergesntables(ungateduvdata, self.snversion, sncount, 
                                             expconfig['refant'])
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+1)
-                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, 'SELF', 
-                                           clversion, expconfig['refant'])
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', self.clversion+1)
+                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion+sncount, 'SELF', 
+                                           self.clversion, expconfig['refant'])
             if not calonly:
-                vlbatasks.deletetable(gateduvdata, 'CL', clversion+1)
-                vlbatasks.applysntable(gateduvdata, snversion+sncount, 'SELF', 
-                                       clversion, expconfig['refant'])
+                vlbatasks.deletetable(gateduvdata, 'CL', self.clversion+1)
+                vlbatasks.applysntable(gateduvdata, self.snversion+sncount, 'SELF', 
+                                       self.clversion, expconfig['refant'])
                 if haveungated:
-                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+1)
-                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, 'SELF', 
-                                           clversion, expconfig['refant'])
+                    vlbatasks.deletetable(ungateduvdata, 'CL', self.clversion+1)
+                    vlbatasks.applysntable(ungateduvdata, self.snversion+sncount, 'SELF', 
+                                           self.clversion, expconfig['refant'])
         else:
             print "Skipping loading/application of phase reference source phase CALIB solutions"
             sncount = 0
@@ -1268,11 +1288,12 @@ class vlbireduce(support_vlbireduce):
                 sncount += len(donephscalnames)
 
         if maxphsrefcalibpnmins > 0:
-            snversion = snversion + sncount + 1
-            clversion = clversion + 1
-        return clversion, snversion
+            self.snversion = self.snversion + sncount + 1
+            self.clversion = self.clversion + 1
+        self.runlevel += 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_amp_CALIB_on_the_phase_reference_sources(self, runlevel, clversion, targetconfigs, maxphsrefcalibapnmins,
+    def run_amp_CALIB_on_the_phase_reference_sources(self, targetconfigs, maxphsrefcalibapnmins,
             tabledir, targetonly, expconfig, inbeamuvdatas, leakagedopol, modeldir, modeltype):
         #prepare two variables for amp CALIB on the phase calibrators
         donephscalnames = []
@@ -1287,7 +1308,7 @@ class vlbireduce(support_vlbireduce):
             except KeyError:
                 continue
 
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxphsrefcalibapnmins > 0:
             haveall = True
             for phscal in donephscalnames:
@@ -1296,7 +1317,7 @@ class vlbireduce(support_vlbireduce):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref amp CALIB?")):
-                print "Runlevel " + str(runlevel) + ": Running CALIB on phsref sources"
+                print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
                 for phscal, config in zip(donephscalnames, doneconfigs):
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
@@ -1310,7 +1331,7 @@ class vlbireduce(support_vlbireduce):
                     combineifs = False
                     beginif = -1
                     endif = -1
-                    vlbatasks.splittoseq(inbeamuvdatas[0], clversion, 'CALIB', phscal, 1, domulti,
+                    vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
                                          doband, beginif, endif, combineifs, leakagedopol)
                     phscal_uv_data.table('NX', 1).zap()
                     phscalmodeldata = None
@@ -1381,24 +1402,26 @@ class vlbireduce(support_vlbireduce):
                     phscal_uv_data.zap()
         else:
             print "Skipping amp cal CALIB on the phase reference sources"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return donephscalnames
 
-    def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self, runlevel, clversion, snversion, maxphsrefcalibapnmins,
+    def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self, maxphsrefcalibapnmins,
             phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, donephscalnames,
             tabledir, expconfig):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxphsrefcalibapnmins > 0:
-            print "Runlevel " + str(runlevel) + ": Loading phs ref APN CALIB " + \
+            print "Runlevel " + str(self.runlevel) + ": Loading phs ref APN CALIB " + \
                   "solutions and applying"
             sncount = 0
             for phscal in phscalnames:
                 if not targetonly:
                     for i in range(numinbeams):
-                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion+sncount)
                 if not calonly:
-                    vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                    vlbatasks.deletetable(gateduvdata, 'SN', self.snversion+sncount)
                     if haveungated:
-                        vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                        vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
                 sncount += 1
             sncount = 0
             for phscal in donephscalnames:
@@ -1409,40 +1432,40 @@ class vlbireduce(support_vlbireduce):
                 if not targetonly:
                     for i in range(numinbeams):
                         vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
-                                            snversion+sncount)
+                                            self.snversion+sncount)
                 if not calonly:
                     vlbatasks.loadtable(gateduvdata, calibtablepath,
-                                        snversion+sncount)
+                                        self.snversion+sncount)
                     if haveungated:
                         vlbatasks.loadtable(ungateduvdata, calibtablepath,
-                                            snversion+sncount)
+                                            self.snversion+sncount)
                 sncount += 1
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
-                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount,
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion+sncount)
+                    vlbatasks.mergesntables(inbeamuvdatas[i], self.snversion, sncount,
                                             expconfig['refant'])
             if not calonly:
-                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-                vlbatasks.mergesntables(gateduvdata, snversion, sncount,
+                vlbatasks.deletetable(gateduvdata, 'SN', self.snversion+sncount)
+                vlbatasks.mergesntables(gateduvdata, self.snversion, sncount,
                                         expconfig['refant'])
                 if haveungated:
-                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount,
+                    vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
+                    vlbatasks.mergesntables(ungateduvdata, self.snversion, sncount,
                                             expconfig['refant'])
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+1)
-                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, 'SELF',
-                                           clversion, expconfig['refant'])
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', self.clversion+1)
+                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion+sncount, 'SELF',
+                                           self.clversion, expconfig['refant'])
             if not calonly:
-                vlbatasks.deletetable(gateduvdata, 'CL', clversion+1)
-                vlbatasks.applysntable(gateduvdata, snversion+sncount, 'SELF',
-                                       clversion, expconfig['refant'])
+                vlbatasks.deletetable(gateduvdata, 'CL', self.clversion+1)
+                vlbatasks.applysntable(gateduvdata, self.snversion+sncount, 'SELF',
+                                       self.clversion, expconfig['refant'])
                 if haveungated:
-                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+1)
-                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, 'SELF',
-                                           clversion, expconfig['refant'])
+                    vlbatasks.deletetable(ungateduvdata, 'CL', self.clversion+1)
+                    vlbatasks.applysntable(ungateduvdata, self.snversion+sncount, 'SELF',
+                                           self.clversion, expconfig['refant'])
         else:
             print "Skipping loading/application of phase reference source amp CALIB solutions"
             sncount = 0
@@ -1450,15 +1473,16 @@ class vlbireduce(support_vlbireduce):
                 sncount += len(donephscalnames)
 
         if maxphsrefcalibapnmins > 0:
-            snversion = snversion + sncount + 1
-            clversion = clversion + 1
-        return clversion, snversion
+            self.snversion = self.snversion + sncount + 1
+            self.clversion = self.clversion + 1
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, runlevel, clversion, expconfig,
+    def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas, leakagedopol):
-        if self.runfromlevel <= runlevel and self.runtolevel >= runlevel and \
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
            expconfig['writerawinbeam']:
-            print "Runlevel " + str(runlevel) + ": Writing raw inbeam outputs"
+            print "Runlevel " + str(self.runlevel) + ": Writing raw inbeam outputs"
             if not targetonly: # Make a "raw" inbeam fileset if required
                 for i in range(numtargets):
                     count = 0
@@ -1480,13 +1504,15 @@ class vlbireduce(support_vlbireduce):
                         if expconfig['ampcalscan'] > 0:
                             doband = True
                         combineifs = False
-                        vlbatasks.splittoseq(uvdata, clversion, 'NOIB', aipssrcname, 1,
+                        vlbatasks.splittoseq(uvdata, self.clversion, 'NOIB', aipssrcname, 1,
                                              domulti, doband, beginif, endif-subtractif, 
                                              combineifs, leakagedopol)
                         vlbatasks.writedata(splitdata, rawuvoutputfile, True)
                         count += 1
         else:
             print "Skipping dump of raw inbeam data (pre-selfcal)"
+        self.runlevel  = self.runlevel + 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(self, runlevel, clversion, maxinbeamcalibp1mins,
             doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
@@ -2748,7 +2774,8 @@ def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata,
 ################################################################################
 # Print a summary of CL versions, SN versions, and runlevel
 ################################################################################
-def printTableAndRunlevel(runlevel, snversion, clversion, uvdata):
+"""
+#def printTableAndRunlevel(runlevel, snversion, clversion, uvdata):
     maxclversion = -1
     maxsnversion = -1
     if uvdata.exists():
@@ -2763,7 +2790,7 @@ def printTableAndRunlevel(runlevel, snversion, clversion, uvdata):
     prtstr2 = ", snversion is %d (from uvdata, maxsnversion is %d)" % \
               (snversion, maxsnversion)
     print prtstr + prtstr2
-
+"""
 ################################################################################
 # Option parsing and defaulted global variables
 ################################################################################
@@ -3000,8 +3027,10 @@ if zapallcaltables and runfromlevel > 1:
 ################################################################################
 # Begin the actual data processing
 ################################################################################
+"""
 runlevel = 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load the uv data ############################################################
 reducevlbi = vlbireduce(runfromlevel, runtolevel)
 reducevlbi.load_uv_data(directory, experiment, expconfig, numinbeams, inbeamfiles, 
@@ -3718,9 +3747,8 @@ if expconfig['ampcalscan'] > 0:
     clversion = clversion + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
 """
-sys.exit()
 ## Run xpoldelaycal ############################################################
-xpolsnfilename = reducevlbi.run_xpoldelaycal(runlevel, clversion, tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource)
+xpolsnfilename = reducevlbi.run_xpoldelaycal(tabledir, targetonly, xpolscan, expconfig, modeldir, xpolsource, inbeamuvdatas)
 """
 xpolsnfilename = tabledir + '/xpolfring.sn'
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
@@ -3760,11 +3788,12 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
                                inttimesecs, xpolsnfilename, delaywin, ratewin)
 else:
     print "Skipping determining xpoldelays"
-"""
+
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load and apply xpoldelaycal #################################################
-reducevlbi.load_and_apply_xpoldelaycal(runlevel, clversion, snversion, xpolscan, targetonly, numinbeams,
+reducevlbi.load_and_apply_xpoldelaycal(xpolscan, targetonly, numinbeams,
             inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and xpolscan > 0:
@@ -3787,14 +3816,15 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and xpolscan > 0:
                                    expconfig['refant'])
 else:
     print "Skipping calibration of xpolcal cross-pol FRING results"
-"""
+
 runlevel  = runlevel + 1
 if xpolscan > 0:
     snversion += 1 
     clversion += 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Run leakagecal on the leakage calibrator and save AN file ###################
-leakagefilename = reducevlbi.run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(runlevel, clversion, targetonly,
+leakagefilename = reducevlbi.run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(targetonly,
         leakagescan, tabledir, modeldir, leakagesource, inbeamuvdatas, expconfig, directory, experiment, leakageuvrange,
         leakageweightit)
 """
@@ -3829,11 +3859,12 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
                     hasbptable, leakageoutputfile, leakageuvrange, leakageweightit)
 else:
     print "Skipping calibration of leakage"
-"""
+
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load up the leakage-calibrated AN table #####################################
-reducevlbi.load_up_the_leakage_calibrated_AN_table(runlevel, leakagescan, targetonly, xpolsnfilename, numinbeams,
+reducevlbi.load_up_the_leakage_calibrated_AN_table(leakagescan, targetonly, xpolsnfilename, numinbeams,
             inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
@@ -3853,13 +3884,14 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and leakagescan > 0:
             vlbatasks.loadtable(ungateduvdata, leakagefilename, 1)
 else:
     print "Skipping loading the leakage calibrated AN table"
-"""
-## Remember to set dopol=2 on everything hereon!!!!
 
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
+# Remember to set dopol=2 on everything hereon!!!!
+
 ## Run BPASS ###################################################################
-reducevlbi.run_BPASS(runlevel, clversion, targetonly, expconfig, tabledir, modeldir, 
+reducevlbi.run_BPASS(targetonly, expconfig, tabledir, modeldir, 
         ampcalsrc, modeltype, inbeamuvdatas, leakagedopol)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
@@ -3886,11 +3918,11 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
         vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
 else:
     print "Skipping bandpass corrections"
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load BPASS ##################################################################
-bandpassclversion = reducevlbi.load_BPASS_solutions(runlevel, clversion, expconfig, tabledir, 
+bandpassclversion = reducevlbi.load_BPASS_solutions(expconfig, tabledir, 
         calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
@@ -3910,9 +3942,9 @@ else:
     print "Skipping loading of bandpass corrections"
 
 bandpassclversion = clversion
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 
 ## prepare variables for FRING (phase reference calibrators) ####################
 maxphsreffringmins = -1
@@ -3938,7 +3970,7 @@ for i in range(len(phscalnames)):
     doneconfigs.append(targetconfigs[i])
 
 ## Run FRING (phase reference calibrators) #####################################
-dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(runlevel, clversion, snversion, targetonly, maxphsreffringmins,
+dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly, maxphsreffringmins,
         tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, leakagedopol, inbeamuvdatas)
 """
 dophscaldump = False
@@ -4072,11 +4104,11 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and not targetonly and \
         vlbatasks.deletetable(inbeamuvdatas[0], 'SN', snversion+2)
 else:
     print "Skipping FRING and SNSMO/SNEDT of FRING results"
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Copy the phsref FRING SN table around and apply it ##########################
-[clversion, snversion] = reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(clversion, snversion, runlevel, targetonly,
+reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(targetonly,
         tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins,
         directory, experiment, leakagedopol)
 """
@@ -4141,11 +4173,11 @@ if dophscaldump: # Need to dump out the phs cal sources so we can make models of
         vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
     print "UV datasets of the phase reference sources have been written out to model"
     sys.exit()
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Run phase CALIB on the phase reference sources ##############################
-reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(runlevel, clversion, maxphsrefcalibpnmins, donephscalnames,
+reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(maxphsrefcalibpnmins, donephscalnames,
             tabledir, targetonly, doneconfigs, inbeamuvdatas, leakagedopol, expconfig, modeltype)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
@@ -4224,13 +4256,12 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
             phscal_uv_data.zap()
 else:
     print "Skipping phase cal CALIB on the phase reference sources"
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load all the phase CALIB solutions #########################################
-[clversion, snversion] = reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(runlevel, clversion,
-        snversion, maxphsrefcalibpnmins, phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata,
-        haveungated, ungateduvdata, donephscalnames, tabledir, expconfig)
+reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(maxphsrefcalibpnmins, phscalnames, 
+        targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, donephscalnames, tabledir, expconfig)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibpnmins > 0:
@@ -4298,11 +4329,11 @@ else:
 if maxphsrefcalibpnmins > 0:
     snversion = snversion + sncount + 1
     clversion = clversion + 1
-"""
 runlevel += 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Run amp CALIB on the phase reference sources ################################
-donephscalnames = reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(runlevel, clversion, targetconfigs,
+donephscalnames = reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(targetconfigs,
         maxphsrefcalibapnmins, tabledir, targetonly, expconfig, inbeamuvdatas, leakagedopol, modeldir, modeltype)
 """
 donephscalnames = []
@@ -4411,13 +4442,13 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
             phscal_uv_data.zap()
 else:
     print "Skipping amp cal CALIB on the phase reference sources"
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
 ## Load all the amp CALIB solutions ###########################################
-[clversion, snversion] = reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(runlevel, clversion,
-        snversion, maxphsrefcalibapnmins, phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata,
-        ungateduvdata, haveungated, donephscalnames, tabledir, expconfig)
+reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(maxphsrefcalibapnmins, 
+        phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, donephscalnames,
+        tabledir, expconfig)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
     maxphsrefcalibapnmins > 0:
@@ -4485,9 +4516,9 @@ else:
 if maxphsrefcalibapnmins > 0:
     snversion = snversion + sncount + 1
     clversion = clversion + 1
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
    
 ## prepare some variables for operations on inbeam calibrators ###########################    
 doneinbeams = []
@@ -4557,7 +4588,7 @@ for primaryinbeam in primaryinbeams:
         sys.exit()
  
 ## Generate a raw (no phase selfcal) inbeam dataset if requested ##############
-reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(runlevel, clversion, expconfig,
+reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas, leakagedopol)
 """
 if runfromlevel <= runlevel and runtolevel >= runlevel and \
@@ -4591,9 +4622,10 @@ if runfromlevel <= runlevel and runtolevel >= runlevel and \
                 count += 1
 else:
     print "Skipping dump of raw inbeam data (pre-selfcal)"
-"""
 runlevel  = runlevel + 1
 printTableAndRunlevel(runlevel, snversion, clversion, inbeamuvdatas[0])
+"""
+sys.exit()
 ## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
 [tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(runlevel,
         clversion, maxinbeamcalibp1mins, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
