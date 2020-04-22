@@ -27,6 +27,8 @@ if len(gatedfitsfiles) < 2:
 gatedfitsfiles.sort()
 if binno != -1:
     gatedfitsfiles = glob.glob(r'./*_gated*BIN%d*idifits' % binno)
+    if len(gatedfiltsfiles) == 0:
+        gatedfitsfiles = glob.glob(r'./*_gated*BIN0%d*idifits' % binno)
 ungatedfitsfile = glob.glob(r'./*_ungated*idifits')
 if len(ungatedfitsfile) > 1:
     print "There are more than 1 ungatedfitsfile; aborting\n"
@@ -46,10 +48,14 @@ if not os.path.exists(yamlfile):
     yamlmodels = glob.glob(r'%s/%s*.yaml' % (configdir, experiment[:5]))
     yamlmodels.sort()
     if len(yamlmodels) == 0:
-        print "no yaml file model exists; aborting\n"
-        sys.exit()
-    print("copy %s to %s...\n" % (yamlmodels[-1],yamlfile))
-    os.system('cp %s %s' % (yamlmodels[-1],yamlfile))
+        print("no %s*.yaml model is found" % experiment[:5])
+        alternative_model_expno = raw_input("Input the alternative expno for model yaml file: ")
+        yamlmodels = [configdir + '/' + alternative_model_expno + '.yaml']
+        if not os.path.exists(yamlmodels[-1]):
+            print('model for yaml file does not exist; aborting')
+            sys.exit()
+    print("copy %s to %s...\n" % (yamlmodels[-1], yamlfile))
+    os.system('cp %s %s' % (yamlmodels[-1], yamlfile))
 
 sourcefile = expdir + '/' + experiment + '.source'
 print sourcefile
