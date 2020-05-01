@@ -1474,15 +1474,41 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return bandpassclversion 
 
-    def run_FRING_with_phase_reference_calibrators(self, targetonly, maxphsreffringmins,
-            tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, inbeamuvdatas):
+    def prepare_variables_for_calibration_on_phase_calibrators(self, targetconfigs, phscalnames):
+        """
+        prepare variables for FRING (phase reference calibrators)
+        """
+        self.maxphsreffringmins = -1
+        self.maxphsrefcalibapnmins = -1
+        self.maxphsrefcalibpnmins = -1
+        for config in targetconfigs:
+            if config['phsreffringmins'] > self.maxphsreffringmins:
+                self.maxphsreffringmins = config['phsreffringmins']
+            if config['phsrefcalibapnmins'] > self.maxphsrefcalibapnmins:
+                self.maxphsrefcalibapnmins = config['phsrefcalibapnmins']
+            try:
+                if config['phsrefcalibpnmins'] > self.maxphsrefcalibpnmins:
+                    self.maxphsrefcalibpnmins = config['phsrefcalibpnmins']
+            except KeyError:
+                pass
+        self.donephscalnames = []
+        self.doneconfigs = []
+        for i in range(len(phscalnames)):
+            phscal = phscalnames[i]
+            if phscal in self.donephscalnames:
+                continue
+            self.donephscalnames.append(phscal)
+            self.doneconfigs.append(targetconfigs[i])
+
+    def run_FRING_with_phase_reference_calibrators(self, targetonly,
+            tabledir, modeldir, modeltype, expconfig, experiment, inbeamuvdatas):
         dophscaldump = False
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
-           maxphsreffringmins > 0:
+           self.maxphsreffringmins > 0:
             if not os.path.exists(tabledir + 'phsreffring.sn') or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
                 print "Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator"
-                for phscal, config in zip(donephscalnames, doneconfigs):
+                for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + '.clean.fits'
                     if os.path.exists(phscalmodelfile):
@@ -1612,8 +1638,8 @@ class vlbireduce(support_vlbireduce):
         return dophscaldump
 
     def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, targetonly, tabledir, expconfig,
-            numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins, directory, experiment):
-        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and maxphsreffringmins > 0:
+            numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, directory, experiment):
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.maxphsreffringmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
                 print "For target-only, the SN file must exist already - aborting!"
@@ -1638,13 +1664,13 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping calibration of FRING results"
 
-        if maxphsreffringmins > 0:
+        if self.maxphsreffringmins > 0:
             self.snversion = self.snversion + 1
             self.clversion = self.clversion + 1
-        print donephscalnames
+        print self.donephscalnames
         
         if dophscaldump: # Need to dump out the phs cal sources so we can make models of them
-            for phscal in donephscalnames:
+            for phscal in self.donephscalnames:
                 for i in range(20): #Clear any old CALIB split catalog entries
                     phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
                     if phscal_uv_data.exists():
@@ -1667,19 +1693,19 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_phase_CALIB_on_the_phase_reference_sources(self, maxphsrefcalibpnmins, donephscalnames,
-            tabledir, targetonly, doneconfigs, inbeamuvdatas, expconfig, modeltype):
+    def run_phase_CALIB_on_the_phase_reference_sources(self,
+            tabledir, targetonly, inbeamuvdatas, expconfig, modeltype):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            maxphsrefcalibpnmins > 0:
+            self.maxphsrefcalibpnmins > 0:
             haveall = True
-            for phscal in donephscalnames:
+            for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibpn.sn'
                 if not os.path.exists(calibtablepath):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to use saved SN table for phsref phase CALIB?")):
                 print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
-                for phscal, config in zip(donephscalnames, doneconfigs):
+                for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
                         if phscal_uv_data.exists():
@@ -1748,11 +1774,11 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self, maxphsrefcalibpnmins,
-            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, donephscalnames,
+    def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self,
+            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata,
             tabledir, expconfig):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            maxphsrefcalibpnmins > 0:
+            self.maxphsrefcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading phs ref PN CALIB " + \
                   "solutions and applying"
             sncount = 0
@@ -1766,7 +1792,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
                 sncount += 1
             sncount = 0
-            for phscal in donephscalnames:
+            for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibpn.sn'
                 if targetonly and (not os.path.exists(calibtablepath)):
                     print "For target-only, the SN file must exist already - aborting!"
@@ -1811,41 +1837,41 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping loading/application of phase reference source phase CALIB solutions"
             sncount = 0
-            if maxphsrefcalibpnmins > 0:
-                sncount += len(donephscalnames)
+            if self.maxphsrefcalibpnmins > 0:
+                sncount += len(self.donephscalnames)
 
-        if maxphsrefcalibpnmins > 0:
+        if self.maxphsrefcalibpnmins > 0:
             self.snversion = self.snversion + sncount + 1
             self.clversion = self.clversion + 1
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def run_amp_CALIB_on_the_phase_reference_sources(self, targetconfigs, maxphsrefcalibapnmins,
+    def run_amp_CALIB_on_the_phase_reference_sources(self, targetconfigs,
             tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype):
         #prepare two variables for amp CALIB on the phase calibrators
-        donephscalnames = []
-        doneconfigs = []
+        self.donephscalnames = []
+        self.doneconfigs = []
         for i in range(len(phscalnames)):
             phscal = phscalnames[i]
             try:
-                if phscal in donephscalnames or targetconfigs[i]['phsrefcalibapnmins'] < 0:
+                if phscal in self.donephscalnames or targetconfigs[i]['phsrefcalibapnmins'] < 0:
                     continue
-                donephscalnames.append(phscal)
-                doneconfigs.append(targetconfigs[i])
+                self.donephscalnames.append(phscal)
+                self.doneconfigs.append(targetconfigs[i])
             except KeyError:
                 continue
 
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            maxphsrefcalibapnmins > 0:
+            self.maxphsrefcalibapnmins > 0:
             haveall = True
-            for phscal in donephscalnames:
+            for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibapn.sn'
                 if not os.path.exists(calibtablepath):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref amp CALIB?")):
                 print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
-                for phscal, config in zip(donephscalnames, doneconfigs):
+                for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
                         if phscal_uv_data.exists():
@@ -1931,13 +1957,13 @@ class vlbireduce(support_vlbireduce):
             print "Skipping amp cal CALIB on the phase reference sources"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
-        return donephscalnames
+        #return self.donephscalnames
 
-    def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self, maxphsrefcalibapnmins,
-            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, donephscalnames,
+    def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self,
+            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
             tabledir, expconfig):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            maxphsrefcalibapnmins > 0:
+            self.maxphsrefcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading phs ref APN CALIB " + \
                   "solutions and applying"
             sncount = 0
@@ -1951,7 +1977,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+sncount)
                 sncount += 1
             sncount = 0
-            for phscal in donephscalnames:
+            for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibapn.sn'
                 if targetonly and (not os.path.exists(calibtablepath)):
                     print "For target-only, the SN file must exist already - aborting!"
@@ -1996,10 +2022,10 @@ class vlbireduce(support_vlbireduce):
         else:
             print "Skipping loading/application of phase reference source amp CALIB solutions"
             sncount = 0
-            if maxphsrefcalibapnmins > 0:
-                sncount += len(donephscalnames)
+            if self.maxphsrefcalibapnmins > 0:
+                sncount += len(self.donephscalnames)
 
-        if maxphsrefcalibapnmins > 0:
+        if self.maxphsrefcalibapnmins > 0:
             self.snversion = self.snversion + sncount + 1
             self.clversion = self.clversion + 1
         self.runlevel  = self.runlevel + 1
@@ -3253,47 +3279,26 @@ bandpassclversion = reducevlbi.load_BPASS_solutions(expconfig, tabledir,
         calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas)
 
 ## prepare variables for FRING (phase reference calibrators) ####################
-maxphsreffringmins = -1
-maxphsrefcalibapnmins = -1
-maxphsrefcalibpnmins = -1
-for config in targetconfigs:
-    if config['phsreffringmins'] > maxphsreffringmins:
-        maxphsreffringmins = config['phsreffringmins']
-    if config['phsrefcalibapnmins'] > maxphsrefcalibapnmins:
-        maxphsrefcalibapnmins = config['phsrefcalibapnmins']
-    try:
-        if config['phsrefcalibpnmins'] > maxphsrefcalibpnmins:
-            maxphsrefcalibpnmins = config['phsrefcalibpnmins']
-    except KeyError:
-        pass
-donephscalnames = []
-doneconfigs = []
-for i in range(len(phscalnames)):
-    phscal = phscalnames[i]
-    if phscal in donephscalnames:
-        continue
-    donephscalnames.append(phscal)
-    doneconfigs.append(targetconfigs[i])
+reducevlbi.prepare_variables_for_calibration_on_phase_calibrators(targetconfigs, phscalnames)
 
 ## Run FRING (phase reference calibrators) #####################################
-dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly, maxphsreffringmins,
-        tabledir, donephscalnames, doneconfigs, modeldir, modeltype, expconfig, experiment, inbeamuvdatas)
+dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly,
+        tabledir, modeldir, modeltype, expconfig, experiment, inbeamuvdatas)
 ## Copy the phsref FRING SN table around and apply it ##########################
 reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(targetonly,
-        tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, maxphsreffringmins,
+        tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
         directory, experiment)
 ## Run phase CALIB on the phase reference sources ##############################
-reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(maxphsrefcalibpnmins, donephscalnames,
-            tabledir, targetonly, doneconfigs, inbeamuvdatas, expconfig, modeltype)
+reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(tabledir, targetonly, inbeamuvdatas, expconfig, modeltype)
 ## Load all the phase CALIB solutions #########################################
-reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(maxphsrefcalibpnmins, phscalnames, 
-        targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, donephscalnames, tabledir, expconfig)
+reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(phscalnames, 
+        targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, tabledir, expconfig)
 ## Run amp CALIB on the phase reference sources ################################
-donephscalnames = reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(targetconfigs,
-        maxphsrefcalibapnmins, tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype)
+reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(targetconfigs,
+        tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype)
 ## Load all the amp CALIB solutions ###########################################
-reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(maxphsrefcalibapnmins, 
-        phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, donephscalnames,
+reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(
+        phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
         tabledir, expconfig)
 ## prepare some variables for operations on inbeam calibrators ###########################    
 reducevlbi.prepare_variables_for_inbeamselfcal(inbeamuvdatas, targetconfigs, numtargets, inbeamnames)
