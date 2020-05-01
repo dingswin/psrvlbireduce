@@ -113,7 +113,7 @@ class support_vlbireduce(object):
         return gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
                targetnames, inbeamnames, phscalnames, ampcalsrc
 
-    def inbeamselfcal(self, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+    def inbeamselfcal(self, inbeamuvdatas, gateduvdata,
                       expconfig, targetconfigs, modeldir, modeltype, targetonly,
                       calonly, beginif, endif, doampcal, dosecondary, sumifs,
                       clversion, targetnames, leakagedopol = 0):
@@ -137,8 +137,8 @@ class support_vlbireduce(object):
 
         if not targetonly:
             simplecal = True
-            print doneinbeams
-            for (inbeamsrc,targetfilenum) in zip(doneinbeams,inbeamfilenums):
+            print self.doneinbeams
+            for (inbeamsrc,targetfilenum) in zip(self.doneinbeams, self.inbeamfilenums):
                 parenttarget = -1
                 for i in range(numtargets):
                      if parenttarget >= 0: break
@@ -2002,6 +2002,77 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
+    def prepare_variables_for_inbeamselfcal(self, inbeamuvdatas, targetconfigs, numtargets, inbeamnames):
+        """
+        prepare some variables for operations on inbeam calibrators
+        note: must be run before any inbeamselfcal step
+        """
+        self.doneinbeams = []
+        self.inbeamfilenums = []
+        secondaryinbeams = []
+        secondaryfilenums = []
+        numifs = 4
+        maxinbeamcalibp1mins = -1 # Phase-only, primary inbeam, summed IFs
+        maxinbeamcalibpnmins = -1 # Phase-only, primary inbeam, separate IFs
+        maxinbeamcalibsp1mins = -1 # Phase-only, secondary inbeam (rarely used)
+        maxinbeamcalibap1mins = -1 # Amplitude and phase, primary inbeam, combined IFs
+        maxinbeamcalibapnmins = -1 # Amplitude and phase, primary inbeam, separate IFs
+        if inbeamuvdatas[0].exists():
+            numifs = vlbatasks.getNumIFs(inbeamuvdatas[0])
+        beginif = 1
+        endif = numifs
+        for config in targetconfigs:
+            if config['inbeamcalibp1mins'] > maxinbeamcalibp1mins:
+                maxinbeamcalibp1mins = config['inbeamcalibp1mins']
+            if config['inbeamcalibap1mins'] > maxinbeamcalibap1mins:
+                maxinbeamcalibap1mins = config['inbeamcalibap1mins']
+            try:
+                if config['inbeamcalibsp1mins'] > maxinbeamcalibsp1mins:
+                    maxinbeamcalibsp1mins = config['inbeamcalibsp1mins']
+            except KeyError:
+                print "No secondary inbeam calibrator..."
+            try:
+                if config['inbeamcalibpnmins'] > maxinbeamcalibpnmins:
+                    maxinbeamcalibpnmins = config['inbeamcalibpnmins']
+            except KeyError:
+                print "No separate IF inbeam selfcal..."
+            try:
+                if config['inbeamcalibapnmins'] > maxinbeamcalibapnmins:
+                    maxinbeamcalibapnmins = config['inbeamcalibapnmins']
+            except KeyError:
+                print "No separate IF inbeam amp selfcal..."
+        print "maxinbeamcalibp1mins", maxinbeamcalibp1mins
+        print "maxinbeamcalibpnmins", maxinbeamcalibpnmins
+        print "maxinbeamcalibap1mins", maxinbeamcalibap1mins
+        print "maxinbeamcalibapnmins", maxinbeamcalibapnmins
+        print "maxinbeamcalibsp1mins", maxinbeamcalibsp1mins
+        for i in range(numtargets):
+            primaryinbeams = targetconfigs[i]['primaryinbeam'].split(',')
+            try:
+                secondaryinbeam = targetconfigs[i]["secondaryinbeam"]
+                secondaryinbeam = secondaryinbeam.split(',')
+            except KeyError:
+                secondaryinbeam = "XXXXX"
+            for j in range(len(inbeamnames[i])):
+                for inbeamsrc in secondaryinbeam:
+                    if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
+                        secondaryinbeams.append(inbeamsrc.strip())
+                        secondaryfilenums.append(j)
+                for primaryinbeam in primaryinbeams:
+                    if primaryinbeam.strip() == inbeamnames[i][j].strip():
+                        if not primaryinbeam.strip() in self.doneinbeams:
+                            self.doneinbeams.append(primaryinbeam.strip())
+                            self.inbeamfilenums.append(j)
+                    if primaryinbeam.strip() == targetnames[i]:
+                        if not targetnames[i] in self.doneinbeams:
+                            self.doneinbeams.append(targetnames[i])
+                            self.inbeamfilenums.append(-1)
+        for primaryinbeam in primaryinbeams:
+            if not primaryinbeam.strip() in self.doneinbeams:
+                print "Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!"
+                print self.doneinbeams
+                sys.exit()
+
     def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
@@ -2039,12 +2110,12 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(self, maxinbeamcalibp1mins,
-            doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
             calonly, beginif, endif, targetnames, numtargets):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)"
-            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, 
+            tocalnames, tocalindices = self.inbeamselfcal(inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
                                        calonly, beginif, endif, False, False, True, self.clversion, targetnames,
                                        self.leakagedopol)
@@ -2086,12 +2157,12 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(self, maxinbeamcalibpnmins,
-            doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
             calonly, beginif, endif, targetnames, numtargets):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)"
-            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, False, False, False, self.clversion+self.targetcl, 
                                        targetnames, self.leakagedopol)
@@ -2194,12 +2265,12 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(self,
-            maxinbeamcalibap1mins, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir,
+            maxinbeamcalibap1mins, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir,
             modeltype, targetonly, calonly, beginif, endif, targetnames, numtargets):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibap1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
-            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, True, False, True, self.clversion+self.targetcl, 
                                        targetnames, self.leakagedopol)
@@ -2241,13 +2312,13 @@ class vlbireduce(support_vlbireduce):
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
-    def do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(self, maxinbeamcalibapnmins, doneinbeams, 
-            inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+    def do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(self, maxinbeamcalibapnmins, 
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
             beginif, endif, targetnames, numtargets):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
-            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, True, False, False, self.clversion+self.targetcl,
                                        targetnames, self.leakagedopol)
@@ -2293,12 +2364,12 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(self, maxinbeamcalibsp1mins,
-            secondaryinbeams, secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+            secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
             targetonly, calonly, beginif, endif, targetnames, numtargets):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
-            tocalnames, tocalindices = self.inbeamselfcal(secondaryinbeams, secondaryfilenums, 
+            tocalnames, tocalindices = self.inbeamselfcal(secondaryfilenums, 
                                        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
                                        modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, False, True, True, 
@@ -2388,12 +2459,94 @@ class vlbireduce(support_vlbireduce):
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
         return scinttablepaths, beginif, endif
+
+    def prepare_variables_for_final_split(self, numtargets, inbeamnames, targetconfigs, expconfig, phscalnames, targetnames,
+            directory, experiment):
+        """
+        must be run before the final split and centroid-location fitting
+        """
+        for i in range(20): #Clear any old FINAL split catalog entries
+            for j in range(numtargets):
+                for inbeamsrc in inbeamnames[j]:
+                    aipssrcname = inbeamsrc
+                    if len(inbeamsrc) > 12:
+                        aipssrcname = inbeamsrc[:12]
+                    splitdata = AIPSUVData(aipssrcname, 'FINAL', 1, 1)
+                    if splitdata.exists():
+                        splitdata.zap()
+                    if inbeamsrc in targetconfigs[j]['primaryinbeam']:
+                        self.splitdata_PS = AIPSUVData(aipssrcname, 'PRESEL', 1, 1) #pre-selfcalibration
+                        if self.splitdata_PS.exists():
+                            self.splitdata_PS.zap()
+                splitdata = AIPSUVData(phscalnames[j], 'FINAL', 1, 1)
+                if splitdata.exists():
+                    splitdata.zap()
+                splitdata = AIPSUVData(targetnames[j], 'UFINL', 1, 1)
+                if splitdata.exists():
+                    splitdata.zap()
+                splitdata = AIPSUVData(targetnames[j], 'GFINL', 1, 1)
+                if splitdata.exists():
+                    splitdata.zap()
+        self.phscaluvfiles = []
+        self.inbeamuvfiles = []
+        self.gateduvfiles = []
+        self.dividedinbeamuvfiles = []
+        self.ungateduvfiles = []
+        self.ungatedpresent = []
+        self.dividesourcelist = []
+        self.ibshiftdivphscaluvfiles = []
+        self.inbeampreselfcaluvfiles = []
+        for config in targetconfigs:
+            try:
+                if not config['dividesources'] == None:
+                    dividesources = [x.strip(' ') for x in config['dividesources'].split(',')]
+                    self.dividesourcelist.extend(dividesources)
+            except KeyError:
+                pass
+        for phscalsrc in phscalnames:
+            if len(phscalsrc) > 12:
+                phscalsrc = phscalsrc[:12]
+            self.phscaluvfiles.append(directory + '/' + experiment + "_" + phscalsrc + \
+                                 "_pipeline_uv.fits")
+            self.ibshiftdivphscaluvfiles.append(directory + '/' + experiment + '_' + phscalsrc + '_ibshiftdiv_uv.fits')
+            self.inbeamuvfiles.append([])
+            self.inbeampreselfcaluvfiles.append([])
+            self.dividedinbeamuvfiles.append([])
+        for targetoutname in targetnames:
+            gfile = directory + '/' + experiment + "_" + targetoutname + \
+                    "_pipeline_uv.gated.fits"
+            ufile = directory + '/' + experiment + "_" + targetoutname + \
+                    "_pipeline_uv.ungated.fits"
+            if expconfig['dodefaultnames']:
+                gfile = directory + '/' + experiment + "_pulsar_pipeline_uv.gated.fits"
+                ufile = directory + '/' + experiment + "_pulsar_pipeline_uv.ungated.fits"
+            self.gateduvfiles.append(gfile)
+            self.ungateduvfiles.append(ufile)
+        for i in range(numtargets):
+            icount = 0
+            for inbeamoutname in inbeamnames[i]:
+                ifile = directory + '/' + experiment + "_" + \
+                        inbeamoutname + "_pipeline_uv.fits"
+                dfile = directory + '/' + experiment + "_" + \
+                        inbeamoutname + "_pipeline_divided_uv.fits"
+                ifile_preselfcal = directory + '/' + experiment + "_preselfcal_" + \
+                        inbeamoutname + "_pipeline_uv.fits"
+                if expconfig['dodefaultnames']:
+                    ifile = directory + '/' + experiment + "_inbeam-" + str(i) + \
+                            "_" + str(icount) + "_pipeline_uv.fits"
+                    ifile_preselfcal = directory + '/' + experiment + "_preselfcal_inbeam-" + str(i) + \
+                            "_" + str(icount) + "_pipeline_uv.fits"
+                    dfile = directory + '/' + experiment + "_inbeam-" + str(i) + \
+                            "_" + str(icount) + "_pipeline_divided_uv.fits"
+                self.inbeamuvfiles[i].append(ifile)
+                self.inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
+                self.dividedinbeamuvfiles[i].append(dfile)
+                icount += 1
     
     def split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(self,
             numtargets, targetconfigs, expconfig, targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc,
-            directory, experiment, phscalnames, modeldir, ibshiftdivphscaluvfiles, inbeamnames,
-            inbeamuvfiles, splitdata_PS, inbeampreselfcaluvfiles, dividesourcelist, calonly, targetnames, haveungated,
-            ungateduvdata, scinttablepaths, ungatedpresent, ungateduvfiles):
+            directory, experiment, phscalnames, modeldir, inbeamnames,
+            calonly, targetnames, haveungated, ungateduvdata, scinttablepaths):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Splitting and writing final images"
             for i in range(numtargets):
@@ -2439,7 +2592,7 @@ class vlbireduce(support_vlbireduce):
                                 splitdata.zap()
                             if split_phscal_option == 'FINAL':
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                                vlbatasks.writedata(splitdata, phscaluvfiles[i], True)
+                                vlbatasks.writedata(splitdata, self.phscaluvfiles[i], True)
                             else:
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                 phscal_image_file = modeldir + aipssrcname + ".clean.fits"
@@ -2455,7 +2608,7 @@ class vlbireduce(support_vlbireduce):
                                 if divideddata.exists():
                                     divideddata.zap()
                                 vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
-                                vlbatasks.writedata(divideddata, ibshiftdivphscaluvfiles[i], True)
+                                vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
                             #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
                             #if not skipplots:
                             #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
@@ -2476,16 +2629,16 @@ class vlbireduce(support_vlbireduce):
                         #if not skipplots:
                         #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, inbeamsrc, plotfile, False,
                         #                    fullauto, stokesi)
-                        vlbatasks.writedata(splitdata, inbeamuvfiles[i][count], True)
+                        vlbatasks.writedata(splitdata, self.inbeamuvfiles[i][count], True)
                         #split primary in-beam calibrator referenced to phscal (pre-inbeamselfcal)
                         if inbeamsrc in config['primaryinbeam']:
                             vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                             #write out pre-selfcal in-beam cal data
-                            vlbatasks.writedata(splitdata_PS, inbeampreselfcaluvfiles[i][count], True)
-                            #os.system("mv -f " + tempdivfile + " " + inbeampreselfcaluvfiles[i][count])
+                            vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i][count], True)
+                            #os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
                         #divide inbeamuvfiles by model
                         tempdivfile = directory + '/temp.fits'
-                        if inbeamsrc in dividesourcelist:
+                        if inbeamsrc in self.dividesourcelist:
                             if config['separateifmodel'] and inbeamsrc in config['primaryinbeam']:
                                 ifdivideddatas = []
                                 for j in range(beginif,endif+1):
@@ -2545,7 +2698,7 @@ class vlbireduce(support_vlbireduce):
                                 vlbatasks.normaliseUVData(splitdata, modeldata, divideddata)
                             os.system("rm -f " + tempdivfile)
                             vlbatasks.writedata(divideddata, tempdivfile, True)
-                            os.system("mv -f " + tempdivfile + " " + dividedinbeamuvfiles[i][count])
+                            os.system("mv -f " + tempdivfile + " " + self.dividedinbeamuvfiles[i][count])
                         #divide pre-selfcal primary inbeam uvfile by model
                         """
                         if inbeamsrc in config['primaryinbeam']:
@@ -2564,10 +2717,10 @@ class vlbireduce(support_vlbireduce):
                             if modeldata.exists():
                                 modeldata.zap()
                             vlbatasks.fitld_image(inbeam_image_file, modeldata)
-                            vlbatasks.normaliseUVData(splitdata_PS, modeldata,  divideddata_PS)
+                            vlbatasks.normaliseUVData(self.splitdata_PS, modeldata,  divideddata_PS)
                             #os.system("rm -f " + tempdivfile)
                             vlbatasks.writedata(divideddata_PS, tempdivfile, True)
-                            os.system("mv -f " + tempdivfile + " " + inbeampreselfcaluvfiles[i][count])
+                            os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
                         """
                         count += 1
                 if not calonly:
@@ -2587,10 +2740,10 @@ class vlbireduce(support_vlbireduce):
                                 vlbatasks.splat(splitdata1, 1, [0,0,0,0,0,0,0,0], splitdataS, 1)
                                 splitdata1.zap()
                                 splitdata1 = splitdataS
-                            ungatedpresent.append(True)
+                            self.ungatedpresent.append(True)
                         except RuntimeError:
                             print "Guess there was no ungated for " + targetnames[i]
-                            ungatedpresent.append(False)
+                            self.ungatedpresent.append(False)
                     splitdata2 = AIPSUVData(targetnames[i], 'GFINL', 1, 1)
                     if splitdata2.exists():
                         splitdata2.zap()
@@ -2614,22 +2767,21 @@ class vlbireduce(support_vlbireduce):
                     #                    fullauto, stokesi)
                     #    vlbatasks.image(splitdata2, 0.5, 512, 1, 0.00002, targetnames[i], plotfile2, True,
                     #                    fullauto, stokesi)
-                    if haveungated and ungatedpresent[i]:
-                        vlbatasks.writedata(splitdata1, ungateduvfiles[i], True)
-                    vlbatasks.writedata(splitdata2, gateduvfiles[i], True)
+                    if haveungated and self.ungatedpresent[i]:
+                        vlbatasks.writedata(splitdata1, self.ungateduvfiles[i], True)
+                    vlbatasks.writedata(splitdata2, self.gateduvfiles[i], True)
         else:
             print "Skipping splitting/writing of final images"
             for i in range(numtargets):
-                if os.path.exists(ungateduvfiles[i]):
-                    ungatedpresent.append(True)
+                if os.path.exists(self.ungateduvfiles[i]):
+                    self.ungatedpresent.append(True)
                 else:
-                    ungatedpresent.append(False)
+                    self.ungatedpresent.append(False)
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
-            directory, experiment, targetnames, gateduvfiles, beginif, endif, haveungated, ungatedpresent,
-            ungateduvfiles, phscalnames, inbeamnames, dividedinbeamuvfiles, splitdata_PS):
+            directory, experiment, targetnames, beginif, endif, haveungatedi, phscalnames, inbeamnames):
         #fullauto  = True
         stokesi   = True
         #gaussiantarget = False
@@ -2655,7 +2807,7 @@ class vlbireduce(support_vlbireduce):
                                       '_difmap.gated.fits'
                     jmfitfile = directory + '/' + experiment + '_pulsar' + \
                                     '.gated.difmap.jmfit'
-                vlbatasks.difmap_maptarget(gateduvfiles[i], targetimagefile, fullauto, stokesi,
+                vlbatasks.difmap_maptarget(self.gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                            config['difmappixelmas'], config['difmapnpixels'],
                                            config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'],
                                            beginif, endif-subtractif)
@@ -2669,8 +2821,8 @@ class vlbireduce(support_vlbireduce):
                                       '_difmap.ungated.fits'
                     jmfitfile = directory + '/' + experiment + '_pulsar' + \
                                     '.ungated.difmap.jmfit'
-                if haveungated and ungatedpresent[i]:
-                    vlbatasks.difmap_maptarget(ungateduvfiles[i], targetimagefile, fullauto, 
+                if haveungated and self.ungatedpresent[i]:
+                    vlbatasks.difmap_maptarget(self.ungateduvfiles[i], targetimagefile, fullauto, 
                                                stokesi, config['difmappixelmas'], config['difmapnpixels'], 
                                                config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'], 
                                                beginif, endif-subtractif)
@@ -2686,7 +2838,7 @@ class vlbireduce(support_vlbireduce):
                     ibshiftedimage.zap()
                 divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                 jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_ibshiftdiv_difmap.jmfit'
-                #vlbatasks.difmap_maptarget(ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
+                #vlbatasks.difmap_maptarget(self.ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
                 #vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
                 vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050,
                            0, 0, 0, 100, 20)
@@ -2704,14 +2856,14 @@ class vlbireduce(support_vlbireduce):
                                           "_" + str(icount) + '_difmap.fits'
                         jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                     "_" + str(icount) + '.difmap.jmfit'
-                    vlbatasks.difmap_maptarget(inbeamuvfiles[i][j], targetimagefile, 
+                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, 
                                                fullauto, stokesi, config['difmappixelmas'],
                                                config['difmapnpixels'], config['difmapweightstring'], '20, False',
                                                config['usegaussianinbeam'], beginif,
                                                endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                     stokesi, endif-subtractif)
-                    if inbeamnames[i][j] in dividesourcelist:
+                    if inbeamnames[i][j] in self.dividesourcelist:
                         targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                           '_divided_difmap.fits'
                         jmfitfile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
@@ -2721,7 +2873,7 @@ class vlbireduce(support_vlbireduce):
                                               "_" + str(icount) + '_pipeline_divided_uv.fits'
                             jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                         "_" + str(icount) + '_divided.difmap.jmfit'
-                        vlbatasks.difmap_maptarget(dividedinbeamuvfiles[i][j], targetimagefile, 
+                        vlbatasks.difmap_maptarget(self.dividedinbeamuvfiles[i][j], targetimagefile, 
                                                    fullauto, stokesi, config['difmappixelmas'], 
                                                    config['difmapnpixels'], config['difmapweightstring'], '20, False', 
                                                    config['usegaussianinbeam'], beginif, 
@@ -2730,7 +2882,7 @@ class vlbireduce(support_vlbireduce):
                                         stokesi, endif-subtractif)
                     if inbeamnames[i][j] in config['primaryinbeam']:
                         #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
-                        #vlbatasks.difmap_maptarget(inbeampreselfcaluvfiles[i][j], targetimagefile, 
+                        #vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i][j], targetimagefile, 
                         #                           fullauto, stokesi, config['difmappixelmas'],
                         #                           config['difmapnpixels'], config['difmapweightstring'],
                         #                           config['usegaussianinbeam'], beginif,
@@ -2745,7 +2897,7 @@ class vlbireduce(support_vlbireduce):
                         if preselfcalinbeamimage.exists():
                             preselfcalinbeamimage.zap()
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        vlbatasks.widefieldimage(splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
+                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
                                    0, 0, 0, 100, 20)
                         vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
                                            False, preselfcalinbeamimage, 48)
@@ -3142,85 +3294,20 @@ reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(maxp
         tabledir, expconfig)
    
 ## prepare some variables for operations on inbeam calibrators ###########################    
-doneinbeams = []
-inbeamfilenums = []
-secondaryinbeams = []
-secondaryfilenums = []
-numifs = 4
-maxinbeamcalibp1mins = -1 # Phase-only, primary inbeam, summed IFs
-maxinbeamcalibpnmins = -1 # Phase-only, primary inbeam, separate IFs
-maxinbeamcalibsp1mins = -1 # Phase-only, secondary inbeam (rarely used)
-maxinbeamcalibap1mins = -1 # Amplitude and phase, primary inbeam, combined IFs
-maxinbeamcalibapnmins = -1 # Amplitude and phase, primary inbeam, separate IFs
-if inbeamuvdatas[0].exists():
-    numifs = vlbatasks.getNumIFs(inbeamuvdatas[0])
-beginif = 1
-endif = numifs
-for config in targetconfigs:
-    if config['inbeamcalibp1mins'] > maxinbeamcalibp1mins:
-        maxinbeamcalibp1mins = config['inbeamcalibp1mins']
-    if config['inbeamcalibap1mins'] > maxinbeamcalibap1mins:
-        maxinbeamcalibap1mins = config['inbeamcalibap1mins']
-    try:
-        if config['inbeamcalibsp1mins'] > maxinbeamcalibsp1mins:
-            maxinbeamcalibsp1mins = config['inbeamcalibsp1mins']
-    except KeyError:
-        print "No secondary inbeam calibrator..."
-    try:
-        if config['inbeamcalibpnmins'] > maxinbeamcalibpnmins:
-            maxinbeamcalibpnmins = config['inbeamcalibpnmins']
-    except KeyError:
-        print "No separate IF inbeam selfcal..."
-    try:
-        if config['inbeamcalibapnmins'] > maxinbeamcalibapnmins:
-            maxinbeamcalibapnmins = config['inbeamcalibapnmins']
-    except KeyError:
-        print "No separate IF inbeam amp selfcal..."
-print "maxinbeamcalibp1mins", maxinbeamcalibp1mins
-print "maxinbeamcalibpnmins", maxinbeamcalibpnmins
-print "maxinbeamcalibap1mins", maxinbeamcalibap1mins
-print "maxinbeamcalibapnmins", maxinbeamcalibapnmins
-print "maxinbeamcalibsp1mins", maxinbeamcalibsp1mins
-for i in range(numtargets):
-    primaryinbeams = targetconfigs[i]['primaryinbeam'].split(',')
-    try:
-        secondaryinbeam = targetconfigs[i]["secondaryinbeam"]
-        secondaryinbeam = secondaryinbeam.split(',')
-    except KeyError:
-        secondaryinbeam = "XXXXX"
-    for j in range(len(inbeamnames[i])):
-        for inbeamsrc in secondaryinbeam:
-            if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
-                secondaryinbeams.append(inbeamsrc.strip())
-                secondaryfilenums.append(j)
-        for primaryinbeam in primaryinbeams:
-            if primaryinbeam.strip() == inbeamnames[i][j].strip():
-                if not primaryinbeam.strip() in doneinbeams:
-                    doneinbeams.append(primaryinbeam.strip())
-                    inbeamfilenums.append(j)
-            if primaryinbeam.strip() == targetnames[i]:
-                if not targetnames[i] in doneinbeams:
-                    doneinbeams.append(targetnames[i])
-                    inbeamfilenums.append(-1)
-for primaryinbeam in primaryinbeams:
-    if not primaryinbeam.strip() in doneinbeams:
-        print "Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!"
-        print doneinbeams
-        sys.exit()
  
 ## Generate a raw (no phase selfcal) inbeam dataset if requested ##############
 reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas)
 ## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
 [tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(maxinbeamcalibp1mins,
-        doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
+        inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
         modeldir, modeltype, targetonly, calonly, beginif, endif, targetnames, numtargets)
 ## Load all the inbeam CALIB solutions ########################################
 reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(maxinbeamcalibp1mins, tocalnames,
         tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
 ## Do a separate IF phase selfcal on the inbeams if requested #################
 [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(maxinbeamcalibpnmins, 
-        doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
         targetonly, calonly, beginif, endif, targetnames, numtargets)
 ## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
 reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
@@ -3234,21 +3321,21 @@ reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(maxinbeamcalibpnmins, toc
         gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
 ## Do a combined IF amp + phase selfcal on the inbeams if requested ###########################################
 [tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(maxinbeamcalibap1mins, 
-        doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
         beginif, endif, targetnames, numtargets)
 ## Load all the inbeam CALIB solutions ########################################################################
 reducevlbi.load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(maxinbeamcalibap1mins, tocalnames, 
         tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
 ## Do a separate IF amp + phase selfcal on the inbeams if requested ###########################################
 [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(maxinbeamcalibapnmins, 
-        doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
         beginif, endif, targetnames, numtargets)
 ## Load all the inbeam CALIB solutions ########################################################################
 reducevlbi.load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(maxinbeamcalibapnmins, tocalnames, tocalindices, 
         inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
 ## Do a secondary phase selfcal on the inbeam(s) if requested #################################################
 [tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
-        maxinbeamcalibsp1mins, secondaryinbeams, secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+        maxinbeamcalibsp1mins, secondaryfilenums, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
         targetonly, calonly, beginif, endif, targetnames, numtargets)
 ## Load all the inbeam CALIB solutions ########################################################################
 reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(maxinbeamcalibsp1mins, tocalnames, tocalindices, 
@@ -3259,90 +3346,16 @@ reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(max
     # Scintillation correction is applied later at the stage of the final split !!! 
 
 ## Prepare variables for final split ##########################################################################
-for i in range(20): #Clear any old FINAL split catalog entries
-    for j in range(numtargets):
-        for inbeamsrc in inbeamnames[j]:
-            aipssrcname = inbeamsrc
-            if len(inbeamsrc) > 12:
-                aipssrcname = inbeamsrc[:12]
-            splitdata = AIPSUVData(aipssrcname, 'FINAL', 1, 1)
-            if splitdata.exists():
-                splitdata.zap()
-            if inbeamsrc in targetconfigs[j]['primaryinbeam']:
-                splitdata_PS = AIPSUVData(aipssrcname, 'PRESEL', 1, 1) #pre-selfcalibration
-                if splitdata_PS.exists():
-                    splitdata_PS.zap()
-        splitdata = AIPSUVData(phscalnames[j], 'FINAL', 1, 1)
-        if splitdata.exists():
-            splitdata.zap()
-        splitdata = AIPSUVData(targetnames[j], 'UFINL', 1, 1)
-        if splitdata.exists():
-            splitdata.zap()
-        splitdata = AIPSUVData(targetnames[j], 'GFINL', 1, 1)
-        if splitdata.exists():
-            splitdata.zap()
-phscaluvfiles = []
-inbeamuvfiles = []
-gateduvfiles = []
-dividedinbeamuvfiles = []
-ungateduvfiles = []
-ungatedpresent = []
-dividesourcelist = []
-ibshiftdivphscaluvfiles = []
-inbeampreselfcaluvfiles = []
-try:
-    if not config['dividesources'] == None:
-        dividesourcelist = [x.strip(' ') for x in config['dividesources'].split(',')]
-except KeyError:
-    pass
-for phscalsrc in phscalnames:
-    if len(phscalsrc) > 12:
-        phscalsrc = phscalsrc[:12]
-    phscaluvfiles.append(directory + '/' + experiment + "_" + phscalsrc + \
-                         "_pipeline_uv.fits")
-    ibshiftdivphscaluvfiles.append(directory + '/' + experiment + '_' + phscalsrc + '_ibshiftdiv_uv.fits')
-    inbeamuvfiles.append([])
-    inbeampreselfcaluvfiles.append([])
-    dividedinbeamuvfiles.append([])
-for targetoutname in targetnames:
-    gfile = directory + '/' + experiment + "_" + targetoutname + \
-            "_pipeline_uv.gated.fits"
-    ufile = directory + '/' + experiment + "_" + targetoutname + \
-            "_pipeline_uv.ungated.fits"
-    if expconfig['dodefaultnames']:
-        gfile = directory + '/' + experiment + "_pulsar_pipeline_uv.gated.fits"
-        ufile = directory + '/' + experiment + "_pulsar_pipeline_uv.ungated.fits"
-    gateduvfiles.append(gfile)
-    ungateduvfiles.append(ufile)
-for i in range(numtargets):
-    icount = 0
-    for inbeamoutname in inbeamnames[i]:
-        ifile = directory + '/' + experiment + "_" + \
-                inbeamoutname + "_pipeline_uv.fits"
-        dfile = directory + '/' + experiment + "_" + \
-                inbeamoutname + "_pipeline_divided_uv.fits"
-        ifile_preselfcal = directory + '/' + experiment + "_preselfcal_" + \
-                inbeamoutname + "_pipeline_uv.fits"
-        if expconfig['dodefaultnames']:
-            ifile = directory + '/' + experiment + "_inbeam-" + str(i) + \
-                    "_" + str(icount) + "_pipeline_uv.fits"
-            ifile_preselfcal = directory + '/' + experiment + "_preselfcal_inbeam-" + str(i) + \
-                    "_" + str(icount) + "_pipeline_uv.fits"
-            dfile = directory + '/' + experiment + "_inbeam-" + str(i) + \
-                    "_" + str(icount) + "_pipeline_divided_uv.fits"
-        inbeamuvfiles[i].append(ifile)
-        inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
-        dividedinbeamuvfiles[i].append(dfile)
-        icount += 1
+reducevlbi.prepare_variables_for_final_split(numtargets, inbeamnames, targetconfigs, expconfig, phscalnames, targetnames,
+            directory, experiment)
 ## Split, image and write all three #############################################################################
 reducevlbi.split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(numtargets, targetconfigs, expconfig, 
         targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc, directory, experiment, phscalnames, 
-        modeldir, ibshiftdivphscaluvfiles, inbeamnames, inbeamuvfiles, splitdata_PS, inbeampreselfcaluvfiles, dividesourcelist, 
-        calonly, targetnames, haveungated, ungateduvdata, scinttablepaths, ungatedpresent, ungateduvfiles)
+        modeldir, inbeamnames, calonly, targetnames, haveungated, ungateduvdata, scinttablepaths)
 ## Image targets using Difmap and fit for position ###############################################################
 reducevlbi.image_targets_using_DIFMAP_and_fit_for_position(calonly, numtargets, targetconfigs, expconfig,
-            directory, experiment, targetnames, gateduvfiles, beginif, endif, haveungated, ungatedpresent,
-            ungateduvfiles, phscalnames, inbeamnames, dividedinbeamuvfiles, splitdata_PS)
+            directory, experiment, targetnames, beginif, endif, haveungated,
+            phscalnames, inbeamnames)
 ## Pass inbeamsn back to phscal ##################################################################################
 """
 expconfig     = yaml.load(open(expconfigfile))
