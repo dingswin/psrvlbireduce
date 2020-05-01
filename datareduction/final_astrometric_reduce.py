@@ -113,6 +113,496 @@ class support_vlbireduce(object):
         return gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
                targetnames, inbeamnames, phscalnames, ampcalsrc
 
+    def inbeamselfcal(self, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+                      expconfig, targetconfigs, modeldir, modeltype, targetonly,
+                      calonly, beginif, endif, doampcal, dosecondary, sumifs,
+                      clversion, targetnames, leakagedopol = 0):
+        """
+        run CALIB (self-calibration) on in-beam calibrators
+        """
+        normed = []
+        tocaluvdata = []
+        tocalimagedata = []
+        tocalnames = []
+        tocalindices = []
+        tocalconfigs = []
+        for i in range(numtargets):
+            normed.append([])
+            ######### Need to figure out a better way of inserting the "not simple" information...
+            #tocaluvdata.append(None()
+            #tocalimagedata.append(None)
+            #tocalnames.append(targetnames[i])
+            #tocalindices.append(i)
+            #tocalconfigs.append(targetconfigs[i])
+
+        if not targetonly:
+            simplecal = True
+            print doneinbeams
+            for (inbeamsrc,targetfilenum) in zip(doneinbeams,inbeamfilenums):
+                parenttarget = -1
+                for i in range(numtargets):
+                     if parenttarget >= 0: break
+                     for s in inbeamnames[i]:
+                         if inbeamsrc == s:
+                             parenttarget = i
+                             break
+                     if inbeamsrc == targetnames[i]:
+                         parenttarget = i
+                         break
+                if parenttarget < 0:
+                    print "Couldn't find a parent target for " + inbeamsrc + \
+                          " - this should never happen, aborting!"
+                    sys.exit()
+                config = targetconfigs[parenttarget]
+                print "Parenttarget is", parenttarget
+                print "Sumifs is", sumifs
+                print "Doampcal is", doampcal
+                print "Desecondary is", dosecondary
+                solmins = -1
+                if doampcal:
+                    if not sumifs:
+                        try:
+                            solmins = config['inbeamcalibapnmins']
+                        except KeyError:
+                            print "No key for inbeamcalibapnmins, will skip inbeamapn calib for this source"
+                    else:
+                        try:
+                            solmins = config['inbeamcalibap1mins']
+                        except KeyError: pass
+                else:
+                    if dosecondary:
+                        if not sumifs:
+                            print "Can't do separate IFs secondary!"
+                            sys.exit()
+                        try:
+                            solmins = config['inbeamcalibsp1mins']
+                        except KeyError: pass
+                    else:
+                        if sumifs:
+                            solmins = config['inbeamcalibp1mins']
+                        else:
+                            try:
+                                solmins = config['inbeamcalibpnmins']
+                            except KeyError: pass
+                if solmins < 0:
+                    print "Skipping " + inbeamsrc
+                    if sumifs:
+                        if doampcal:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.ap1.ps'
+                        elif dosecondary:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.sp1.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.sp1.ps'
+                        else:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.p1.sn'
+                            pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
+                    else:
+                        if dosecondary:
+                            print "Can't do separate IFs secondary!"
+                            sys.exit()
+                        if doampcal:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
+                        else:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.pn.ps'
+                    print "Removing", sntablepath, " and ", pspath
+                    os.system("rm -f " + sntablepath)
+                    os.system("rm -f " + pspath)
+                    continue
+                if len(config['primaryinbeam'].split(','))  == 1 or config['primaryinbeam'].split(',')[0] == inbeamsrc:  
+                    tocalindices.append(parenttarget)
+                subtractif = 0
+                if config['skiplastif']:
+                    subtractif = 1
+                shortname = inbeamsrc
+                if len(inbeamsrc) > 12:
+                    shortname = inbeamsrc[:12]
+                inbeam_image_data = None
+                for j in range(10,0,-1):
+                    inbeam_uv_data = AIPSUVData(shortname, 'CALIB', 1, j)
+                    if inbeam_uv_data.exists():
+                        inbeam_uv_data.zap()
+                if targetfilenum >= 0:
+                    uvdata = inbeamuvdatas[targetfilenum]
+                else:
+                    uvdata = gateduvdata
+                domulti = False
+                combineifs = False
+                haveampcal = False
+                if expconfig['ampcalscan'] > 0:
+                    haveampcal = True
+                # split out inbeam_uv_data=inbeamsrc.CALIB.1 from inbeamuvdata
+                vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc,
+                                     1, domulti, haveampcal, beginif, 
+                                     endif-subtractif, combineifs, leakagedopol)
+                inbeam_uv_data.table('NX', 1).zap()
+                if targetfilenum >= 0:
+                    inbeam_image_file = modeldir + inbeamsrc + ".clean.fits"
+                    rawuvoutputfile = directory + inbeamsrc + ".formodeling.uv.fits"
+                    if not os.path.exists(inbeam_image_file):
+                        print "Can't find " + modeltype + " inbeam model  " + inbeam_image_file
+                        if modeltype == "preliminary":
+                            print "I will write out a data file for this inbeam to " + rawuvoutputfile
+                            print "Please image it with your favourite tool"
+                            print "(clean only if using difmap, no modelfitting)"
+                            print "When complete, copy the image fits file to " + inbeam_image_file
+                            vlbatasks.writedata(inbeam_uv_data, rawuvoutputfile, True)
+                        else:
+                            print "Aborting!!"
+                        sys.exit(1)
+                    inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, 1)
+                    if inbeam_image_data.exists():
+                        inbeam_image_data.zap()
+                    vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
+                    if not dosecondary and len(config['primaryinbeam'].split(',')) > 1:
+                        simplecal = False
+                        normdata = AIPSUVData(shortname, 'NORMUV', 1, 1)
+                        if normdata.exists():
+                            normdata.zap()
+                        vlbatasks.normaliseUVData(inbeam_uv_data, inbeam_image_data, normdata)
+                        normed[parenttarget].append(normdata)
+                        if config['primaryinbeam'].split(',')[0] == inbeamsrc:
+                            tocaluvdata.append(AIPSUVData('CONCAT' + str(parenttarget), 'UVSRT', 1, 1))
+                            tocalimagedata.append(None)
+                            tocalnames.append('CONCAT' + str(parenttarget))
+                            tocalconfigs.append(config)
+                    elif config['separateifmodel']:
+                        simplecal = False
+                        for i in range(beginif,endif+1-subtractif):
+                            normdata = AIPSUVData(shortname, 'NORMUV', 1, i)
+                            if normdata.exists():
+                                normdata.zap()
+                            inbeam_image_file = "%s%s.IF%d.clean.fits" % (modeldir, inbeamsrc, i)
+                            if not os.path.exists(inbeam_image_file):
+                                print "Can't find inbeam model file (multi-IF %d) %s" % (i, inbeam_image_file)
+                                sys.exit()
+                            inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, i)
+                            if inbeam_image_data.exists():
+                                inbeam_image_data.zap()
+                            vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
+                            vlbatasks.normaliseUVData(inbeam_uv_data, inbeam_image_data, normdata, 
+                                                      i, i)
+                            normed[parenttarget].append(normdata)
+                            normdata.table('NX', 1).zap()
+                        tocaluvdata.append(AIPSUVData('CONCAT' + str(parenttarget), 'UVSRT', 1, 1))
+                        tocalimagedata.append(None)
+                        tocalnames.append('CONCAT' + str(parenttarget))
+                        tocalconfigs.append(config)
+                    else:
+                        tocaluvdata.append(inbeam_uv_data)
+                        tocalimagedata.append(inbeam_image_data)
+                        tocalnames.append(inbeamsrc)
+                        tocalconfigs.append(config)
+                else:
+                    tocaluvdata.append(inbeam_uv_data)
+                    tocalimagedata.append(None)
+                    tocalnames.append(inbeamsrc)
+                    tocalconfigs.append(config)
+            if not simplecal:
+                for i in range(numtargets):
+                    solmins = -1
+                    if doampcal:
+                        if sumifs:
+                            try:
+                                solmins = targetconfigs[i]['inbeamcalibap1mins']
+                            except KeyError: pass
+                        else:
+                            try:
+                                solmins = targetconfigs[i]['inbeamcalibapnmins']
+                            except KeyError: pass
+                    else:
+                        if dosecondary:
+                            try:
+                                solmins = targetconfigs[i]['inbeamcalibsp1mins']
+                            except KeyError: pass
+                        else:
+                            if sumifs:
+                                solmins = config['inbeamcalibp1mins']
+                            else:
+                                try:
+                                    solmins = config['inbeamcalibpnmins']
+                                except KeyError: pass
+                    if solmins < 0:
+                        continue
+                    if len(normed[i]) == 1:
+                        #tocaluvdata.append(normed[i][0])
+                        normed[i][0].rename('CONCAT' + str(i), 'UVSRT', 1)
+                    elif len(normed[i]) == 0:
+                        print "No need to do anything for " + targetnames[i]
+                        continue
+                    else:
+                        for j in range(10,0,-1):
+                            concatuvdata = AIPSUVData('CONCAT' + str(i), 'DBCON', 1, j)
+                            if concatuvdata.exists():
+                                concatuvdata.zap()
+                            calibuvdata = AIPSUVData('CONCAT' + str(i), 'CALIB', 1, j)
+                            if calibuvdata.exists():
+                                calibuvdata.zap()
+                            uvsrtuvdata = AIPSUVData('CONCAT' + str(i), 'UVSRT', 1, j)
+                            if uvsrtuvdata.exists():
+                                uvsrtuvdata.zap()
+                        for n in normed[i][1:]:
+                            vlbatasks.match_headersource(normed[i][0], n)
+                        vlbatasks.dbcon(normed[i], uvsrtuvdata)
+                        #tocaluvdata.append(uvsrtuvdata)
+                        #vlbatasks.uvsrt(concatuvdata, uvsrtuvdata)
+                        #tocalnames.append('CONCAT' + str(i))
+                        for n in normed[i]:
+                            n.zap()
+            for (inbeamsrc,config,inbeam_uv_data,inbeam_image_data) in \
+                 zip(tocalnames,tocalconfigs,tocaluvdata,tocalimagedata):
+                dostokesi   = True
+                try:
+                    inbeamuvrange = config['inbeamuvrange']
+                except KeyError:
+                    inbeamuvrange = [0, 0]
+                if sumifs:
+                    dostokesi = True
+                    if doampcal:
+                        sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
+                        pspath  = tabledir + inbeamsrc + '.icalib.ap1.ps'
+                        solmins = config['inbeamcalibap1mins']
+                        solsnr  = config['inbeamcalibap1snr']
+                        soltype = config['inbeamcalibap1type']
+                        try:
+                            weightit = config['inbeamcalibap1weightit']
+                        except KeyError:
+                            weightit = 0
+                    elif dosecondary:
+                        sntablepath = tabledir + inbeamsrc + '.icalib.sp1.sn'
+                        pspath  = tabledir + inbeamsrc + '.icalib.sp1.ps'
+                        solmins = config['inbeamcalibsp1mins']
+                        solsnr  = config['inbeamcalibsp1snr']
+                        soltype = config['inbeamcalibsp1type']
+                        try:
+                            weightit = config['inbeamcalibsp1weightit']
+                        except KeyError:
+                            weightit = 0
+                        try:
+                            inbeamuvrange = config['secondaryinbeamuvrange']
+                        except KeyError:
+                            inbeamuvrange = [0, 0]
+                    else:
+                        sntablepath = tabledir + inbeamsrc + '.icalib.p1.sn'
+                        pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
+                        solmins     = config['inbeamcalibp1mins']
+                        solsnr      = config['inbeamcalibp1snr']
+                        soltype     = config['inbeamcalibp1type']
+                        try:
+                            weightit = config['inbeamcalibp1weightit']
+                        except KeyError:
+                            weightit = 0
+                else:
+                    if dosecondary:
+                        print "Can't do separate IFs secondary!"
+                        sys.exit()
+                    if doampcal:
+                        sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
+                        pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
+                        solmins = config['inbeamcalibapnmins']
+                        solsnr  = config['inbeamcalibapnsnr']
+                        soltype = config['inbeamcalibapntype']
+                        try:
+                            weightit = config['inbeamcalibapnweightit']
+                        except KeyError:
+                            weightit = 0
+                        try:
+                            dostokesi = config['inbeamcalibapnstokesi']
+                        except KeyError:
+                            dostokesi = False
+                    else:
+                        sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
+                        pspath      = tabledir + inbeamsrc + '.icalib.pn.ps'
+                        solmins     = config['inbeamcalibpnmins']
+                        solsnr      = config['inbeamcalibpnsnr']
+                        soltype     = config['inbeamcalibpntype']
+                        try:
+                            weightit = config['inbeamcalibpnweightit']
+                        except KeyError:
+                            weightit = 0
+                        try:
+                            dostokesi = config['inbeamcalibpnstokesi']
+                        except KeyError:
+                            dostokesi = False
+                print "Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr)
+                try:
+                    flagwheremodelbelow = expconfig['inbeamminmodelflux'] #Jy
+                except KeyError:
+                    flagwheremodelbelow = -1
+                if not alwayssaved or not os.path.exists(sntablepath):
+                    vlbatasks.singlesource_calib(inbeam_uv_data, inbeam_image_data,
+                                                 1, expconfig['refant'], doampcal, 
+                                                 solmins, dostokesi, soltype, 
+                                                 solsnr, sumifs, inbeamuvrange, weightit,
+                                                 flagwheremodelbelow)
+                    snoutver = 1
+                    if not expconfig['skipsnedt']:
+                        vlbatasks.snedt(inbeam_uv_data, 1)
+                        snoutver = 2
+                    if os.path.exists(sntablepath):
+                        os.remove(sntablepath)
+                    vlbatasks.writetable(inbeam_uv_data, 'SN', snoutver, sntablepath)
+                    #if not expconfig['skipsnedt']:
+                    #     if os.path.exists(sntablepath + '.unedited'):
+                    #         os.remove(sntablepath + '.unedited')
+                    #     vlbatasks.writetable(inbeam_uv_data, 'SN', 1, sntablepath + '.unedited')
+                    type = 'PHAS'
+                    if doampcal:
+                        type = 'AMP'
+                    if sumifs:
+                        vlbatasks.plottops(inbeam_uv_data, 'SN', snoutver, type, 1, 1, 1,
+                                           pspath)
+                    else:
+                        vlbatasks.plottops(inbeam_uv_data, 'SN', snoutver, type, 0, 2, 4,
+                                           pspath)
+                inbeam_uv_data.zap()
+        return tocalnames, tocalindices
+
+    def target2cals(self, targetname): #get phscal and bandpass cal given targetname
+        auxdir = os.environ['PSRVLBAUXDIR']
+        targetdir = auxdir + '/processing/' + targetname
+        sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
+        if sourcefiles == []:
+            targetname = raw_input("What's the name of the root directory for this target?\n")
+            targetdir = auxdir + '/processing/' + targetname
+            sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
+            if sourcefiles == []:
+                print("source files not found; abort")
+                sys.exit()
+            
+        sourcefiles.sort()
+        sourcefile = sourcefiles[0] # this might cause problem in adhoc observations
+        lines = open(sourcefile).readlines()
+        for line in lines:
+            if 'BANDPASS' in line:
+                bpcal = line.split(':')[-1].strip()
+            if 'PHSREF' in line:
+                phscal = line.split(':')[-1].strip()
+                cals = [phscal, bpcal]
+        return cals
+
+#def find_alternative_targetname(targetname):
+#    expconfigfile = configdir + experiment + '.yaml'
+#    if not os.path.exists(expconfigfile):
+#        parser.error("Experiment config file %s does not exist!" % expconfigfile)
+#    expconfig     = yaml.load(open(expconfigfile))
+#    rootdir       = expconfig['rootdir']
+
+    def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
+                         expconfig, targetconfigs, targetonly, calonly, doampcal,
+                         dosecondary, sumifs, clversion, snversion, inbeamnames, 
+                         targetnames):
+        """
+        apply CALIB (self-calibration) solutions from in-beam calibrators
+        """
+        phsrefnames = []
+        for targetname in targetnames:
+            [phscalname, junk] = self.target2cals(targetname)
+            phsrefnames.append(phscalname)
+        sncount = 0
+        numinbeams = len(inbeamuvdatas)
+        #for i in range(numtargets):
+        for i in range(20):
+            if not targetonly:
+                for j in range(numinbeams):
+                    vlbatasks.deletetable(inbeamuvdatas[j], 'SN', snversion+sncount)
+            if not calonly:
+                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+                if haveungated:
+                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+            sncount += 1
+        sncount = 0
+        for inbeamsrc in tocalnames:
+            if sumifs:
+                if doampcal:
+                    calibstring = 'ap1'
+                elif dosecondary:
+                    calibstring = 'sp1'
+                else:
+                    calibstring = 'p1'
+                    if int(dualphscal_setup[0])>0:
+                        calibstring += '.dualphscal'
+            else:
+                if dosecondary:
+                    print "Can't do separate IFs secondary cal!"
+                    sys.exit()
+                if doampcal:
+                    calibstring = 'apn'
+                else:
+                    calibstring = 'pn'
+                    if int(dualphscal_setup[0])>0:
+                        calibstring += '.dualphscal'
+            print inbeamsrc
+            if "CONCAT" in inbeamsrc:
+                calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
+            else:
+                calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
+            ## for the first imbeamselfcalp1 or inbeamselfcalpn apply
+            if not os.path.exists(calibtablepath):
+                calibtablepath = calibtablepath.replace('.dualphscal', '')
+
+            print "Applying table " + calibtablepath
+            if targetonly and (not os.path.exists(calibtablepath)):
+                print "For target-only, the SN file must exist already - aborting!"
+                print calibtablepath
+                sys.exit(1)
+            if not targetonly:
+                for i in range(numinbeams):
+                    vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
+                                        snversion+sncount)
+            if not calonly:
+                vlbatasks.loadtable(gateduvdata, calibtablepath,
+                                    snversion+sncount)
+                if haveungated:
+                    vlbatasks.loadtable(ungateduvdata, calibtablepath,
+                                        snversion+sncount)
+            sncount += 1
+        if not targetonly:
+            for i in range(numinbeams):
+                #vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
+                vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, 
+                                        expconfig['refant'])
+        if not calonly:
+            #vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
+            #print "Deleted SN table version " + str(snversion+sncount)
+            print "Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1)
+            vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
+            if haveungated:
+                #vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
+                vlbatasks.mergesntables(ungateduvdata, snversion, sncount, expconfig['refant'])
+        if not targetonly:
+            for i in range(numinbeams):
+                for j in range(10):
+                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+j+1)
+                sourcelist = []
+                for j in tocalindices:
+                    if i < len(inbeamnames[j]):
+                        sourcelist.append(inbeamnames[j][i]) 
+                print "Applying inbeamsn for ", sourcelist, " to file ", i
+                vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
+                                       clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
+            sourcelist = []
+            for i in tocalindices: 
+                sourcelist.append(phsrefnames[i]) 
+            vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
+                                   clversion, expconfig['refant'], sourcelist, 'CALP')
+        if not calonly:
+            sourcelist = []
+            for i in tocalindices:
+                sourcelist.append(targetnames[i])
+            for j in range(10):
+                vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
+            print sourcelist
+            vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
+                                   expconfig['refant'], sourcelist, 'CALP')
+            if haveungated:
+                for j in range(10):
+                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
+                vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
+                                       clversion, expconfig['refant'], sourcelist, 'CALP')
+        return sncount + 1
+
 class vlbireduce(support_vlbireduce):
     """
     This class is the main part of the vlbireduce module. It includes all calibration steps.
@@ -1554,7 +2044,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)"
-            tocalnames, tocalindices = inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, 
+            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
                                        calonly, beginif, endif, False, False, True, self.clversion, targetnames,
                                        self.leakagedopol)
@@ -1579,7 +2069,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols"
-            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+            sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, targetonly, calonly, False, False, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames)
             #sncount is used to point at SN table in post-phscal stage
@@ -1601,7 +2091,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)"
-            tocalnames, tocalindices = inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, False, False, False, self.clversion+self.targetcl, 
                                        targetnames, self.leakagedopol)
@@ -1657,7 +2147,7 @@ class vlbireduce(support_vlbireduce):
                 dualphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.dualphscal.sn')
                 dualphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, dualphscaloutputsn)
                 #apply the corrected p1.sn only to the target
-                junk = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, True, calonly, False, False, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames)
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion)
@@ -1687,7 +2177,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB pn sols"
-            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+            sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, False, False,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
         else:
@@ -1709,7 +2199,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibap1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
-            tocalnames, tocalindices = inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, True, False, True, self.clversion+self.targetcl, 
                                        targetnames, self.leakagedopol)
@@ -1735,7 +2225,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibap1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB ap1 sols"
-            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+            sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
         else:
@@ -1757,7 +2247,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
-            tocalnames, tocalindices = inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
+            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, True, False, False, self.clversion+self.targetcl,
                                        targetnames, self.leakagedopol)
@@ -1786,7 +2276,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB apn sols"
-            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+            sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, False,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
         else:
@@ -1808,7 +2298,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
-            tocalnames, tocalindices = inbeamselfcal(secondaryinbeams, secondaryfilenums, 
+            tocalnames, tocalindices = self.inbeamselfcal(secondaryinbeams, secondaryfilenums, 
                                        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
                                        modeldir, modeltype, targetonly,
                                        calonly, beginif, endif, False, True, True, 
@@ -1835,7 +2325,7 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying secondary inbeam CALIB sp1 sols"
-            sncount = applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+            sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, True, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
         else:
@@ -2288,493 +2778,6 @@ class Logger(object):
 
     def isatty(self):
         return False
-
-################################################################################
-# Inbeam selfcal (phase only or amplitude and phase)
-################################################################################
-def inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
-                  expconfig, targetconfigs, modeldir, modeltype, targetonly,
-                  calonly, beginif, endif, doampcal, dosecondary, sumifs,
-                  clversion, targetnames, leakagedopol = 0):
-    normed = []
-    tocaluvdata = []
-    tocalimagedata = []
-    tocalnames = []
-    tocalindices = []
-    tocalconfigs = []
-    for i in range(numtargets):
-        normed.append([])
-        ######### Need to figure out a better way of inserting the "not simple" information...
-        #tocaluvdata.append(None()
-        #tocalimagedata.append(None)
-        #tocalnames.append(targetnames[i])
-        #tocalindices.append(i)
-        #tocalconfigs.append(targetconfigs[i])
-
-    if not targetonly:
-        simplecal = True
-        print doneinbeams
-        for (inbeamsrc,targetfilenum) in zip(doneinbeams,inbeamfilenums):
-            parenttarget = -1
-            for i in range(numtargets):
-                 if parenttarget >= 0: break
-                 for s in inbeamnames[i]:
-                     if inbeamsrc == s:
-                         parenttarget = i
-                         break
-                 if inbeamsrc == targetnames[i]:
-                     parenttarget = i
-                     break
-            if parenttarget < 0:
-                print "Couldn't find a parent target for " + inbeamsrc + \
-                      " - this should never happen, aborting!"
-                sys.exit()
-            config = targetconfigs[parenttarget]
-            print "Parenttarget is", parenttarget
-            print "Sumifs is", sumifs
-            print "Doampcal is", doampcal
-            print "Desecondary is", dosecondary
-            solmins = -1
-            if doampcal:
-                if not sumifs:
-                    try:
-                        solmins = config['inbeamcalibapnmins']
-                    except KeyError:
-                        print "No key for inbeamcalibapnmins, will skip inbeamapn calib for this source"
-                else:
-                    try:
-                        solmins = config['inbeamcalibap1mins']
-                    except KeyError: pass
-            else:
-                if dosecondary:
-                    if not sumifs:
-                        print "Can't do separate IFs secondary!"
-                        sys.exit()
-                    try:
-                        solmins = config['inbeamcalibsp1mins']
-                    except KeyError: pass
-                else:
-                    if sumifs:
-                        solmins = config['inbeamcalibp1mins']
-                    else:
-                        try:
-                            solmins = config['inbeamcalibpnmins']
-                        except KeyError: pass
-            if solmins < 0:
-                print "Skipping " + inbeamsrc
-                if sumifs:
-                    if doampcal:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
-                        pspath  = tabledir + inbeamsrc + '.icalib.ap1.ps'
-                    elif dosecondary:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.sp1.sn'
-                        pspath  = tabledir + inbeamsrc + '.icalib.sp1.ps'
-                    else:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.p1.sn'
-                        pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
-                else:
-                    if dosecondary:
-                        print "Can't do separate IFs secondary!"
-                        sys.exit()
-                    if doampcal:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
-                        pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
-                    else:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
-                        pspath  = tabledir + inbeamsrc + '.icalib.pn.ps'
-                print "Removing", sntablepath, " and ", pspath
-                os.system("rm -f " + sntablepath)
-                os.system("rm -f " + pspath)
-                continue
-            if len(config['primaryinbeam'].split(','))  == 1 or config['primaryinbeam'].split(',')[0] == inbeamsrc:  
-                tocalindices.append(parenttarget)
-            subtractif = 0
-            if config['skiplastif']:
-                subtractif = 1
-            shortname = inbeamsrc
-            if len(inbeamsrc) > 12:
-                shortname = inbeamsrc[:12]
-            inbeam_image_data = None
-            for j in range(10,0,-1):
-                inbeam_uv_data = AIPSUVData(shortname, 'CALIB', 1, j)
-                if inbeam_uv_data.exists():
-                    inbeam_uv_data.zap()
-            if targetfilenum >= 0:
-                uvdata = inbeamuvdatas[targetfilenum]
-            else:
-                uvdata = gateduvdata
-            domulti = False
-            combineifs = False
-            haveampcal = False
-            if expconfig['ampcalscan'] > 0:
-                haveampcal = True
-            # split out inbeam_uv_data=inbeamsrc.CALIB.1 from inbeamuvdata
-            vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc,
-                                 1, domulti, haveampcal, beginif, 
-                                 endif-subtractif, combineifs, leakagedopol)
-            inbeam_uv_data.table('NX', 1).zap()
-            if targetfilenum >= 0:
-                inbeam_image_file = modeldir + inbeamsrc + ".clean.fits"
-                rawuvoutputfile = directory + inbeamsrc + ".formodeling.uv.fits"
-                if not os.path.exists(inbeam_image_file):
-                    print "Can't find " + modeltype + " inbeam model  " + inbeam_image_file
-                    if modeltype == "preliminary":
-                        print "I will write out a data file for this inbeam to " + rawuvoutputfile
-                        print "Please image it with your favourite tool"
-                        print "(clean only if using difmap, no modelfitting)"
-                        print "When complete, copy the image fits file to " + inbeam_image_file
-                        vlbatasks.writedata(inbeam_uv_data, rawuvoutputfile, True)
-                    else:
-                        print "Aborting!!"
-                    sys.exit(1)
-                inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, 1)
-                if inbeam_image_data.exists():
-                    inbeam_image_data.zap()
-                vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
-                if not dosecondary and len(config['primaryinbeam'].split(',')) > 1:
-                    simplecal = False
-                    normdata = AIPSUVData(shortname, 'NORMUV', 1, 1)
-                    if normdata.exists():
-                        normdata.zap()
-                    vlbatasks.normaliseUVData(inbeam_uv_data, inbeam_image_data, normdata)
-                    normed[parenttarget].append(normdata)
-                    if config['primaryinbeam'].split(',')[0] == inbeamsrc:
-                        tocaluvdata.append(AIPSUVData('CONCAT' + str(parenttarget), 'UVSRT', 1, 1))
-                        tocalimagedata.append(None)
-                        tocalnames.append('CONCAT' + str(parenttarget))
-                        tocalconfigs.append(config)
-                elif config['separateifmodel']:
-                    simplecal = False
-                    for i in range(beginif,endif+1-subtractif):
-                        normdata = AIPSUVData(shortname, 'NORMUV', 1, i)
-                        if normdata.exists():
-                            normdata.zap()
-                        inbeam_image_file = "%s%s.IF%d.clean.fits" % (modeldir, inbeamsrc, i)
-                        if not os.path.exists(inbeam_image_file):
-                            print "Can't find inbeam model file (multi-IF %d) %s" % (i, inbeam_image_file)
-                            sys.exit()
-                        inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, i)
-                        if inbeam_image_data.exists():
-                            inbeam_image_data.zap()
-                        vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
-                        vlbatasks.normaliseUVData(inbeam_uv_data, inbeam_image_data, normdata, 
-                                                  i, i)
-                        normed[parenttarget].append(normdata)
-                        normdata.table('NX', 1).zap()
-                    tocaluvdata.append(AIPSUVData('CONCAT' + str(parenttarget), 'UVSRT', 1, 1))
-                    tocalimagedata.append(None)
-                    tocalnames.append('CONCAT' + str(parenttarget))
-                    tocalconfigs.append(config)
-                else:
-                    tocaluvdata.append(inbeam_uv_data)
-                    tocalimagedata.append(inbeam_image_data)
-                    tocalnames.append(inbeamsrc)
-                    tocalconfigs.append(config)
-            else:
-                tocaluvdata.append(inbeam_uv_data)
-                tocalimagedata.append(None)
-                tocalnames.append(inbeamsrc)
-                tocalconfigs.append(config)
-        if not simplecal:
-            for i in range(numtargets):
-                solmins = -1
-                if doampcal:
-                    if sumifs:
-                        try:
-                            solmins = targetconfigs[i]['inbeamcalibap1mins']
-                        except KeyError: pass
-                    else:
-                        try:
-                            solmins = targetconfigs[i]['inbeamcalibapnmins']
-                        except KeyError: pass
-                else:
-                    if dosecondary:
-                        try:
-                            solmins = targetconfigs[i]['inbeamcalibsp1mins']
-                        except KeyError: pass
-                    else:
-                        if sumifs:
-                            solmins = config['inbeamcalibp1mins']
-                        else:
-                            try:
-                                solmins = config['inbeamcalibpnmins']
-                            except KeyError: pass
-                if solmins < 0:
-                    continue
-                if len(normed[i]) == 1:
-                    #tocaluvdata.append(normed[i][0])
-                    normed[i][0].rename('CONCAT' + str(i), 'UVSRT', 1)
-                elif len(normed[i]) == 0:
-                    print "No need to do anything for " + targetnames[i]
-                    continue
-                else:
-                    for j in range(10,0,-1):
-                        concatuvdata = AIPSUVData('CONCAT' + str(i), 'DBCON', 1, j)
-                        if concatuvdata.exists():
-                            concatuvdata.zap()
-                        calibuvdata = AIPSUVData('CONCAT' + str(i), 'CALIB', 1, j)
-                        if calibuvdata.exists():
-                            calibuvdata.zap()
-                        uvsrtuvdata = AIPSUVData('CONCAT' + str(i), 'UVSRT', 1, j)
-                        if uvsrtuvdata.exists():
-                            uvsrtuvdata.zap()
-                    for n in normed[i][1:]:
-                        vlbatasks.match_headersource(normed[i][0], n)
-                    vlbatasks.dbcon(normed[i], uvsrtuvdata)
-                    #tocaluvdata.append(uvsrtuvdata)
-                    #vlbatasks.uvsrt(concatuvdata, uvsrtuvdata)
-                    #tocalnames.append('CONCAT' + str(i))
-                    for n in normed[i]:
-                        n.zap()
-        for (inbeamsrc,config,inbeam_uv_data,inbeam_image_data) in \
-             zip(tocalnames,tocalconfigs,tocaluvdata,tocalimagedata):
-            dostokesi   = True
-            try:
-                inbeamuvrange = config['inbeamuvrange']
-            except KeyError:
-                inbeamuvrange = [0, 0]
-            if sumifs:
-                dostokesi = True
-                if doampcal:
-                    sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
-                    pspath  = tabledir + inbeamsrc + '.icalib.ap1.ps'
-                    solmins = config['inbeamcalibap1mins']
-                    solsnr  = config['inbeamcalibap1snr']
-                    soltype = config['inbeamcalibap1type']
-                    try:
-                        weightit = config['inbeamcalibap1weightit']
-                    except KeyError:
-                        weightit = 0
-                elif dosecondary:
-                    sntablepath = tabledir + inbeamsrc + '.icalib.sp1.sn'
-                    pspath  = tabledir + inbeamsrc + '.icalib.sp1.ps'
-                    solmins = config['inbeamcalibsp1mins']
-                    solsnr  = config['inbeamcalibsp1snr']
-                    soltype = config['inbeamcalibsp1type']
-                    try:
-                        weightit = config['inbeamcalibsp1weightit']
-                    except KeyError:
-                        weightit = 0
-                    try:
-                        inbeamuvrange = config['secondaryinbeamuvrange']
-                    except KeyError:
-                        inbeamuvrange = [0, 0]
-                else:
-                    sntablepath = tabledir + inbeamsrc + '.icalib.p1.sn'
-                    pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
-                    solmins     = config['inbeamcalibp1mins']
-                    solsnr      = config['inbeamcalibp1snr']
-                    soltype     = config['inbeamcalibp1type']
-                    try:
-                        weightit = config['inbeamcalibp1weightit']
-                    except KeyError:
-                        weightit = 0
-            else:
-                if dosecondary:
-                    print "Can't do separate IFs secondary!"
-                    sys.exit()
-                if doampcal:
-                    sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
-                    pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
-                    solmins = config['inbeamcalibapnmins']
-                    solsnr  = config['inbeamcalibapnsnr']
-                    soltype = config['inbeamcalibapntype']
-                    try:
-                        weightit = config['inbeamcalibapnweightit']
-                    except KeyError:
-                        weightit = 0
-                    try:
-                        dostokesi = config['inbeamcalibapnstokesi']
-                    except KeyError:
-                        dostokesi = False
-                else:
-                    sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
-                    pspath      = tabledir + inbeamsrc + '.icalib.pn.ps'
-                    solmins     = config['inbeamcalibpnmins']
-                    solsnr      = config['inbeamcalibpnsnr']
-                    soltype     = config['inbeamcalibpntype']
-                    try:
-                        weightit = config['inbeamcalibpnweightit']
-                    except KeyError:
-                        weightit = 0
-                    try:
-                        dostokesi = config['inbeamcalibpnstokesi']
-                    except KeyError:
-                        dostokesi = False
-            print "Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr)
-            try:
-                flagwheremodelbelow = expconfig['inbeamminmodelflux'] #Jy
-            except KeyError:
-                flagwheremodelbelow = -1
-            if not alwayssaved or not os.path.exists(sntablepath):
-                vlbatasks.singlesource_calib(inbeam_uv_data, inbeam_image_data,
-                                             1, expconfig['refant'], doampcal, 
-                                             solmins, dostokesi, soltype, 
-                                             solsnr, sumifs, inbeamuvrange, weightit,
-                                             flagwheremodelbelow)
-                snoutver = 1
-                if not expconfig['skipsnedt']:
-                    vlbatasks.snedt(inbeam_uv_data, 1)
-                    snoutver = 2
-                if os.path.exists(sntablepath):
-                    os.remove(sntablepath)
-                vlbatasks.writetable(inbeam_uv_data, 'SN', snoutver, sntablepath)
-                #if not expconfig['skipsnedt']:
-                #     if os.path.exists(sntablepath + '.unedited'):
-                #         os.remove(sntablepath + '.unedited')
-                #     vlbatasks.writetable(inbeam_uv_data, 'SN', 1, sntablepath + '.unedited')
-                type = 'PHAS'
-                if doampcal:
-                    type = 'AMP'
-                if sumifs:
-                    vlbatasks.plottops(inbeam_uv_data, 'SN', snoutver, type, 1, 1, 1,
-                                       pspath)
-                else:
-                    vlbatasks.plottops(inbeam_uv_data, 'SN', snoutver, type, 0, 2, 4,
-                                       pspath)
-            inbeam_uv_data.zap()
-    return tocalnames, tocalindices
-
-def target2cals(targetname): #get phscal and bandpass cal given targetname
-    auxdir = os.environ['PSRVLBAUXDIR']
-    targetdir = auxdir + '/processing/' + targetname
-    sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
-    if sourcefiles == []:
-        targetname = raw_input("What's the name of the root directory for this target?\n")
-        targetdir = auxdir + '/processing/' + targetname
-        sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
-        if sourcefiles == []:
-            print("source files not found; abort")
-            sys.exit()
-        
-    sourcefiles.sort()
-    sourcefile = sourcefiles[0] # this might cause problem in adhoc observations
-    lines = open(sourcefile).readlines()
-    for line in lines:
-        if 'BANDPASS' in line:
-            bpcal = line.split(':')[-1].strip()
-        if 'PHSREF' in line:
-            phscal = line.split(':')[-1].strip()
-            cals = [phscal, bpcal]
-    return cals
-
-#def find_alternative_targetname(targetname):
-#    expconfigfile = configdir + experiment + '.yaml'
-#    if not os.path.exists(expconfigfile):
-#        parser.error("Experiment config file %s does not exist!" % expconfigfile)
-#    expconfig     = yaml.load(open(expconfigfile))
-#    rootdir       = expconfig['rootdir']
-
-def applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
-                     expconfig, targetconfigs, targetonly, calonly, doampcal,
-                     dosecondary, sumifs, clversion, snversion, inbeamnames, 
-                     targetnames):
-    phsrefnames = []
-    for targetname in targetnames:
-        [phscalname, junk] = target2cals(targetname)
-        phsrefnames.append(phscalname)
-    sncount = 0
-    numinbeams = len(inbeamuvdatas)
-    #for i in range(numtargets):
-    for i in range(20):
-        if not targetonly:
-            for j in range(numinbeams):
-                vlbatasks.deletetable(inbeamuvdatas[j], 'SN', snversion+sncount)
-        if not calonly:
-            vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-            if haveungated:
-                vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-        sncount += 1
-    sncount = 0
-    for inbeamsrc in tocalnames:
-        if sumifs:
-            if doampcal:
-                calibstring = 'ap1'
-            elif dosecondary:
-                calibstring = 'sp1'
-            else:
-                calibstring = 'p1'
-                if int(dualphscal_setup[0])>0:
-                    calibstring += '.dualphscal'
-        else:
-            if dosecondary:
-                print "Can't do separate IFs secondary cal!"
-                sys.exit()
-            if doampcal:
-                calibstring = 'apn'
-            else:
-                calibstring = 'pn'
-                if int(dualphscal_setup[0])>0:
-                    calibstring += '.dualphscal'
-        print inbeamsrc
-        if "CONCAT" in inbeamsrc:
-            calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
-        else:
-            calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
-        ## for the first imbeamselfcalp1 or inbeamselfcalpn apply
-        if not os.path.exists(calibtablepath):
-            calibtablepath = calibtablepath.replace('.dualphscal', '')
-
-        print "Applying table " + calibtablepath
-        if targetonly and (not os.path.exists(calibtablepath)):
-            print "For target-only, the SN file must exist already - aborting!"
-            print calibtablepath
-            sys.exit(1)
-        if not targetonly:
-            for i in range(numinbeams):
-                vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
-                                    snversion+sncount)
-        if not calonly:
-            vlbatasks.loadtable(gateduvdata, calibtablepath,
-                                snversion+sncount)
-            if haveungated:
-                vlbatasks.loadtable(ungateduvdata, calibtablepath,
-                                    snversion+sncount)
-        sncount += 1
-    if not targetonly:
-        for i in range(numinbeams):
-            #vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
-            vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, 
-                                    expconfig['refant'])
-    if not calonly:
-        #vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-        #print "Deleted SN table version " + str(snversion+sncount)
-        print "Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1)
-        vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
-        if haveungated:
-            #vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-            vlbatasks.mergesntables(ungateduvdata, snversion, sncount, expconfig['refant'])
-    if not targetonly:
-        for i in range(numinbeams):
-            for j in range(10):
-                vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+j+1)
-            sourcelist = []
-            for j in tocalindices:
-                if i < len(inbeamnames[j]):
-                    sourcelist.append(inbeamnames[j][i]) 
-            print "Applying inbeamsn for ", sourcelist, " to file ", i
-            vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
-                                   clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
-        sourcelist = []
-        for i in tocalindices: 
-            sourcelist.append(phsrefnames[i]) 
-        vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
-                               clversion, expconfig['refant'], sourcelist, 'CALP')
-    if not calonly:
-        sourcelist = []
-        for i in tocalindices:
-            sourcelist.append(targetnames[i])
-        for j in range(10):
-            vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
-        print sourcelist
-        vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
-                               expconfig['refant'], sourcelist, 'CALP')
-        if haveungated:
-            for j in range(10):
-                vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
-            vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
-                                   clversion, expconfig['refant'], sourcelist, 'CALP')
-    return sncount + 1
 
 ################################################################################
 # Option parsing and defaulted global variables
