@@ -22,12 +22,12 @@ binno           = int(options.binno)
 expdir = os.getcwd()
 experiment = expdir.split('/')[-1]
 gatedfitsfiles = glob.glob(r'./*_gated*idifits')
-if len(gatedfitsfiles) < 2:
+if len(gatedfitsfiles) == 0:
     gatedfitsfiles = glob.glob(r'./*_binbd*idifits')    
 gatedfitsfiles.sort()
 if binno != -1:
     gatedfitsfiles = glob.glob(r'./*_gated*BIN%d*idifits' % binno)
-    if len(gatedfitsfiles) == 0:
+    if len(gatedfitsfiles) != 1:
         gatedfitsfiles = glob.glob(r'./*_gated*BIN0%d*idifits' % binno)
 ungatedfitsfile = glob.glob(r'./*_ungated*idifits')
 if len(ungatedfitsfile) > 1:

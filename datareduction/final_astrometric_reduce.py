@@ -64,6 +64,10 @@ class support_vlbireduce(object):
         print prtstr + prtstr2
 
     def parsesourcefile(self, sourcefile):
+        """
+        source file parser
+        Note that the source file feature will be replaced by yaml configuration from 2021.
+        """
         sourcein = open(sourcefile)
         sourcelines = sourcein.readlines()
         sourcein.close()
@@ -2286,55 +2290,6 @@ class Logger(object):
         return False
 
 ################################################################################
-# .source file parser
-################################################################################
-def parsesourcefile(sourcefile):
-    sourcein = open(sourcefile)
-    sourcelines = sourcein.readlines()
-    sourcein.close()
-
-    if not "GATED" in sourcelines[0]:
-        print "Error parsing source file, no GATED on first line"
-        sys.exit()
-    gateduvfile = sourcelines[0].split(':')[1].strip()
-    if not "UNGATED" in sourcelines[1]:
-        print "Error parsing source file, no UNGATED on second line"
-        sys.exit()
-    ungateduvfile = sourcelines[1].split(':')[1].strip()
-    numinbeams = 0
-    inbeamfiles = []
-    targetnames = []
-    inbeamnames = []
-    phscalnames = []
-    inbeamuvdatas = []
-    atline = 2
-    while "INBEAM" in sourcelines[atline]:
-        inbeamfiles.append(sourcelines[atline].split(':')[1].strip())
-        inbeamuvdatas.append(AIPSUVData(experiment.upper() + "_I" + str(numinbeams+1), klass, 1, uvsequence))
-        numinbeams += 1
-        atline += 1
-    if not "BANDPASS" in sourcelines[atline]:
-        print "Error parsing source file, no BANDPASS on line %d" % atline
-        sys.exit()
-    ampcalsrc = sourcelines[atline].split(':')[-1].strip()
-    atline += 1
-    numtargets = int(sourcelines[atline].split(':')[1])
-    atline += 1
-    for i in range(numtargets):
-        targetnames.append(sourcelines[atline].split(':')[1].strip())
-        atline += 1
-        phscalnames.append(sourcelines[atline].split(':')[1].strip())
-        atline += 1
-        #print "PHSREF: " + phscalnames[-1]
-        inbeamnames.append([])
-        while atline < len(sourcelines) and "INBEAM" in sourcelines[atline]:
-            inbeamnames[-1].append(sourcelines[atline].split(':')[1].strip())
-            #print sourcelines[atline].split(':')[1].strip()
-            atline += 1
-    return gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
-           targetnames, inbeamnames, phscalnames, ampcalsrc
-
-################################################################################
 # Inbeam selfcal (phase only or amplitude and phase)
 ################################################################################
 def inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
@@ -2957,6 +2912,12 @@ if float(dualphscal_setup[0]) > 0 and dotriphscal:
 
 
 ################################################################################
+# get an instance of the vlbireduce class
+################################################################################
+reducevlbi = vlbireduce(runfromlevel, runtolevel)
+
+
+################################################################################
 # Parse the source file and set some more variables
 ################################################################################
 try:
@@ -2994,7 +2955,7 @@ except KeyError:
         sys.exit()
     else:
         gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
-        targetnames, inbeamnames, phscalnames, ampcalsrc = parsesourcefile(sourcefile)
+        targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile)
 # the deprecated part ends here
 haveungated = True
 gateduvdata    = AIPSUVData(experiment.upper() + "_G", klass, 1, uvsequence)
@@ -3059,7 +3020,6 @@ if zapallcaltables and runfromlevel > 1:
 ################################################################################
 
 ## Load the uv data ############################################################
-reducevlbi = vlbireduce(runfromlevel, runtolevel)
 reducevlbi.load_uv_data(directory, experiment, expconfig, numinbeams, inbeamfiles, 
         inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, targetnames, 
         haveungated, ungateduvfile, gateduvfile)
