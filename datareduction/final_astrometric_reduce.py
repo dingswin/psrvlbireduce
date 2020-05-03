@@ -1191,7 +1191,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_FRING_with_fringe_finder(self, targetonly, expconfig, tabledir,
-            modeldir, ampcalsrc, modeltype, inbeamuvdatas): #not sure calling expconfig would be successful
+            modeldir, ampcalsrc, modeltype, inbeamuvdatas): 
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             expconfig['ampcalscan'] > 0:
             if not os.path.exists(tabledir + 'ampcalfring.sn') or \
@@ -3437,4 +3437,4 @@ for i in range(numtargets):
                              False,shiftedimage,48)
 """
 ## Make some nice diagnostic plots #############################################
-#reducevlbi.make_diagnostic_plots(runlevel, directory, codedir)
+#reducevlbi.make_diagnostic_plots(directory, codedir)
