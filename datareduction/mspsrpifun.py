@@ -162,34 +162,41 @@ def statsfiles2expnos(statsfiles):
     return expnos
 
 def dms_positions2stat(RAs, Decs):
+    outlier_count = 0
+    while outlier_count < 20: ## when estimating scatter, exclude 2sigma outliers in an iterative way
+        [RA_average, RA_std_ms] = dms_array2stat(RAs)
+        [Dec_average, Dec_std_mas] = dms_array2stat(Decs)
+        Dec_av_rad = Dec_average*math.pi/180
+        RA_std_mas = RA_std_ms*15*math.cos(Dec_av_rad)
+        RA_average_dms = howfun.deg2dms(RA_average)
+        Dec_average_dms = howfun.deg2dms(Dec_average)
+        sigma = (RA_std_mas**2+Dec_std_mas**2)**0.5
+        RA1s = np.array([])
+        Dec1s = np.array([])
+        outliers = []
+        for i in range(len(RAs)):
+            print RAs[i], Decs[i], RA_average_dms
+            sep_mas = howfun.separation(str(RAs[i]), str(Decs[i]), str(RA_average_dms), str(Dec_average_dms)) #in arcmin
+            sep_mas *= 60*1000
+            if sep_mas <= 3*sigma:
+                RA1s = np.append(RA1s, RAs[i])
+                Dec1s = np.append(Dec1s, Decs[i])
+            else:
+                outliers.append(i)
+                outlier_count += 1
+        RAs = RA1s
+        Decs = Dec1s
+        print outlier_count
+        if len(outliers) == 0:
+            break
     [RA_average, RA_std_ms] = dms_array2stat(RAs)
     [Dec_average, Dec_std_mas] = dms_array2stat(Decs)
     Dec_av_rad = Dec_average*math.pi/180
     RA_std_mas = RA_std_ms*15*math.cos(Dec_av_rad)
     RA_average_dms = howfun.deg2dms(RA_average)
     Dec_average_dms = howfun.deg2dms(Dec_average)
-    sigma = (RA_std_mas**2+Dec_std_mas**2)**0.5
-    RA1s = np.array([])
-    Dec1s = np.array([])
-    outliers = []
-    for i in range(len(RAs)):
-        print RAs[i], Decs[i], RA_average_dms
-        sep_mas = howfun.separation(str(RAs[i]), str(Decs[i]), str(RA_average_dms), str(Dec_average_dms)) #in arcmin
-        sep_mas *= 60*1000
-        if sep_mas <= 2*sigma:
-            RA1s = np.append(RA1s, RAs[i])
-            Dec1s = np.append(Dec1s, Decs[i])
-        else:
-            outliers.append(i)
-    [RA1_average, RA1_std_ms] = dms_array2stat(RA1s)
-    [Dec1_average, Dec1_std_mas] = dms_array2stat(Dec1s)
-    Dec1_av_rad = Dec1_average*math.pi/180
-    RA1_std_mas = RA1_std_ms*15*math.cos(Dec1_av_rad)
-    RA1_average_dms = howfun.deg2dms(RA1_average)
-    Dec1_average_dms = howfun.deg2dms(Dec1_average)
-    print "outliers are:"
-    print outliers
-    return [RA1_average_dms, RA1_std_mas], [Dec1_average_dms, Dec1_std_mas]
+    print("There are %d outliers" % outlier_count)
+    return [RA_average_dms, RA_std_mas], [Dec_average_dms, Dec_std_mas]
 def dms_array2stat(array):
     if len(array) < 2:
         print("len(list)<2, thus unable to carry out statistics; abort")
@@ -2080,13 +2087,16 @@ class solve_the_two_correction_factors_in_2D_interpolation:
 
 class generatepmparin:
     """
-    With this class you are allowed to
+    Functions:
     1) generate pmpar.in.preliminary or pmpar.in, using the 'write_out_preliminary/final_pmpar_in' function group
     2) while estimating systematics, you can choose dual-phscal mode
     3) then you can bootstrap with the pmparinfile
     4) in the end, you can make plots with the bootstrap instograms
     5) test potential outlying of a specific epoch, using the 'plot_to_justify_potential_outlier_using_bootstrapping_given_expno' function group
     6) make corner plots of the three or five astrometric parameters using the 'covariance_2d_plots_with_chainconsumer' function
+
+    Input:
+    e.g. exceptions=['bh142','bh145a']
     """
     def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, epoch=57700):
         s.targetname = targetname
