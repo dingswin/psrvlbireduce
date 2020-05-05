@@ -2174,6 +2174,10 @@ class generatepmparin:
     5) test potential outlying of a specific epoch, using the 'plot_to_justify_potential_outlier_using_bootstrapping_given_expno' function group
     6) make corner plots of the three or five astrometric parameters using the 'covariance_2d_plots_with_chainconsumer' function
 
+    Usage instructions:
+    The functions are largely organized in the order of running: write_out_preliminary/final --> bootstrap_pmpar --> boostrapped_sample2estimates
+    --> make plots
+
     Input:
     e.g. exceptions=['bh142','bh145a']
     """
