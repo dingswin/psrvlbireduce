@@ -2311,7 +2311,7 @@ class generatepmparin:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'use.A1', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq)
             #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
-            while False:
+            while False: #iteratively getting paraA_rchsq is turned off
                 if rchsq < 1:
                     print("Reduced chi-square already less than unity without systematics; aborting")
                     sys.exit()
@@ -2392,9 +2392,9 @@ class generatepmparin:
             readfile.close()
             for key in plot_parameter_dictionary:
                 exec("%s = plot_parameter_dictionary[key]" % key)
-        for estimate in ['PI', 'mu_a', 'mu_d']:
-            exec("s.most_probable_%s = howfun.sample2most_probable_value(%ss, binno_%s)" % (estimate, estimate, estimate))
-        most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
+            for estimate in ['PI', 'mu_a', 'mu_d']:
+                exec("s.most_probable_%s = howfun.sample2most_probable_value(%ss, binno_%s)" % (estimate, estimate, estimate))
+            most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
         ## write out estimates #########################################################
         bootstrap_estimates_output = s.pmparesultsdir + '/' + s.targetname + '.bootstrap.estimates.out'
         fileWrite = open(bootstrap_estimates_output, 'w')
