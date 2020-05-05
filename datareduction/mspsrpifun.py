@@ -162,6 +162,12 @@ def statsfiles2expnos(statsfiles):
     return expnos
 
 def dms_positions2stat(RAs, Decs):
+    """
+    Function:
+    Consume calibrator positions (relative to another calibrator) and calculate the average position and the position scatter.
+    Outlier exclusion:
+    3-sigma theshold is used to exclude outliers in an iterative way.
+    """
     outlier_count = 0
     while outlier_count < 20: ## when estimating scatter, exclude 2sigma outliers in an iterative way
         [RA_average, RA_std_ms] = dms_array2stat(RAs)
@@ -228,12 +234,12 @@ def targetdir2prIBCstatsfiles(targetdir, exceptions=''):
     prIBCstatsfiles.sort()
     return prIBCstatsfiles
 def target2positionscatter(targetname, exceptions=''):
+    """
     #####################################################################################
     ## compile stats files (for phscal and primary IBC) to get systematics
     ## tailored for MSPSRPI datasets
-    ## by Hao Ding on 5 May 2019
     #####################################################################################
-    
+    """
     ## get paths and sourcenames ########################################################
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     ## find and parse statsfiles, reach RAs/Decs #########################
@@ -814,7 +820,80 @@ def rfcposition(phscal):
 
 ## align position for target to the same reference position in ad-hoc experiment
 def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, exceptions, dualphscal=False, dualphscalratio=1): #str, float in s, str, float in "...
-    # ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    """
+    1) This is a combination of the align_position_in_adhoc_experiment0/1. 
+    2) It chooses either prIBC relative to phscal or phscal to prIBC with smaller scatter in a semi-automatic way.
+    3) 'refRA/Dec' is the average position of the calibrator positions.
+    """
+    ## ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    [refRA0, refDec0] = target2positionscatter(targetname, exceptions)[0]
+    [refRA0, errRefRA0_mas] = refRA0
+    [refDec0, errRefDec0_mas] = refDec0
+    ## ref position (and its scatter) of the prIBC relative to phscal for new observations
+    [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[1]
+    [refRA1, errRefRA1_mas] = refRA1
+    [refDec1, errRefDec1_mas] = refDec1
+    ## find the set of positions with smaller scatter
+    if errRefRA0_mas < errRefRA1_mas and errRefDec0_mas < errRefDec1_mas:
+        which_scatter = 0
+        refRA = refRA0
+        refDec = refDec0
+        errRefRA_mas = errRefRA0_mas
+        errRefDec_mas = errRefDec0_mas
+    elif errRefRA0_mas > errRefRA1_mas and errRefDec0_mas > errRefDec1_mas:
+        which_scatter = 1
+        refRA = refRA1
+        refDec = refDec1
+        errRefRA_mas = errRefRA1_mas
+        errRefDec_mas = errRefDec1_mas
+    else:
+        print('The RA/Dec scatter of phscal relative to prIBC is %f/%f' % (errRefRA0_mas, errRefDec0_mas))
+        print('The RA/Dec scatter of prIBC relative to phscal is %f/%f' % (errRefRA1_mas, errRefDec1_mas))
+        which_scatter = raw_input("Which set of scatter do you want to use (0 for phscal, 1 for prIBC, q to quit): ")
+        while which_scatter not in ['0', '1', 'q']:
+            which_scatter = raw_input("Please choose a set of scatter you want to use -- 0 for phscal and 1 for prIBC (q to quit): ")
+        if which_scatter == 'q':
+            print('you will quit for now')
+            sys.exit()
+        which_scatter = int(which_scatter)
+        exec('refRA = refRA%d' % which_scatter)
+        exec('refDec = refDec%d' % which_scatter)
+        exec('errRefRA_mas = errRefRA%d_mas' % which_scatter)
+        exec('errRefDec_mas = errRefDec%d_mas' % which_scatter)
+    ## here begins to add the error and move the positions
+    errRefRA_ms = howfun.mas2ms(errRefRA_mas, refDec)
+    errRefDec_as = errRefDec_mas/1000
+    errRefRA_s = errRefRA_ms/1000
+    if dualphscal:
+        errRefRA_s *= dualphscalratio
+        errRefDec_as *= dualphscalratio
+    errRA2 = (errRA**2+errRefRA_s**2)**0.5 # in s
+    errDec2 = (errDec**2+errRefDec_as**2)**0.5 # in "
+    # now get the reference position of phsref Cal for old data 
+    #expno = exceptions[-1]
+    #[junk1, junk2, phscalname, prIBCname] = expno2sources(expno)
+    #if phscalname == prIBCname:
+    #    pass
+    calibratornames = prepare_path_source(targetname)
+    calibratorname = calibratornames[which_scatter+3]
+    [RA1calibrator, Dec1calibrator] = srcposition(targetname, calibratorname) # this unfortunately only works when old/new observations share the same name of phscalname in data
+    #[diffRA_mas, diffDec_mas] = diffposition(refRA, RA1calibrator, refDec, Dec1calibrator) 
+    if which_scatter == 1: #prIBC relative to phscal
+        [diffRA_mas, diffDec_mas] = diffposition(RA1calibrator, refRA, Dec1calibrator, refDec)
+        if dualphscal:
+            [diffRA_mas, diffDec_mas] = np.array(diffposition(RA1calibrator, refRA, Dec1calibrator, refDec))*dualphscalratio
+    else: # which_scatter == 0 -- phscal relative to prIBC
+        [diffRA_mas, diffDec_mas] = diffposition(refRA, RA1calibrator, refDec, Dec1calibrator)
+        if dualphscal:
+            [diffRA_mas, diffDec_mas] = np.array(diffposition(refRA, RA1calibrator, refDec, Dec1calibrator))*dualphscalratio
+    diffRA_ms = howfun.mas2ms(diffRA_mas, refDec) 
+    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000/3600
+    RA2 = howfun.deg2dms(RA2)
+    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000/3600
+    Dec2 = howfun.deg2dms(Dec2)
+    return RA2, errRA2, Dec2, errDec2
+def align_position_in_adhoc_experiment1(RA, errRA, Dec, errDec, targetname, exceptions, dualphscal=False, dualphscalratio=1): #str, float in s, str, float in "...
+    # ref position (and its scatter) of the prIBC relative to phscal for new observations
     [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[1]
     [refRA, errRefRA_mas] = refRA1
     [refDec, errRefDec_mas] = refDec1
@@ -848,7 +927,7 @@ def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, excep
     Dec2 = howfun.deg2dms(Dec2)
     return RA2, errRA2, Dec2, errDec2
 def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exceptions): #str, float in s, str, float in "...
-    # ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    # ref position (and its scatter) of the phsref relative to prIBC for new observations
     [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[0]
     [refRA, errRefRA_mas] = refRA1
     [refDec, errRefDec_mas] = refDec1

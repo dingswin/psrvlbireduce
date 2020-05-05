@@ -101,7 +101,7 @@ parser.add_option("--pmparexec", dest="pmparexec", default="pmpar",
                   help="Path to the pmpar executable")
 parser.add_option("-b", "--bootstrapplot", dest="bootstrapplot",default=False,
                   action="store_true", help="Plot the contents of this bootstrap file")
-parser.add_option("-r", "--rangeofepoch", dest="rangeofepoch", default=[-1,0],
+parser.add_option("-r", "--rangeofepoch", dest="rangeofepoch", default=[0,-1],
                   help="set a epoch range to plot, whereas the fitting would still go through all the input epochs")
 (options, junk) = parser.parse_args()
 pmparexec       = options.pmparexec
