@@ -2400,6 +2400,13 @@ class generatepmparin:
         for estimate in ['PI', 'mu_a', 'mu_d', 'RA', 'Dec']:
             exec("%ss = np.array(t['%s'])" % (estimate, estimate))
             #exec("%ss.sort()" % estimate)
+        ## relative positions #############
+        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+        if os.path.exists(bootstrapped_relative_positions_table):
+            t_RP = Table.read(bootstrapped_relative_positions_table, format='ascii')
+            for estimate in ['rRA', 'rDec']:
+                exec("%ss = np.array(t_RP['%s'])" % (estimate, estimate))
+        ## plot parameters ################
         saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
         if os.path.exists(saved_plot_parameters):
             readfile = open(saved_plot_parameters, 'r')
@@ -2423,27 +2430,45 @@ class generatepmparin:
                 exec("s.error_%s_symm = howfun.sample2uncertainty(%ss, s.median_%s, CL)" % (
                 estimate, estimate, estimate))
                 exec("[s.median_low_end_%s, s.median_high_end_%s] = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate)) #low and high end of the central 68% (or else) of the sample
+            if os.path.exists(bootstrapped_relative_positions_table):
+                for estimate in ['rRA', 'rDec']:
+                    exec("s.median_low_end_%s, s.median_high_end_%s = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate))
                 ## transverse velocity ########################################################
             min_v_t = s.calculate_v_t(s.value_PI+s.error_PI, min(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
                                                              min(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
             max_v_t = s.calculate_v_t(s.value_PI-s.error_PI, max(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
                                                              max(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
+            median_min_v_t = s.calculate_v_t(s.median_high_end_PI,  min(abs(s.median_low_end_mu_a), abs(s.median_high_end_mu_a)),
+                                                                   min(abs(s.median_low_end_mu_d), abs(s.median_high_end_mu_d))) 
+            median_max_v_t = s.calculate_v_t(s.median_low_end_PI, max(abs(s.median_low_end_mu_a), abs(s.median_high_end_mu_a)),
+                                                                   max(abs(s.median_low_end_mu_d), abs(s.median_high_end_mu_d))) 
+            median_v_t = s.calculate_v_t(s.median_PI, s.median_mu_a, s.median_mu_d) #unnecessarily run three times, unsatisfied with this
             fileWrite.write(70*"=" + "\n")
             fileWrite.write("confidencelevel = %f:\n" % CL)
-            fileWrite.write("epoch = %f\n" % s.epoch)
+            try:
+                fileWrite.write("epoch = %f\n" % s.epoch)
+            except AttributeError:
+                pass
             fileWrite.write("pi = %f +- %f (mas)\n" % (s.value_PI, s.error_PI))
             fileWrite.write("mu_a = %f +- %f (mas/yr) #mu_a=mu_ra*cos(dec)\n" % (s.value_mu_a, s.error_mu_a))
             fileWrite.write("mu_d = %f +- %f (mas/yr)\n" % (s.value_mu_d, s.error_mu_d))
             fileWrite.write("PI_symm = %f +- %f (mas) # symmetric uncertainty interval around median\n" % (s.median_PI, s.error_PI_symm))
             fileWrite.write("mu_a_symm = %f +- %f (mas/yr)\n" % (s.median_mu_a, s.error_mu_a_symm))
             fileWrite.write("mu_d_symm = %f +- %f (mas/yr)\n" % (s.median_mu_d, s.error_mu_d_symm))
+            fileWrite.write("median_RA = %s + %f - %f (mas) # central 68 percent around median\n" % (howfun.deg2dms(s.median_RA), s.median_high_end_rRA, abs(s.median_low_end_rRA)))
+            fileWrite.write("median_Dec = %s + %f - %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.median_high_end_rDec, abs(s.median_low_end_rDec)))
+            fileWrite.write("median_PI = %f + %f - %f (mas)\n" % (s.median_PI, s.median_high_end_PI-s.median_PI, s.median_PI-s.median_low_end_PI))
+            fileWrite.write("median_mu_a = %f + %f - %f (mas)\n" % (s.median_mu_a, s.median_high_end_mu_a-s.median_mu_a, s.median_mu_a-s.median_low_end_mu_a))
+            fileWrite.write("median_mu_d = %f + %f - %f (mas)\n" % (s.median_mu_d, s.median_high_end_mu_d-s.median_mu_d, s.median_mu_d-s.median_low_end_mu_d))
+            fileWrite.write("median_D = %f + %f - %f (kpc) \n" % (1/s.median_PI, 1/s.median_low_end_PI-1/s.median_PI, 1/s.median_PI-1/s.median_high_end_PI))
+            fileWrite.write("median_v_t = %f + %f - %f (km/s)\n" % (median_v_t, median_max_v_t-median_v_t, median_v_t-median_min_v_t))
             if os.path.exists(saved_plot_parameters):
                 fileWrite.write("most_probable_PI = %f + %f - %f (mas)\n" % (s.most_probable_PI, s.value_PI+s.error_PI-s.most_probable_PI, s.most_probable_PI-s.value_PI+s.error_PI))
                 fileWrite.write("most_probable_mu_a = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_a, s.value_mu_a+s.error_mu_a-s.most_probable_mu_a, s.most_probable_mu_a-s.value_mu_a+s.error_mu_a))
                 fileWrite.write("most_probable_mu_d = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_d, s.value_mu_d+s.error_mu_d-s.most_probable_mu_d, s.most_probable_mu_d-s.value_mu_d+s.error_mu_d))
                 fileWrite.write("most_probable_D = %f + %f - %f (kpc)\n" % (1/s.most_probable_PI, 1/(s.value_PI-s.error_PI)-1/s.most_probable_PI,
                                                                             1/s.most_probable_PI-1/(s.value_PI+s.error_PI)))
-                fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t - most_probable_v_t, most_probable_v_t-min_v_t))
+                fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t-most_probable_v_t, most_probable_v_t-min_v_t))
         fileWrite.close()
         os.system("cat %s" % bootstrap_estimates_output)
         return PIs, mu_as, mu_ds, RAs, Decs
@@ -2624,7 +2649,7 @@ class generatepmparin:
             pickle.dump(plot_parameter_dictionary, writefile)
             writefile.close()
     
-    def covariance_2d_plots_with_chainconsumer(s, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], plot_bins=130):
+    def covariance_2d_plots_with_chainconsumer(s, plot_bins=130, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], mark_median_instead_of_most_probable_value=True):
         """
         corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters.
         due to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each), need to separately determine the binno in other plot functions, in order to align the truth value to the peak of the histograms.
@@ -2651,21 +2676,23 @@ class generatepmparin:
         #data = data[:HowManyParameters, :]
         #para_names = para_names[:HowManyParameters]
         #labels = labels[:HowManyParameters]
-        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' #the following passage to re-calculate most_probable_values can be omitted because they have been calculated in s.bootstrapped_sample2measured_value
-        if not os.path.exists(saved_plot_parameters):
-            print('%s does not exist; aborting' % saved_plot_parameters)
-            sys.exit()
-        readfile = open(saved_plot_parameters, 'r')
-        plot_parameter_dictionary = pickle.load(readfile)
-        readfile.close()
-        for key in plot_parameter_dictionary:
-            exec("%s = plot_parameter_dictionary[key]" % key)
-        most_probable_PI = howfun.sample2most_probable_value(PIs, binno_PI)
-        most_probable_mu_a = howfun.sample2most_probable_value(mu_as, binno_mu_a)
-        most_probable_mu_d = howfun.sample2most_probable_value(mu_ds, binno_mu_d)
-        most_probable_rRA = howfun.sample2most_probable_value(RAs, binno_RA) - s.median_RA
-        most_probable_rDec = howfun.sample2most_probable_value(Decs, binno_Dec) - s.median_Dec
-        truths = [most_probable_PI, most_probable_mu_a, most_probable_mu_d, most_probable_rRA, most_probable_rDec]
+        truths = [s.median_PI, s.median_mu_a, s.median_mu_d, 0, 0]
+        if not mark_median_instead_of_most_probable_value:
+            saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' #the following passage to re-calculate most_probable_values can be omitted because they have been calculated in s.bootstrapped_sample2measured_value
+            if not os.path.exists(saved_plot_parameters):
+                print('%s does not exist; aborting' % saved_plot_parameters)
+                sys.exit()
+            readfile = open(saved_plot_parameters, 'r')
+            plot_parameter_dictionary = pickle.load(readfile)
+            readfile.close()
+            for key in plot_parameter_dictionary:
+                exec("%s = plot_parameter_dictionary[key]" % key)
+            most_probable_PI = howfun.sample2most_probable_value(PIs, binno_PI)
+            most_probable_mu_a = howfun.sample2most_probable_value(mu_as, binno_mu_a)
+            most_probable_mu_d = howfun.sample2most_probable_value(mu_ds, binno_mu_d)
+            most_probable_rRA = howfun.sample2most_probable_value(RAs, binno_RA) - s.median_RA
+            most_probable_rDec = howfun.sample2most_probable_value(Decs, binno_Dec) - s.median_Dec
+            truths = [most_probable_PI, most_probable_mu_a, most_probable_mu_d, most_probable_rRA, most_probable_rDec]
         #truths = []
         ## filter out the miss-fitted data falling into local max ############################
         for i in range(HowManyParameters):
