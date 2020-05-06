@@ -2180,13 +2180,16 @@ class generatepmparin:
 
     Input:
     e.g. exceptions=['bh142','bh145a']
+
+    Reference epoch:
+    It will be automatically determined as the median of the epochs, and rounded to an integer.
     """
-    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, epoch=57700):
+    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1):
         s.targetname = targetname
         s.exceptions = exceptions
         s.dualphscal = dualphscal
         s.dualphscalratio = dualphscalratio
-        s.epoch = epoch
+        #s.epoch = epoch
         [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname)
         s.pmparesultsdir = s.targetdir + '/pmparesults/'
     def find_statsfiles(s):
@@ -2218,6 +2221,13 @@ class generatepmparin:
             if expno in s.exceptions:
                 [RA, error0RA, Dec, error0Dec] = align_position_in_adhoc_experiment(RA, error0RA, Dec, error0Dec, s.targetname, s.exceptions, s.dualphscal, s.dualphscalratio)
         return RA, error0RA, Dec, error0Dec
+    def statsfiles2median_decyear2epoch(s, statsfiles):
+        from astropy.time import Time
+        b = plot_position_scatter(s.targetname, s.exceptions)
+        decyears = b.statsfiles2decyears(statsfiles).astype(float)
+        median_decyear = howfun.sample2median(decyears)
+        median = Time(median_decyear, format='decimalyear')
+        return round(median.mjd)
     def write_out_preliminary_pmpar_in(s):
         s.find_statsfiles()
         if not os.path.exists(s.pmparesultsdir):
@@ -2229,6 +2239,7 @@ class generatepmparin:
         s.error0Decs = np.array([])
         s.expnos = np.array([])
         s.decyears = np.array([])
+        s.epoch = s.statsfiles2median_decyear2epoch(s.statsfiles)
         fileWrite = open(pulsitions, 'w')
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + s.targetname + "\n")
@@ -2613,7 +2624,7 @@ class generatepmparin:
             pickle.dump(plot_parameter_dictionary, writefile)
             writefile.close()
     
-    def covariance_2d_plots_with_chainconsumer(s, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], plot_bins=1):
+    def covariance_2d_plots_with_chainconsumer(s, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], plot_bins=130):
         """
         corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters.
         due to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each), need to separately determine the binno in other plot functions, in order to align the truth value to the peak of the histograms.
