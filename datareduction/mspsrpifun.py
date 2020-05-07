@@ -2649,7 +2649,7 @@ class generatepmparin:
             pickle.dump(plot_parameter_dictionary, writefile)
             writefile.close()
     
-    def covariance_2d_plots_with_chainconsumer(s, plot_bins=130, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], mark_median_instead_of_most_probable_value=True):
+    def covariance_2d_plots_with_chainconsumer(s, plot_bins=130, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], mark_median_instead_of_most_probable_value=False):
         """
         corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters.
         due to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each), need to separately determine the binno in other plot functions, in order to align the truth value to the peak of the histograms.

@@ -99,8 +99,8 @@ parser.add_option("--plottype", dest="plottype", default="pdf",
                   help="The file type for the plot (def. png)")
 parser.add_option("--pmparexec", dest="pmparexec", default="pmpar",
                   help="Path to the pmpar executable")
-parser.add_option("-b", "--bootstrapplot", dest="bootstrapplot",default=False,
-                  action="store_true", help="Plot the contents of this bootstrap file")
+parser.add_option("-b", "--bootstrapruns", dest="bootstrapruns",default=-1,
+                  help="Plot the contents of this bootstrap file; if bootstrapruns==-1, no bootstrapplot is made")
 parser.add_option("-r", "--rangeofepoch", dest="rangeofepoch", default=[0,-1],
                   help="set a epoch range to plot, whereas the fitting would still go through all the input epochs")
 (options, junk) = parser.parse_args()
@@ -109,7 +109,7 @@ filename        = options.filename
 target          = filename.split('.')[0].strip()
 plottype        = options.plottype
 nopmsubtract    = options.nopmsubtract
-bootstrapplot   = options.bootstrapplot
+bootstrapruns   = int(options.bootstrapruns)
 range2plot      = options.rangeofepoch
 exec('range2plot = %s' % range2plot)
 if len(junk) > 0:
@@ -174,13 +174,13 @@ plt.clf()
 #####################################################################################
 ## bootstrap begins here
 ####################################################################################
-if not bootstrapplot:
+if bootstrapruns < 0:
     sys.exit()
 ## PLOT STACKED BOOTSTRAPPING RA/DEC-TIME (PM REMOVED) PLOTS
 print "\nrunning bootstrap and making stacked RA/Dec-time (PM removed) plots...\n"
 # get the measurements first (without pm and ref position)
 count = 0
-bootstrapruns = 4500
+#bootstrapruns = 2000
 pulsitions = target + '.pmpar.in.bootstrap'
 if not target=='':
     plotfile = 'bootstrap_nopm_%s_%druns.%s' % (target, bootstrapruns, plottype)
