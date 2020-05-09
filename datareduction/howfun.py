@@ -149,6 +149,7 @@ def sample2estimate(array,confidencelevel):
 
 def sample2most_probable_value(array, bins=1000):
     array.sort()
+    bins = int(bins)
     [counts, values] = np.histogram(array, bins)
     index_max_count = np.argmax(counts)
     most_probable_value = 0.5*(values[index_max_count] + values[index_max_count+1])

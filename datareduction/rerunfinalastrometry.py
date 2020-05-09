@@ -97,4 +97,4 @@ for tablefolder in tablefolders:
     else:
         os.system('final_astrometric_reduce.py -e %s -r %s' % (experiment, runlevel))
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-print "\nSuccessfully rerun throuhg all epochs for %s at %s (UTC)\n" % (targetname,current_time)
+print "\nSuccessfully rerun through all epochs for %s at %s (UTC)\n" % (targetname,current_time)

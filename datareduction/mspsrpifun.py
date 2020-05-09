@@ -162,34 +162,47 @@ def statsfiles2expnos(statsfiles):
     return expnos
 
 def dms_positions2stat(RAs, Decs):
+    """
+    Function:
+    Consume calibrator positions (relative to another calibrator) and calculate the average position and the position scatter.
+    Outlier exclusion:
+    3-sigma theshold is used to exclude outliers in an iterative way.
+    """
+    outlier_count = 0
+    while outlier_count < 20: ## when estimating scatter, exclude 2sigma outliers in an iterative way
+        [RA_average, RA_std_ms] = dms_array2stat(RAs)
+        [Dec_average, Dec_std_mas] = dms_array2stat(Decs)
+        Dec_av_rad = Dec_average*math.pi/180
+        RA_std_mas = RA_std_ms*15*math.cos(Dec_av_rad)
+        RA_average_dms = howfun.deg2dms(RA_average)
+        Dec_average_dms = howfun.deg2dms(Dec_average)
+        sigma = (RA_std_mas**2+Dec_std_mas**2)**0.5
+        RA1s = np.array([])
+        Dec1s = np.array([])
+        outliers = []
+        for i in range(len(RAs)):
+            print RAs[i], Decs[i], RA_average_dms
+            sep_mas = howfun.separation(str(RAs[i]), str(Decs[i]), str(RA_average_dms), str(Dec_average_dms)) #in arcmin
+            sep_mas *= 60*1000
+            if sep_mas <= 3*sigma:
+                RA1s = np.append(RA1s, RAs[i])
+                Dec1s = np.append(Dec1s, Decs[i])
+            else:
+                outliers.append(i)
+                outlier_count += 1
+        RAs = RA1s
+        Decs = Dec1s
+        print outlier_count
+        if len(outliers) == 0:
+            break
     [RA_average, RA_std_ms] = dms_array2stat(RAs)
     [Dec_average, Dec_std_mas] = dms_array2stat(Decs)
     Dec_av_rad = Dec_average*math.pi/180
     RA_std_mas = RA_std_ms*15*math.cos(Dec_av_rad)
     RA_average_dms = howfun.deg2dms(RA_average)
     Dec_average_dms = howfun.deg2dms(Dec_average)
-    sigma = (RA_std_mas**2+Dec_std_mas**2)**0.5
-    RA1s = np.array([])
-    Dec1s = np.array([])
-    outliers = []
-    for i in range(len(RAs)):
-        print RAs[i], Decs[i], RA_average_dms
-        sep_mas = howfun.separation(str(RAs[i]), str(Decs[i]), str(RA_average_dms), str(Dec_average_dms)) #in arcmin
-        sep_mas *= 60*1000
-        if sep_mas <= 2*sigma:
-            RA1s = np.append(RA1s, RAs[i])
-            Dec1s = np.append(Dec1s, Decs[i])
-        else:
-            outliers.append(i)
-    [RA1_average, RA1_std_ms] = dms_array2stat(RA1s)
-    [Dec1_average, Dec1_std_mas] = dms_array2stat(Dec1s)
-    Dec1_av_rad = Dec1_average*math.pi/180
-    RA1_std_mas = RA1_std_ms*15*math.cos(Dec1_av_rad)
-    RA1_average_dms = howfun.deg2dms(RA1_average)
-    Dec1_average_dms = howfun.deg2dms(Dec1_average)
-    print "outliers are:"
-    print outliers
-    return [RA1_average_dms, RA1_std_mas], [Dec1_average_dms, Dec1_std_mas]
+    print("There are %d outliers" % outlier_count)
+    return [RA_average_dms, RA_std_mas], [Dec_average_dms, Dec_std_mas]
 def dms_array2stat(array):
     if len(array) < 2:
         print("len(list)<2, thus unable to carry out statistics; abort")
@@ -221,12 +234,12 @@ def targetdir2prIBCstatsfiles(targetdir, exceptions=''):
     prIBCstatsfiles.sort()
     return prIBCstatsfiles
 def target2positionscatter(targetname, exceptions=''):
+    """
     #####################################################################################
     ## compile stats files (for phscal and primary IBC) to get systematics
     ## tailored for MSPSRPI datasets
-    ## by Hao Ding on 5 May 2019
     #####################################################################################
-    
+    """
     ## get paths and sourcenames ########################################################
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     ## find and parse statsfiles, reach RAs/Decs #########################
@@ -807,7 +820,80 @@ def rfcposition(phscal):
 
 ## align position for target to the same reference position in ad-hoc experiment
 def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, exceptions, dualphscal=False, dualphscalratio=1): #str, float in s, str, float in "...
-    # ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    """
+    1) This is a combination of the align_position_in_adhoc_experiment0/1. 
+    2) It chooses either prIBC relative to phscal or phscal to prIBC with smaller scatter in a semi-automatic way.
+    3) 'refRA/Dec' is the average position of the calibrator positions.
+    """
+    ## ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    [refRA0, refDec0] = target2positionscatter(targetname, exceptions)[0]
+    [refRA0, errRefRA0_mas] = refRA0
+    [refDec0, errRefDec0_mas] = refDec0
+    ## ref position (and its scatter) of the prIBC relative to phscal for new observations
+    [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[1]
+    [refRA1, errRefRA1_mas] = refRA1
+    [refDec1, errRefDec1_mas] = refDec1
+    ## find the set of positions with smaller scatter
+    if errRefRA0_mas < errRefRA1_mas and errRefDec0_mas < errRefDec1_mas:
+        which_scatter = 0
+        refRA = refRA0
+        refDec = refDec0
+        errRefRA_mas = errRefRA0_mas
+        errRefDec_mas = errRefDec0_mas
+    elif errRefRA0_mas > errRefRA1_mas and errRefDec0_mas > errRefDec1_mas:
+        which_scatter = 1
+        refRA = refRA1
+        refDec = refDec1
+        errRefRA_mas = errRefRA1_mas
+        errRefDec_mas = errRefDec1_mas
+    else:
+        print('The RA/Dec scatter of phscal relative to prIBC is %f/%f' % (errRefRA0_mas, errRefDec0_mas))
+        print('The RA/Dec scatter of prIBC relative to phscal is %f/%f' % (errRefRA1_mas, errRefDec1_mas))
+        which_scatter = raw_input("Which set of scatter do you want to use (0 for phscal, 1 for prIBC, q to quit): ")
+        while which_scatter not in ['0', '1', 'q']:
+            which_scatter = raw_input("Please choose a set of scatter you want to use -- 0 for phscal and 1 for prIBC (q to quit): ")
+        if which_scatter == 'q':
+            print('you will quit for now')
+            sys.exit()
+        which_scatter = int(which_scatter)
+        exec('refRA = refRA%d' % which_scatter)
+        exec('refDec = refDec%d' % which_scatter)
+        exec('errRefRA_mas = errRefRA%d_mas' % which_scatter)
+        exec('errRefDec_mas = errRefDec%d_mas' % which_scatter)
+    ## here begins to add the error and move the positions
+    errRefRA_ms = howfun.mas2ms(errRefRA_mas, refDec)
+    errRefDec_as = errRefDec_mas/1000
+    errRefRA_s = errRefRA_ms/1000
+    if dualphscal:
+        errRefRA_s *= dualphscalratio
+        errRefDec_as *= dualphscalratio
+    errRA2 = (errRA**2+errRefRA_s**2)**0.5 # in s
+    errDec2 = (errDec**2+errRefDec_as**2)**0.5 # in "
+    # now get the reference position of phsref Cal for old data 
+    #expno = exceptions[-1]
+    #[junk1, junk2, phscalname, prIBCname] = expno2sources(expno)
+    #if phscalname == prIBCname:
+    #    pass
+    calibratornames = prepare_path_source(targetname)
+    calibratorname = calibratornames[which_scatter+3]
+    [RA1calibrator, Dec1calibrator] = srcposition(targetname, calibratorname) # this unfortunately only works when old/new observations share the same name of phscalname in data
+    #[diffRA_mas, diffDec_mas] = diffposition(refRA, RA1calibrator, refDec, Dec1calibrator) 
+    if which_scatter == 1: #prIBC relative to phscal
+        [diffRA_mas, diffDec_mas] = diffposition(RA1calibrator, refRA, Dec1calibrator, refDec)
+        if dualphscal:
+            [diffRA_mas, diffDec_mas] = np.array(diffposition(RA1calibrator, refRA, Dec1calibrator, refDec))*dualphscalratio
+    else: # which_scatter == 0 -- phscal relative to prIBC
+        [diffRA_mas, diffDec_mas] = diffposition(refRA, RA1calibrator, refDec, Dec1calibrator)
+        if dualphscal:
+            [diffRA_mas, diffDec_mas] = np.array(diffposition(refRA, RA1calibrator, refDec, Dec1calibrator))*dualphscalratio
+    diffRA_ms = howfun.mas2ms(diffRA_mas, refDec) 
+    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000/3600
+    RA2 = howfun.deg2dms(RA2)
+    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000/3600
+    Dec2 = howfun.deg2dms(Dec2)
+    return RA2, errRA2, Dec2, errDec2
+def align_position_in_adhoc_experiment1(RA, errRA, Dec, errDec, targetname, exceptions, dualphscal=False, dualphscalratio=1): #str, float in s, str, float in "...
+    # ref position (and its scatter) of the prIBC relative to phscal for new observations
     [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[1]
     [refRA, errRefRA_mas] = refRA1
     [refDec, errRefDec_mas] = refDec1
@@ -841,7 +927,7 @@ def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, excep
     Dec2 = howfun.deg2dms(Dec2)
     return RA2, errRA2, Dec2, errDec2
 def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exceptions): #str, float in s, str, float in "...
-    # ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
+    # ref position (and its scatter) of the phsref relative to prIBC for new observations
     [refRA1, refDec1] = target2positionscatter(targetname, exceptions)[0]
     [refRA, errRefRA_mas] = refRA1
     [refDec, errRefDec_mas] = refDec1
@@ -867,7 +953,9 @@ def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exce
     return RA2, errRA2, Dec2, errDec2
 
 class estimate_uncertainty:
-    'estimate uncertainty with direct-fitting uncertainties'
+    """
+    estimate uncertainty with direct-fitting uncertainties
+    """
     yr2d = 365.242199
     A = 1./1000/3600/180*math.pi*(1./yr2d/24/3600) #mas/yr to rad/s
     A = A*3.0857*10**16 # rad/s*kpc -> km/s, altogether mas/yr*kpc ->km/s
@@ -1486,6 +1574,7 @@ class pulsars_based_GdotG_kD(object):
         from numpy.random import normal, multivariate_normal
         from chainconsumer import ChainConsumer
         from matplotlib import pyplot as plt
+        plt.rc('text', usetex=True)
         #np.random.seed(2)
         #cov = 0.2 * normal(size=(3, 3)) + np.identity(3)
         truth = normal(size=3)
@@ -2077,19 +2166,30 @@ class solve_the_two_correction_factors_in_2D_interpolation:
 
 class generatepmparin:
     """
-    With this class you are allowed to
+    Functions:
     1) generate pmpar.in.preliminary or pmpar.in, using the 'write_out_preliminary/final_pmpar_in' function group
     2) while estimating systematics, you can choose dual-phscal mode
     3) then you can bootstrap with the pmparinfile
     4) in the end, you can make plots with the bootstrap instograms
     5) test potential outlying of a specific epoch, using the 'plot_to_justify_potential_outlier_using_bootstrapping_given_expno' function group
+    6) make corner plots of the three or five astrometric parameters using the 'covariance_2d_plots_with_chainconsumer' function
+
+    Usage instructions:
+    The functions are largely organized in the order of running: write_out_preliminary/final --> bootstrap_pmpar --> boostrapped_sample2estimates
+    --> make plots
+
+    Input:
+    e.g. exceptions=['bh142','bh145a']
+
+    Reference epoch:
+    It will be automatically determined as the median of the epochs, and rounded to an integer.
     """
-    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, epoch=57700):
+    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1):
         s.targetname = targetname
         s.exceptions = exceptions
         s.dualphscal = dualphscal
         s.dualphscalratio = dualphscalratio
-        s.epoch = epoch
+        #s.epoch = epoch
         [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname)
         s.pmparesultsdir = s.targetdir + '/pmparesults/'
     def find_statsfiles(s):
@@ -2121,6 +2221,13 @@ class generatepmparin:
             if expno in s.exceptions:
                 [RA, error0RA, Dec, error0Dec] = align_position_in_adhoc_experiment(RA, error0RA, Dec, error0Dec, s.targetname, s.exceptions, s.dualphscal, s.dualphscalratio)
         return RA, error0RA, Dec, error0Dec
+    def statsfiles2median_decyear2epoch(s, statsfiles):
+        from astropy.time import Time
+        b = plot_position_scatter(s.targetname, s.exceptions)
+        decyears = b.statsfiles2decyears(statsfiles).astype(float)
+        median_decyear = howfun.sample2median(decyears)
+        median = Time(median_decyear, format='decimalyear')
+        return round(median.mjd)
     def write_out_preliminary_pmpar_in(s):
         s.find_statsfiles()
         if not os.path.exists(s.pmparesultsdir):
@@ -2132,6 +2239,7 @@ class generatepmparin:
         s.error0Decs = np.array([])
         s.expnos = np.array([])
         s.decyears = np.array([])
+        s.epoch = s.statsfiles2median_decyear2epoch(s.statsfiles)
         fileWrite = open(pulsitions, 'w')
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + s.targetname + "\n")
@@ -2218,7 +2326,7 @@ class generatepmparin:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'use.A1', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq)
             #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
-            while False:
+            while False: #iteratively getting paraA_rchsq is turned off
                 if rchsq < 1:
                     print("Reduced chi-square already less than unity without systematics; aborting")
                     sys.exit()
@@ -2279,14 +2387,37 @@ class generatepmparin:
                 t = vstack([t0, t])
         t.write(bootstrapped_five_parameters_table, format='ascii', overwrite=True)
     
+    def calculate_v_t(s, PI, mu_a, mu_d):
+        a = estimate_uncertainty(s.targetname)
+        v_t = (mu_a**2+mu_d**2)**0.5 / PI * a.A
+        return v_t
     def bootstrapped_sample2measured_value(s):
         bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
         if not os.path.exists(bootstrapped_five_parameters_table):
             print("%s (bootstrap results) does not exist; aborting\n" % bootstrapped_five_parameters_table)
+            sys.exit()
         t = Table.read(bootstrapped_five_parameters_table, format='ascii')
         for estimate in ['PI', 'mu_a', 'mu_d', 'RA', 'Dec']:
             exec("%ss = np.array(t['%s'])" % (estimate, estimate))
-            exec("%ss.sort()" % estimate)
+            #exec("%ss.sort()" % estimate)
+        ## relative positions #############
+        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+        if os.path.exists(bootstrapped_relative_positions_table):
+            t_RP = Table.read(bootstrapped_relative_positions_table, format='ascii')
+            for estimate in ['rRA', 'rDec']:
+                exec("%ss = np.array(t_RP['%s'])" % (estimate, estimate))
+        ## plot parameters ################
+        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        if os.path.exists(saved_plot_parameters):
+            readfile = open(saved_plot_parameters, 'r')
+            plot_parameter_dictionary = pickle.load(readfile)
+            readfile.close()
+            for key in plot_parameter_dictionary:
+                exec("%s = plot_parameter_dictionary[key]" % key)
+            for estimate in ['PI', 'mu_a', 'mu_d']:
+                exec("s.most_probable_%s = howfun.sample2most_probable_value(%ss, binno_%s)" % (estimate, estimate, estimate))
+            most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
+        ## write out estimates #########################################################
         bootstrap_estimates_output = s.pmparesultsdir + '/' + s.targetname + '.bootstrap.estimates.out'
         fileWrite = open(bootstrap_estimates_output, 'w')
         fileWrite.write("estimates obtained with %d bootstrap runs:\n" % len(PIs))
@@ -2299,15 +2430,45 @@ class generatepmparin:
                 exec("s.error_%s_symm = howfun.sample2uncertainty(%ss, s.median_%s, CL)" % (
                 estimate, estimate, estimate))
                 exec("[s.median_low_end_%s, s.median_high_end_%s] = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate)) #low and high end of the central 68% (or else) of the sample
+            if os.path.exists(bootstrapped_relative_positions_table):
+                for estimate in ['rRA', 'rDec']:
+                    exec("s.median_low_end_%s, s.median_high_end_%s = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate))
+                ## transverse velocity ########################################################
+            min_v_t = s.calculate_v_t(s.value_PI+s.error_PI, min(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
+                                                             min(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
+            max_v_t = s.calculate_v_t(s.value_PI-s.error_PI, max(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
+                                                             max(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
+            median_min_v_t = s.calculate_v_t(s.median_high_end_PI,  min(abs(s.median_low_end_mu_a), abs(s.median_high_end_mu_a)),
+                                                                   min(abs(s.median_low_end_mu_d), abs(s.median_high_end_mu_d))) 
+            median_max_v_t = s.calculate_v_t(s.median_low_end_PI, max(abs(s.median_low_end_mu_a), abs(s.median_high_end_mu_a)),
+                                                                   max(abs(s.median_low_end_mu_d), abs(s.median_high_end_mu_d))) 
+            median_v_t = s.calculate_v_t(s.median_PI, s.median_mu_a, s.median_mu_d) #unnecessarily run three times, unsatisfied with this
             fileWrite.write(70*"=" + "\n")
             fileWrite.write("confidencelevel = %f:\n" % CL)
-            fileWrite.write("epoch = %f\n" % s.epoch)
+            try:
+                fileWrite.write("epoch = %f\n" % s.epoch)
+            except AttributeError:
+                pass
             fileWrite.write("pi = %f +- %f (mas)\n" % (s.value_PI, s.error_PI))
             fileWrite.write("mu_a = %f +- %f (mas/yr) #mu_a=mu_ra*cos(dec)\n" % (s.value_mu_a, s.error_mu_a))
             fileWrite.write("mu_d = %f +- %f (mas/yr)\n" % (s.value_mu_d, s.error_mu_d))
-            fileWrite.write("PI_symm = %f +- %f (mas)\n" % (s.median_PI, s.error_PI_symm))
+            fileWrite.write("PI_symm = %f +- %f (mas) # symmetric uncertainty interval around median\n" % (s.median_PI, s.error_PI_symm))
             fileWrite.write("mu_a_symm = %f +- %f (mas/yr)\n" % (s.median_mu_a, s.error_mu_a_symm))
             fileWrite.write("mu_d_symm = %f +- %f (mas/yr)\n" % (s.median_mu_d, s.error_mu_d_symm))
+            fileWrite.write("median_RA = %s + %f - %f (mas) # central 68 percent around median\n" % (howfun.deg2dms(s.median_RA), s.median_high_end_rRA, abs(s.median_low_end_rRA)))
+            fileWrite.write("median_Dec = %s + %f - %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.median_high_end_rDec, abs(s.median_low_end_rDec)))
+            fileWrite.write("median_PI = %f + %f - %f (mas)\n" % (s.median_PI, s.median_high_end_PI-s.median_PI, s.median_PI-s.median_low_end_PI))
+            fileWrite.write("median_mu_a = %f + %f - %f (mas)\n" % (s.median_mu_a, s.median_high_end_mu_a-s.median_mu_a, s.median_mu_a-s.median_low_end_mu_a))
+            fileWrite.write("median_mu_d = %f + %f - %f (mas)\n" % (s.median_mu_d, s.median_high_end_mu_d-s.median_mu_d, s.median_mu_d-s.median_low_end_mu_d))
+            fileWrite.write("median_D = %f + %f - %f (kpc) \n" % (1/s.median_PI, 1/s.median_low_end_PI-1/s.median_PI, 1/s.median_PI-1/s.median_high_end_PI))
+            fileWrite.write("median_v_t = %f + %f - %f (km/s)\n" % (median_v_t, median_max_v_t-median_v_t, median_v_t-median_min_v_t))
+            if os.path.exists(saved_plot_parameters):
+                fileWrite.write("most_probable_PI = %f + %f - %f (mas)\n" % (s.most_probable_PI, s.value_PI+s.error_PI-s.most_probable_PI, s.most_probable_PI-s.value_PI+s.error_PI))
+                fileWrite.write("most_probable_mu_a = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_a, s.value_mu_a+s.error_mu_a-s.most_probable_mu_a, s.most_probable_mu_a-s.value_mu_a+s.error_mu_a))
+                fileWrite.write("most_probable_mu_d = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_d, s.value_mu_d+s.error_mu_d-s.most_probable_mu_d, s.most_probable_mu_d-s.value_mu_d+s.error_mu_d))
+                fileWrite.write("most_probable_D = %f + %f - %f (kpc)\n" % (1/s.most_probable_PI, 1/(s.value_PI-s.error_PI)-1/s.most_probable_PI,
+                                                                            1/s.most_probable_PI-1/(s.value_PI+s.error_PI)))
+                fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t-most_probable_v_t, most_probable_v_t-min_v_t))
         fileWrite.close()
         os.system("cat %s" % bootstrap_estimates_output)
         return PIs, mu_as, mu_ds, RAs, Decs
@@ -2341,9 +2502,9 @@ class generatepmparin:
         ax1.axvline(x=most_probable_PI, c='black', linestyle='--', linewidth=0.5)
         ax1.axvline(x=s.value_PI+s.error_PI, c='black', linestyle='-.', linewidth=0.5)
         ax1.axvline(x=s.value_PI-s.error_PI, c='black', linestyle='-.', linewidth=0.5)
-        #ax1.axvline(x=s.median_PI, c='blue', linestyle='--', linewidth=0.5)
-        #ax1.axvline(x=s.median_low_end_PI, c='blue', linestyle='-.', linewidth=0.5)
-        #ax1.axvline(x=s.median_high_end_PI, c='blue', linestyle='-.', linewidth=0.5)
+        ax1.axvline(x=s.median_PI, c='blue', linestyle='--', linewidth=0.5)
+        ax1.axvline(x=s.median_low_end_PI, c='blue', linestyle='-.', linewidth=0.5)
+        ax1.axvline(x=s.median_high_end_PI, c='blue', linestyle='-.', linewidth=0.5)
         #subplot2
         ax2 = fig.add_subplot(gs[:2, 2:4])
         ax2.hist(mu_as, binno_mu_a, density=True, facecolor='g', alpha=0.75)
@@ -2353,9 +2514,9 @@ class generatepmparin:
         ax2.axvline(x=most_probable_mu_a, c='black', linestyle='dashed', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a+s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a-s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
-        #ax2.axvline(x=s.median_mu_a, c='blue', linestyle='dashed', linewidth=0.5)
-        #ax2.axvline(x=s.median_low_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
-        #ax2.axvline(x=s.median_high_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
+        ax2.axvline(x=s.median_mu_a, c='blue', linestyle='dashed', linewidth=0.5)
+        ax2.axvline(x=s.median_low_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
+        ax2.axvline(x=s.median_high_end_mu_a, c='blue', linestyle='-.', linewidth=0.5)
         #subplot3
         ax3 = fig.add_subplot(gs[:2, 4:6])
         ax3.hist(mu_ds, binno_mu_d, density=True, facecolor='g', alpha=0.75)
@@ -2365,9 +2526,9 @@ class generatepmparin:
         ax3.axvline(x=most_probable_mu_d, c='black', linestyle='dashed', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d+s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d-s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
-        #ax3.axvline(x=s.median_mu_d, c='blue', linestyle='dashed', linewidth=0.5)
-        #ax3.axvline(x=s.median_low_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
-        #ax3.axvline(x=s.median_high_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
+        ax3.axvline(x=s.median_mu_d, c='blue', linestyle='dashed', linewidth=0.5)
+        ax3.axvline(x=s.median_low_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
+        ax3.axvline(x=s.median_high_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
         #whole setup
         gs.tight_layout(fig) #rect=[0, 0.1, 1, 1])
         plt.savefig('%s/three_histograms.eps' % s.pmparesultsdir)
@@ -2487,6 +2648,75 @@ class generatepmparin:
             writefile = open(saved_plot_parameters, 'w')
             pickle.dump(plot_parameter_dictionary, writefile)
             writefile.close()
+    
+    def covariance_2d_plots_with_chainconsumer(s, plot_bins=130, HowManyParameters=3, HowManySigma=11, plot_extents=[(),(),(),(),()], mark_median_instead_of_most_probable_value=False):
+        """
+        corner plot for pi/mu_a/mu_d or pi/mu_a/mu_d/RA/Dec, indicating covariance between the parameters.
+        due to different binning scheme (chainconsumer use one parameter to change binning, while my previous code use a separate bin_no for each), need to separately determine the binno in other plot functions, in order to align the truth value to the peak of the histograms.
+        """
+        from numpy.random import normal, multivariate_normal
+        from chainconsumer import ChainConsumer
+        from matplotlib import pyplot as plt
+        plt.rc('text', usetex=True)
+        [PIs, mu_as, mu_ds, RAs, Decs] = s.bootstrapped_sample2measured_value()
+        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
+        #print(type(HowManyParameters))
+        data = np.array([PIs, mu_as, mu_ds])
+        if HowManyParameters > 3:
+            bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+            if not os.path.exists(bootstrapped_relative_positions_table):
+                print("%s does not exist; aborting" % bootstrapped_relative_positions_table)
+                sys.exit()
+            t_RP = Table.read(bootstrapped_relative_positions_table, format='ascii')
+            data = np.array([PIs, mu_as, mu_ds, t_RP['rRA'], t_RP['rDec']])
+            [s.value_rRA, s.error_rRA] = howfun.sample2estimate(np.array(t_RP['rRA']), 1)
+            [s.value_rDec, s.error_rDec] = howfun.sample2estimate(np.array(t_RP['rDec']), 1)
+        para_names = ['PI', 'mu_a', 'mu_d', 'rRA', 'rDec']
+        labels = [r"$\rm parallax\,(mas)$", r"$\rm \mu_{\alpha}~(mas~yr^{-1})$", r"$\rm \mu_{\delta}~(mas~yr^{-1})$", r'relative RA.\,(mas)', r'relative Decl.\,(mas)']
+        #data = data[:HowManyParameters, :]
+        #para_names = para_names[:HowManyParameters]
+        #labels = labels[:HowManyParameters]
+        truths = [s.median_PI, s.median_mu_a, s.median_mu_d, 0, 0]
+        if not mark_median_instead_of_most_probable_value:
+            saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' #the following passage to re-calculate most_probable_values can be omitted because they have been calculated in s.bootstrapped_sample2measured_value
+            if not os.path.exists(saved_plot_parameters):
+                print('%s does not exist; aborting' % saved_plot_parameters)
+                sys.exit()
+            readfile = open(saved_plot_parameters, 'r')
+            plot_parameter_dictionary = pickle.load(readfile)
+            readfile.close()
+            for key in plot_parameter_dictionary:
+                exec("%s = plot_parameter_dictionary[key]" % key)
+            most_probable_PI = howfun.sample2most_probable_value(PIs, binno_PI)
+            most_probable_mu_a = howfun.sample2most_probable_value(mu_as, binno_mu_a)
+            most_probable_mu_d = howfun.sample2most_probable_value(mu_ds, binno_mu_d)
+            most_probable_rRA = howfun.sample2most_probable_value(RAs, binno_RA) - s.median_RA
+            most_probable_rDec = howfun.sample2most_probable_value(Decs, binno_Dec) - s.median_Dec
+            truths = [most_probable_PI, most_probable_mu_a, most_probable_mu_d, most_probable_rRA, most_probable_rDec]
+        #truths = []
+        ## filter out the miss-fitted data falling into local max ############################
+        for i in range(HowManyParameters):
+            exec("maximum = s.value_%s+HowManySigma*s.error_%s" % (para_names[i], para_names[i]))
+            exec("minimum = s.value_%s-HowManySigma*s.error_%s" % (para_names[i], para_names[i]))
+            index = data[i, :]<maximum
+            data = data[:, index]
+            index = data[i, :]>minimum
+            data = data[:, index]
+        #for i in range(HowManyParameters):
+        #    binno = math.floor(plot_bins*0.1*(np.size(data,1))**0.5)
+        #    truths.append(howfun.sample2most_probable_value(data[i,:], binno))
+        ## make corner plot now ##############################################################
+        c = ChainConsumer().add_chain(np.transpose(data), parameters=labels[:HowManyParameters])
+        #fig = c.plotter.plot(truth=truth)
+        #outputfigure = s.pmparesultsdir + '/covariance_2d_plots_' + str(HowManyParameters) + '_parameters.pdf'
+        c.configure(summary=False, colors="#388E3C", kde=False, bins=plot_bins, sigma2d=False)
+        fig = c.plotter.plot(parameters=labels[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
+        if plot_extents != [(),(),(),(),()]:
+            fig = c.plotter.plot(parameters=labels[:HowManyParameters], extents=plot_extents[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
+        #fig.set_size_inches(3 + fig.get_size_inches())
+        plt.savefig('%s/covariance_2d_plots_%d_parameters.pdf' % (s.pmparesultsdir, HowManyParameters))
+        plt.clf()
+    
     def bootstrap_and_save_predicted_positions_at_specific_expno(s, pmparinfile, expno, bootstrapruns=10000):
         pulsitions = s.pmparesultsdir + '/.' + s.targetname + '.pmpar.in.bootstrap'
         pmparinfile = s.pmparesultsdir + '/' + pmparinfile
