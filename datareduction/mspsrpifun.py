@@ -107,7 +107,7 @@ def target2phscals_and_inbeamcals(targetname, expno=''):
                 sourcefile = sourcefile1        
     return cals
 
-def print_out_calibrator_plan(targetname, expno=''):
+def print_out_calibrator_plan(targetname, expno='', savefig=False):
     import matplotlib.pyplot as plt
     cals = target2phscals_and_inbeamcals(targetname, expno)
     RAs = np.array([])
@@ -129,7 +129,12 @@ def print_out_calibrator_plan(targetname, expno=''):
     plt.ylabel('Declination (deg)')
     for i, cal in enumerate(cals):
         plt.annotate(cal, (RAs_h[i], Decs_deg[i]))
-    plt.show()
+    if savefig:
+        [junk1, junk2, targetdir, junk3, junk4] = prepare_path_source(targetname)
+        figname2save = targetdir + '/pmparesults/' + targetname + '_calibrator_plan.eps'
+        plt.savefig(figname2save)
+    else:
+        plt.show()
     plt.clf()
 
 def nonpulsar_statsfile2position(statsfile):
@@ -507,6 +512,18 @@ def bootstrapRADECerr(targetname, HowManySigma):
     err = np.array([errRA, errDec])
     return err
 def abspsrposition(targetname, HowManySigma):
+    """
+    Notice for use:
+    The function is designed to estimate the absolute position for the target anchored to a primary in-beam calibrator, 
+    and indirectly to a main phase calibrator. This works for all PSRPI and MSRPI targets. However, it doesn't apply to other
+    observing setup.
+    Measured value: 
+    This function adopts the position estimate that is kept by the pmpar.out file (not from bootstrap, but almost the same).
+    Then it will be shifted when the target is tied to the main phscal, and sebsequently aligned to the catalog phscal position.
+    Uncertainty: 
+    This function reports two sets of results (scatter of positions for prIBC or phscal). The uncertainties 
+    include the bootstrap uncertainty, prIBC position uncertainty and catalog uncertainty for the main phscal.
+    """
     [phscalstats, prIBCstats] = target2positionscatter(targetname)
     phscalRADEC = [phscalstats[0][0], phscalstats[1][0]]
     phscalRADECstd = np.array([phscalstats[0][1], phscalstats[1][1]])
@@ -2339,6 +2356,12 @@ class generatepmparin:
 
     def bootstrap_pmpar(s, pmparinfile, bootstrapruns, priors='', overwrite_table=False):
         from astropy.table import vstack
+        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+        if os.path.exists(bootstrapped_relative_positions_table):
+            os.remove(bootstrapped_relative_positions_table)
+        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        if os.path.exists(saved_plot_parameters):
+            os.remove(saved_plot_parameters)
         pulsitions = s.pmparesultsdir + '/.' + s.targetname + '.pmpar.in.bootstrap'
         pmparinfile = s.pmparesultsdir + '/' + pmparinfile
         if not os.path.exists(pmparinfile):
@@ -2414,9 +2437,10 @@ class generatepmparin:
             readfile.close()
             for key in plot_parameter_dictionary:
                 exec("%s = plot_parameter_dictionary[key]" % key)
-            for estimate in ['PI', 'mu_a', 'mu_d']:
+            for estimate in ['PI', 'mu_a', 'mu_d', 'RA', 'Dec']:
                 exec("s.most_probable_%s = howfun.sample2most_probable_value(%ss, binno_%s)" % (estimate, estimate, estimate))
             most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
+            #[rRAs_MP, rDecs_MP] = diffposition(howfun.deg2dms(RAs), howfun.deg2dms(s.most_probable_RA), howfun.deg2dms(Decs), howfun.deg2dms(s.most_probable_Dec))
         ## write out estimates #########################################################
         bootstrap_estimates_output = s.pmparesultsdir + '/' + s.targetname + '.bootstrap.estimates.out'
         fileWrite = open(bootstrap_estimates_output, 'w')
@@ -2433,6 +2457,13 @@ class generatepmparin:
             if os.path.exists(bootstrapped_relative_positions_table):
                 for estimate in ['rRA', 'rDec']:
                     exec("s.median_low_end_%s, s.median_high_end_%s = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate))
+            ## error in mas relative to most+probable_RA/Dec, get the symmetric error form 
+            [error_RA_mas1, error_Dec_mas1] = diffposition(howfun.deg2dms(s.value_RA+s.error_RA), howfun.deg2dms(s.most_probable_RA),
+                                                           howfun.deg2dms(s.value_Dec+s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
+            [error_RA_mas2, error_Dec_mas2] = diffposition(howfun.deg2dms(s.value_RA-s.error_RA), howfun.deg2dms(s.most_probable_RA),
+                                                           howfun.deg2dms(s.value_Dec-s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
+            error_RA_mas = max(abs(error_RA_mas1), abs(error_RA_mas2))
+            error_Dec_mas = max(abs(error_Dec_mas1), abs(error_Dec_mas2))
                 ## transverse velocity ########################################################
             min_v_t = s.calculate_v_t(s.value_PI+s.error_PI, min(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
                                                              min(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
@@ -2455,8 +2486,9 @@ class generatepmparin:
             fileWrite.write("PI_symm = %f +- %f (mas) # symmetric uncertainty interval around median\n" % (s.median_PI, s.error_PI_symm))
             fileWrite.write("mu_a_symm = %f +- %f (mas/yr)\n" % (s.median_mu_a, s.error_mu_a_symm))
             fileWrite.write("mu_d_symm = %f +- %f (mas/yr)\n" % (s.median_mu_d, s.error_mu_d_symm))
-            fileWrite.write("median_RA = %s + %f - %f (mas) # central 68 percent around median\n" % (howfun.deg2dms(s.median_RA), s.median_high_end_rRA, abs(s.median_low_end_rRA)))
-            fileWrite.write("median_Dec = %s + %f - %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.median_high_end_rDec, abs(s.median_low_end_rDec)))
+            if os.path.exists(bootstrapped_relative_positions_table):
+                fileWrite.write("median_RA = %s + %f - %f (mas) # central 68 percent around median\n" % (howfun.deg2dms(s.median_RA), s.median_high_end_rRA, abs(s.median_low_end_rRA)))
+                fileWrite.write("median_Dec = %s + %f - %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.median_high_end_rDec, abs(s.median_low_end_rDec)))
             fileWrite.write("median_PI = %f + %f - %f (mas)\n" % (s.median_PI, s.median_high_end_PI-s.median_PI, s.median_PI-s.median_low_end_PI))
             fileWrite.write("median_mu_a = %f + %f - %f (mas)\n" % (s.median_mu_a, s.median_high_end_mu_a-s.median_mu_a, s.median_mu_a-s.median_low_end_mu_a))
             fileWrite.write("median_mu_d = %f + %f - %f (mas)\n" % (s.median_mu_d, s.median_high_end_mu_d-s.median_mu_d, s.median_mu_d-s.median_low_end_mu_d))
@@ -2466,6 +2498,10 @@ class generatepmparin:
                 fileWrite.write("most_probable_PI = %f + %f - %f (mas)\n" % (s.most_probable_PI, s.value_PI+s.error_PI-s.most_probable_PI, s.most_probable_PI-s.value_PI+s.error_PI))
                 fileWrite.write("most_probable_mu_a = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_a, s.value_mu_a+s.error_mu_a-s.most_probable_mu_a, s.most_probable_mu_a-s.value_mu_a+s.error_mu_a))
                 fileWrite.write("most_probable_mu_d = %f + %f - %f (mas/yr)\n" % (s.most_probable_mu_d, s.value_mu_d+s.error_mu_d-s.most_probable_mu_d, s.most_probable_mu_d-s.value_mu_d+s.error_mu_d))
+                #[value_RA_MP, error_RA_MP] = howfun.sample2estimate(rRAs_MP, CL)
+                #[value_Dec_MP, error_Dec_MP] = howfun.sample2estimate(rDecs_MP, CL)
+                fileWrite.write("most_probable_RA = %s +- %f (mas)\n" % (howfun.deg2dms(s.most_probable_RA), error_RA_mas))
+                fileWrite.write("most_probable_Dec = %s +- %f (mas)\n" % (howfun.deg2dms(s.most_probable_Dec), error_Dec_mas))
                 fileWrite.write("most_probable_D = %f + %f - %f (kpc)\n" % (1/s.most_probable_PI, 1/(s.value_PI-s.error_PI)-1/s.most_probable_PI,
                                                                             1/s.most_probable_PI-1/(s.value_PI+s.error_PI)))
                 fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t-most_probable_v_t, most_probable_v_t-min_v_t))
@@ -2557,8 +2593,10 @@ class generatepmparin:
         most_probable_PI = howfun.sample2most_probable_value(PIs, binno_PI)
         most_probable_mu_a = howfun.sample2most_probable_value(mu_as, binno_mu_a)
         most_probable_mu_d = howfun.sample2most_probable_value(mu_ds, binno_mu_d)
-        most_probable_rRA = howfun.sample2most_probable_value(RAs, binno_RA) - s.median_RA
-        most_probable_rDec = howfun.sample2most_probable_value(Decs, binno_Dec) - s.median_Dec
+        most_probable_RA = howfun.sample2most_probable_value(RAs, binno_RA)
+        most_probable_Dec = howfun.sample2most_probable_value(Decs, binno_Dec)
+        [most_probable_rRA, most_probable_rDec] = diffposition(howfun.deg2dms(most_probable_RA), howfun.deg2dms(s.median_RA), 
+                                                              howfun.deg2dms(most_probable_Dec), howfun.deg2dms(s.median_Dec))
         ##start plotting
         fig = plt.figure()
         gs = gridspec.GridSpec(4, 6)
@@ -2824,3 +2862,45 @@ class generatepmparin:
         print(SNR_diffRA, SNR_diffDec)
         print("The %s position is at %f (or %f sigma) confidence outlying." % (expno, 1-possibility_of_consistency, 2**0.5*sp.erfinv(1-possibility_of_consistency)))
         return 1-possibility_of_consistency
+    def abspsrposition(targetname, HowManySigma):
+        """
+        Notice for use:
+        The function is designed to estimate the absolute position for the target anchored to a primary in-beam calibrator, 
+        and indirectly to a main phase calibrator. This works for all PSRPI and MSRPI targets. However, it doesn't apply to other
+        observing setup.
+        Measured value: 
+        This function adopts the position estimate that is kept by the pmpar.out file (not from bootstrap, but almost the same).
+        Then it will be shifted when the target is tied to the main phscal, and sebsequently aligned to the catalog phscal position.
+        Uncertainty: 
+        This function reports two sets of results (scatter of positions for prIBC or phscal). The uncertainties 
+        include the bootstrap uncertainty, prIBC position uncertainty and catalog uncertainty for the main phscal.
+        """
+        [phscalstats, prIBCstats] = target2positionscatter(targetname)
+        phscalRADEC = [phscalstats[0][0], phscalstats[1][0]]
+        phscalRADECstd = np.array([phscalstats[0][1], phscalstats[1][1]])
+        prIBC_RADEC = [prIBCstats[0][0], prIBCstats[1][0]]
+        prIBC_RADECstd = np.array([prIBCstats[0][1], prIBCstats[1][1]])
+        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+        [psrRA, psrDec, epoch, junk1, junk2, junk3, junk4, junk5, junk6, junk7, junk8] = readpulsition(targetname)
+        psrRADEC0 = [psrRA, psrDec]
+        rfcinfos = rfcposition(phscalname)
+        phscal_absRADEC = [rfcinfos[0], rfcinfos[2]]
+        errRAphscal = float(rfcinfos[1])
+        errDECphscal = float(rfcinfos[3])
+        ## 1) using prIBC shift ####################
+        prIBCrefRADEC = srcposition(targetname, prIBCname)
+        psrRADEC1 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(prIBC_RADEC) - howfun.dms2deg(prIBCrefRADEC)
+        ## 2) using phscal shift ###################
+        phscal_refRADEC = srcposition(targetname, phscalname)
+        psrRADEC2 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(phscal_refRADEC) - howfun.dms2deg(phscalRADEC)
+        ## 3) update absolute position for phscal #####
+        psrRADEC2 = psrRADEC2 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
+        psrRADEC2 = howfun.deg2dms(psrRADEC2)
+        psrRADEC1 = psrRADEC1 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
+        psrRADEC1 = howfun.deg2dms(psrRADEC1)
+        ## error estimation #####################################################
+        err_psr2prIBC = bootstrapRADECerr(targetname, HowManySigma)
+        err_abs_phscal = np.array([errRAphscal, errDECphscal])
+        err1 = (err_psr2prIBC**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5
+        err2 = (err_psr2prIBC**2 + err_abs_phscal**2 + phscalRADECstd**2)**0.5
+        return psrRADEC1, err1, psrRADEC2, err2, epoch
