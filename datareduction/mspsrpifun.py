@@ -170,6 +170,7 @@ def dms_positions2stat(RAs, Decs):
     """
     Function:
     Consume calibrator positions (relative to another calibrator) and calculate the average position and the position scatter.
+    
     Outlier exclusion:
     3-sigma theshold is used to exclude outliers in an iterative way.
     """
@@ -822,8 +823,9 @@ def rfcposition(phscal):
     auxdir = os.environ['PSRVLBAUXDIR']
     downloaddir = auxdir + '/downloads/'
     year = datetime.datetime.today().year
+    lastyear = str(int(year) - 1)
     year = str(year)
-    versions = [year+'d', year+'c', year+'b', year+'a']
+    versions = [year+'d', year+'c', year+'b', year+'a', lastyear+'d', lastyear+'c', lastyear+'b']
     for version in versions:
         filename = 'rfc_' + version + '_cat.txt'
         ftpfile = 'http://astrogeo.org/vlbi/solutions/rfc_' + version + '/' + filename
@@ -833,6 +835,8 @@ def rfcposition(phscal):
         if os.path.exists(downloadfile):
             print("%s already exists" % filename)
             break
+    separation_line = 80*'|'+'\n'
+    print("%srfc%s position is used for %s. Double check the catalog position!\n%s" % (separation_line, version, phscal, separation_line))
     return parse_rfctxt(phscal, downloadfile)
 
 ## align position for target to the same reference position in ad-hoc experiment
@@ -2862,45 +2866,99 @@ class generatepmparin:
         print(SNR_diffRA, SNR_diffDec)
         print("The %s position is at %f (or %f sigma) confidence outlying." % (expno, 1-possibility_of_consistency, 2**0.5*sp.erfinv(1-possibility_of_consistency)))
         return 1-possibility_of_consistency
-    def abspsrposition(targetname, HowManySigma):
+    def read_most_probable_psr_position_obtained_with_bootstrap(s, targetname, HowManySigma=1):
+        """
+        Function:
+        Read target position and its uncertainty from bootstrap.estimates.out file.
+
+        Notice for use:
+        a) only works for HowManySigma=1, 2, or 3
+        """
+        if int(HowManySigma) not in [1,2,3]:
+            print('the second parameter should be either 1, 2 or 3 (sigma); aborting')
+            sys.exit()
+        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+        BSresults = targetdir + '/pmparesults/' + targetname + '.bootstrap.estimates.out'
+        lines = open(BSresults).readlines()
+        for estimate in ['RA', 'Dec']:
+            exec('%ss = np.array([])' % estimate)
+            exec('err%ss = np.array([])' % estimate)
+            for line in lines:
+                if 'most_probable_' in line and estimate in line:
+                    phrase = line.split('=')[-1].split('(mas)')[0].strip()
+                    exec("%s = phrase.split('+-')[0].strip()" % estimate)
+                    exec("err%s = phrase.split('+-')[-1].strip()" % estimate) 
+                    exec("%ss = np.append(%ss, %s)" % (estimate, estimate, estimate))
+                    exec("err%ss = np.append(err%ss, float(err%s))" % (estimate, estimate, estimate))
+            exec("%s = %ss[3-int(HowManySigma)]" % (estimate, estimate))
+            exec("err%s = err%ss[3-int(HowManySigma)]" % (estimate, estimate))
+        position = np.array([RA, Dec])
+        err = np.array([errRA, errDec])
+        return position, err
+    def abspsrposition_enhanced(s, targetname, dualphscal=False, dualphscalratio=1, 
+            prIBC_has_defined_position_in_catalog=False, exceptive_epochs='', HowManySigma=1):
         """
         Notice for use:
-        The function is designed to estimate the absolute position for the target anchored to a primary in-beam calibrator, 
-        and indirectly to a main phase calibrator. This works for all PSRPI and MSRPI targets. However, it doesn't apply to other
-        observing setup.
+        a) The function is designed to estimate the absolute position for the target anchored to a primary in-beam calibrator, 
+        and indirectly to a main phase calibrator. This works for all PSRPI and MSRPI targets.
+        b) It can also work for dualphscal setup.
+        c) It would also work for the simplest phscal-target setup.
+
         Measured value: 
-        This function adopts the position estimate that is kept by the pmpar.out file (not from bootstrap, but almost the same).
+        This function adopts the most probable RA/Dec that is kept by the boostrap.estimates.out file.
         Then it will be shifted when the target is tied to the main phscal, and sebsequently aligned to the catalog phscal position.
+        
         Uncertainty: 
-        This function reports two sets of results (scatter of positions for prIBC or phscal). The uncertainties 
-        include the bootstrap uncertainty, prIBC position uncertainty and catalog uncertainty for the main phscal.
+        a) For phscal-prIBC-target case: This function reports two sets of results (scatter of positions for prIBC or phscal). 
+        The uncertainties include the bootstrap uncertainty, prIBC position uncertainty and catalog uncertainty for the main phscal.
+        b) For dualphscal setup: Assuming both calibrators have well defined positions, then no posterior position as well as its
+        scatter is needed. So the uncertainties come from the uncertainties of absolute positions of each phscal, added in quadrature 
+        by the bootstrap uncertainties.
         """
-        [phscalstats, prIBCstats] = target2positionscatter(targetname)
+        dualphscalratio = float(dualphscalratio)
+        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+        [phscalstats, prIBCstats] = target2positionscatter(targetname, exceptive_epochs)
         phscalRADEC = [phscalstats[0][0], phscalstats[1][0]]
         phscalRADECstd = np.array([phscalstats[0][1], phscalstats[1][1]])
-        prIBC_RADEC = [prIBCstats[0][0], prIBCstats[1][0]]
-        prIBC_RADECstd = np.array([prIBCstats[0][1], prIBCstats[1][1]])
-        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
-        [psrRA, psrDec, epoch, junk1, junk2, junk3, junk4, junk5, junk6, junk7, junk8] = readpulsition(targetname)
-        psrRADEC0 = [psrRA, psrDec]
-        rfcinfos = rfcposition(phscalname)
-        phscal_absRADEC = [rfcinfos[0], rfcinfos[2]]
-        errRAphscal = float(rfcinfos[1])
-        errDECphscal = float(rfcinfos[3])
-        ## 1) using prIBC shift ####################
-        prIBCrefRADEC = srcposition(targetname, prIBCname)
-        psrRADEC1 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(prIBC_RADEC) - howfun.dms2deg(prIBCrefRADEC)
-        ## 2) using phscal shift ###################
-        phscal_refRADEC = srcposition(targetname, phscalname)
-        psrRADEC2 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(phscal_refRADEC) - howfun.dms2deg(phscalRADEC)
-        ## 3) update absolute position for phscal #####
-        psrRADEC2 = psrRADEC2 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
-        psrRADEC2 = howfun.deg2dms(psrRADEC2)
-        psrRADEC1 = psrRADEC1 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
-        psrRADEC1 = howfun.deg2dms(psrRADEC1)
-        ## error estimation #####################################################
-        err_psr2prIBC = bootstrapRADECerr(targetname, HowManySigma)
+        [psrRADEC0, err_psr0] = s.read_most_probable_psr_position_obtained_with_bootstrap(targetname, HowManySigma)
+        rfcinfos_phscal = rfcposition(phscalname)
+        phscal_absRADEC = [rfcinfos_phscal[0], rfcinfos_phscal[2]]
+        errRAphscal = float(rfcinfos_phscal[1])
+        errDECphscal = float(rfcinfos_phscal[3])
         err_abs_phscal = np.array([errRAphscal, errDECphscal])
-        err1 = (err_psr2prIBC**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5
-        err2 = (err_psr2prIBC**2 + err_abs_phscal**2 + phscalRADECstd**2)**0.5
-        return psrRADEC1, err1, psrRADEC2, err2, epoch
+        phscal_refRADEC = srcposition(targetname, phscalname)
+        if phscalname != prIBCname:
+            prIBC_RADEC = [prIBCstats[0][0], prIBCstats[1][0]]
+            prIBC_RADECstd = np.array([prIBCstats[0][1], prIBCstats[1][1]])
+            prIBC_refRADEC = srcposition(targetname, prIBCname)
+            if prIBC_has_defined_position_in_catalog:
+                rfcinfos_prIBC = rfcposition(prIBCname)
+                prIBC_absRADEC = [rfcinfos_prIBC[0], rfcinfos_prIBC[2]]
+                errRAprIBC = float(rfcinfos_prIBC[1])
+                errDECprIBC = float(rfcinfos_prIBC[3])
+                err_abs_prIBC = np.array([errRAprIBC, errDECprIBC])
+        if phscalname != prIBCname and not dualphscal and not prIBC_has_defined_position_in_catalog:
+            ## 1) using prIBC shift ####################
+            psrRADEC1 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(prIBC_RADEC) - howfun.dms2deg(prIBC_refRADEC)
+            ## 2) using phscal shift ###################
+            psrRADEC2 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(phscal_refRADEC) - howfun.dms2deg(phscalRADEC)
+            ## 3) update absolute position for phscal #####
+            psrRADEC2 = psrRADEC2 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
+            psrRADEC2 = howfun.deg2dms(psrRADEC2)
+            psrRADEC1 = psrRADEC1 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
+            psrRADEC1 = howfun.deg2dms(psrRADEC1)
+            ## error estimation #####################################################
+            err1 = (err_psr0**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5
+            err2 = (err_psr0**2 + err_abs_phscal**2 + phscalRADECstd**2)**0.5
+            return psrRADEC1, err1, psrRADEC2, err2, epoch
+        elif phscalname != prIBCname and dualphscal and prIBC_has_defined_position_in_catalog:
+            ## update absolute position for phscal and prIBC ########################
+            psrRADEC = howfun.dms2deg(psrRADEC0)
+            psrRADEC += (1-dualphscalratio) * (howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC))
+            psrRADEC += dualphscalratio * (howfun.dms2deg(prIBC_absRADEC) - howfun.dms2deg(prIBC_refRADEC))
+            psrRADEC = howfun.deg2dms(psrRADEC)
+            ## error estimation #####################################################
+            err = (err_psr0**2 + dualphscalratio**2*err_abs_prIBC**2 + (1-dualphscalratio)**2*err_abs_phscal**2)**0.5
+            return psrRADEC, err
+        else:
+            pass
