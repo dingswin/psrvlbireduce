@@ -2916,6 +2916,7 @@ class generatepmparin:
         by the bootstrap uncertainties.
         """
         dualphscalratio = float(dualphscalratio)
+        epoch = readpulsition(targetname)[2]
         [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
         [phscalstats, prIBCstats] = target2positionscatter(targetname, exceptive_epochs)
         phscalRADEC = [phscalstats[0][0], phscalstats[1][0]]
@@ -2959,6 +2960,6 @@ class generatepmparin:
             psrRADEC = howfun.deg2dms(psrRADEC)
             ## error estimation #####################################################
             err = (err_psr0**2 + dualphscalratio**2*err_abs_prIBC**2 + (1-dualphscalratio)**2*err_abs_phscal**2)**0.5
-            return psrRADEC, err
+            return psrRADEC, err, epoch
         else:
             pass
