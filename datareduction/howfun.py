@@ -536,3 +536,42 @@ class lsqfit: #y=ax+b
         #ax = plt.gca()
         #ax.invert_xaxis()
         plt.show()
+
+class equatorial2galactic_coordinates:
+    """
+    transform position and proper motion in equatorial to galactic coordinates,
+    uncertainties propagation is included.
+    """
+    a0 = 192.85948 #in deg; (a0,d0) is the equatorial coordinates of the North Galactic Pole
+    d0 = 27.12825 #in deg;
+    l_NCP = 122.93192 #in deg; the Galactic longitude of the North Celestial Pole
+    def __init__(s, RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d): #RA in deg, Dec in h, mu_a and mu_d in mas/yr
+        s.RA, s.Dec, s.mu_a, s.mu_d, s.err_mu_a, s.err_mu_d = RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d
+    def equatorial_position2galactic_position(s):
+        a = 15*s.RA - s.a0 #in deg
+        a *= math.pi/180 #in rad
+        d, d0 = math.pi/180*s.Dec, math.pi/180*s.d0 #in rad
+        ## calculate b
+        b = math.sin(d)*math.sin(d0) + math.cos(d)*math.cos(d0)*math.cos(a)
+        b = math.asin(b) #in rad
+        ## calculate l now
+        cosl1 = math.sin(d)*math.cos(d0) - math.cos(d)*math.sin(d0)*math.cos(a)
+        cosl1 /= math.cos(b)
+        sinl1 = math.cos(d)*math.sin(a)/math.cos(b)
+        l1 = math.atan2(sinl1, cosl1) #in rad
+        l = s.l_NCP - 180/math.pi*l1 #in deg
+        return l, b*180/math.pi
+    def equatorial_proper_motion2galactic_proper_motion(s):
+        l, b = s.equatorial_position2galactic_position()
+        a = 15*s.RA - s.a0 #in deg
+        a, d, d0, l_N, l, b = math.pi/180*np.array([a, s.Dec, s.d0, s.l_NCP, l, b]) #in rad
+        A_G = np.mat([[0,             np.cos(b)              ], #galactic matrix
+                      [np.cos(l_N-l), np.sin(b)*np.sin(l_N-l)]]) 
+        A_E = np.mat([[-np.cos(d0)*np.sin(a), np.cos(d)*np.sin(d0)-np.sin(d)*np.cos(d0)*np.cos(a)],
+                      [-np.cos(a),            np.sin(d)*np.sin(a)                                ]])
+        A = A_G.I * A_E
+        B = np.mat([[s.mu_a],
+                    [s.mu_d]])
+        solution = A * B
+        mu_l, mu_b = solution[0,0], solution[1,0]
+        return mu_l, mu_b

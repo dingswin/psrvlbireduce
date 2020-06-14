@@ -2963,3 +2963,32 @@ class generatepmparin:
             return psrRADEC, err, epoch
         else:
             pass
+    def calculate_mu_b_and_mu_l(s):
+        """
+        estimating the uncertainties is not easy as mu_a and mu_d are strongly associated
+        """
+        pmparout = s.pmparesultsdir + s.targetname + '.pmpar.out'
+        RA, Dec, epoch, pi, mu_a, mu_d, error_pi, error_mu_a, error_mu_d, l, b, rchsq = readpmparout(pmparout)
+        a = howfun.equatorial2galactic_coordinates(RA, Dec, mu_a, mu_d, error_mu_a, error_mu_d)
+        return a.equatorial_proper_motion2galactic_proper_motion()
+    def calculate_local_transverse_velocity_in_the_Galaxy(s, d, l, b, mu_l, mu_b, v_t): #in kpc, deg, deg, mas/yr, mas/yr and km/s
+        """
+        It is originally designed for J1810 falling into the first quadrant of the Galactic coordinates.
+        It might need extra inspection for the validity in other qudrants.
+        This function will be improved later.
+        Non-circular motion of the Sun is neglected.
+        """
+        R0 = 8.15 #(+-0.15kpc) Reid et al. 2019
+        V_Sun2GC = 247 #(+-4km/s)
+        V0 = 236 #(+-7km/s)
+        l *= math.pi/180
+        b *= math.pi/180
+        v_b_obs = v_t * mu_b / (mu_b**2 + mu_l**2)**0.5
+        v_l_obs = v_t * mu_l / (mu_b**2 + mu_l**2)**0.5
+        v_b_gsr = v_b_obs - V_Sun2GC*math.sin(l)*math.sin(b)
+        v_l_gsr = v_l_obs + V_Sun2GC*math.cos(l)
+        alpha = math.atan((R0*math.cos(l)-d)/(R0*math.sin(l)))
+        v_l_loc = v_l_gsr - V0*math.sin(alpha)
+        v_b_loc = v_b_gsr + V0*math.cos(alpha)*math.sin(b)
+        return v_b_loc, v_l_loc         
+
