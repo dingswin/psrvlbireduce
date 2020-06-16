@@ -541,13 +541,22 @@ class equatorial2galactic_coordinates:
     """
     transform position and proper motion in equatorial to galactic coordinates,
     uncertainties propagation is included.
+
+    input: RA in h, Dec in deg, mu_a and mu_d in mas/yr
     """
     a0 = 192.85948 #in deg; (a0,d0) is the equatorial coordinates of the North Galactic Pole
     d0 = 27.12825 #in deg;
     l_NCP = 122.93192 #in deg; the Galactic longitude of the North Celestial Pole
-    def __init__(s, RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d): #RA in deg, Dec in h, mu_a and mu_d in mas/yr
+    def __init__(s, RA, Dec, mu_a=0, mu_d=0, err_mu_a=1, err_mu_d=1):
         s.RA, s.Dec, s.mu_a, s.mu_d, s.err_mu_a, s.err_mu_d = RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d
+        if type(s.RA) != float:
+            s.RA = dms2deg(s.RA)
+        if type(s.Dec) != float:
+            s.Dec = dms2deg(s.Dec)
     def equatorial_position2galactic_position(s):
+        """
+        output: l and b, both in deg
+        """
         a = 15*s.RA - s.a0 #in deg
         a *= math.pi/180 #in rad
         d, d0 = math.pi/180*s.Dec, math.pi/180*s.d0 #in rad

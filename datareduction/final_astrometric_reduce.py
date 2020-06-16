@@ -3437,4 +3437,4 @@ for i in range(numtargets):
                              False,shiftedimage,48)
 """
 ## Make some nice diagnostic plots #############################################
-#reducevlbi.make_diagnostic_plots(directory, codedir)
+reducevlbi.make_diagnostic_plots(directory, codedir)

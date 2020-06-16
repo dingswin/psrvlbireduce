@@ -79,32 +79,60 @@ def target2cals(targetname, expno=''): #get phscal and bandpass cal given target
     return cals
 
 def target2phscals_and_inbeamcals(targetname, expno=''):
+    """
+    Given that the source file feature will be deprecated in 2021, this function will search in exp.yaml first.
+    If relevant keys are not found, then the function will proceed to search in source files.
+    """
     auxdir = os.environ['PSRVLBAUXDIR']
+    configdir = auxdir + '/configs/'
     targetdir = auxdir + '/processing/' + targetname
-    sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
-    if sourcefiles == []:
-        print("source files not found; abort")
-        sys.exit()
-    sourcefiles.sort()
-    sourcefile = sourcefiles[0]
-    if expno != '':
-        for sourcefile1 in sourcefiles:
-            if expno in sourcefile1:
-                sourcefile = sourcefile1        
-    lines = open(sourcefile).readlines()
+    if expno == '':
+        vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
+        vexfiles.sort()
+        vexfile = vexfiles[0]
+        expno = vexfile.split('/')[-2].strip()
+    expconfigfile = configdir + expno + '.yaml'
+    if not os.path.exists(expconfigfile):
+        print('%s does not exist; aborting' % expconfigfile)
+    expconfig = yaml.load(open(expconfigfile))
     cals = []
-    for line in lines:
-        if 'PHSREF' in line:
-            phscal = line.split(':')[-1].strip()
-            cals.append(phscal)
-        if 'INBEAM' in line and 'NAME' in line:
-            inbeamcal = line.split(':')[-1].strip()
-            cals.append(inbeamcal)
-    
-    if expno != '':
-        for sourcefile1 in sourcefiles:
-            if expno in sourcefile1:
-                sourcefile = sourcefile1        
+    try: 
+        phscalnames = expconfig['phscalnames']
+        if type(phscalnames) == str:
+            cals.append(phscalnames)
+        else:
+            for phscalname in phscalnames:
+                cals.append(phscalname)
+    except KeyError:
+        pass
+    try:
+        inbeamnames = expconfig['inbeamnames']
+        if type(inbeamnames) == str:
+            cals.append(inbeamnames)
+        else:
+            for inbeamname in inbeamnames:
+                cals.append(inbeamname)
+    except KeyError:
+        ## if 'inbeamnames' is unfound, neither should be phscalnames, then proceeding to sourcefiles ###
+        sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
+        if sourcefiles == []:
+            print("source files not found; abort")
+            sys.exit()
+        sourcefiles.sort()
+        sourcefile = sourcefiles[0]
+        if expno != '':
+            for sourcefile1 in sourcefiles:
+                if expno in sourcefile1:
+                    sourcefile = sourcefile1        
+        lines = open(sourcefile).readlines()
+        cals = []
+        for line in lines:
+            if 'PHSREF' in line:
+                phscal = line.split(':')[-1].strip()
+                cals.append(phscal)
+            if 'INBEAM' in line and 'NAME' in line:
+                inbeamcal = line.split(':')[-1].strip()
+                cals.append(inbeamcal)
     return cals
 
 def print_out_calibrator_plan(targetname, expno='', savefig=False):
