@@ -461,30 +461,65 @@ class support_vlbireduce(object):
                                            pspath)
                 inbeam_uv_data.zap()
         return tocalnames, tocalindices
-
-    def target2cals(self, targetname): #get phscal and bandpass cal given targetname
+    
+    def target2cals(self, targetname, expno=''): #get phscal and bandpass cal given targetname
+        """
+        Given that the source file feature will be deprecated in 2021, this function will search in exp.yaml first.
+        If relevant keys are not found, then the function will proceed to search in source files.
+        """
         auxdir = os.environ['PSRVLBAUXDIR']
+        configdir = auxdir + '/configs/'
         targetdir = auxdir + '/processing/' + targetname
-        sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
-        if sourcefiles == []:
-            targetname = raw_input("What's the name of the root directory for this target?\n")
-            targetdir = auxdir + '/processing/' + targetname
+        if expno == '':
+            vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
+            vexfiles.sort()
+            vexfile = vexfiles[0]
+            expno = vexfile.split('/')[-2].strip()
+        expconfigfile = configdir + expno + '.yaml'
+        if not os.path.exists(expconfigfile):
+            print('%s does not exist; aborting' % expconfigfile)
+        expconfig = yaml.load(open(expconfigfile))
+        cals = []
+        try: 
+            phscalnames = expconfig['phscalnames']
+            if type(phscalnames) == str:
+                cals.append(phscalnames)
+            else:
+                for phscalname in phscalnames:
+                    cals.append(phscalname)
+        except KeyError:
+            pass
+        try:
+            bpcals = expconfig['ampcalsrc']
+            if type(bpcals) == str:
+                cals.append(bpcals)
+            else:
+                for bpcal in bpcals:
+                    cals.append(bpcal)
+        except KeyError:
+            ## if 'inbeamnames' is unfound, neither should be phscalnames, then proceeding to sourcefiles ###
             sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
             if sourcefiles == []:
                 print("source files not found; abort")
                 sys.exit()
-            
-        sourcefiles.sort()
-        sourcefile = sourcefiles[0] # this might cause problem in adhoc observations
-        lines = open(sourcefile).readlines()
-        for line in lines:
-            if 'BANDPASS' in line:
-                bpcal = line.split(':')[-1].strip()
-            if 'PHSREF' in line:
-                phscal = line.split(':')[-1].strip()
-                cals = [phscal, bpcal]
+            sourcefiles.sort()
+            sourcefile = sourcefiles[0]
+            if expno != '':
+                for sourcefile1 in sourcefiles:
+                    if expno in sourcefile1:
+                        sourcefile = sourcefile1        
+            lines = open(sourcefile).readlines()
+            for line in lines:
+                if 'BANDPASS' in line:
+                    bpcal = line.split(':')[-1].strip()
+                if 'PHSREF' in line:
+                    phscal = line.split(':')[-1].strip()
+            cals = [phscal, bpcal]
+            if expno != '':
+                for sourcefile1 in sourcefiles:
+                    if expno in sourcefile1:
+                        sourcefile = sourcefile1        
         return cals
-
 #def find_alternative_targetname(targetname):
 #    expconfigfile = configdir + experiment + '.yaml'
 #    if not os.path.exists(expconfigfile):
