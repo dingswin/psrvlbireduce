@@ -1338,11 +1338,15 @@ class estimate_stellar_radius_with_distance_magnitudes_and_optionally_T_eff:
         return radii
 
 class read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file:
+    """
+    read catalog with specific format and update its position to the latest SIMBAD ones.
+    """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     def __init__(s, catalog='catalog1', tableformat='ascii'):
         s.catalog = s.path + catalog
-        s.srcnames = s.read_srcname_from_catalog1()
-        s.convert_simbad_coordinates_to_topcat_friendly_file(tableformat='ascii')
+        s.srcnames = s.read_srcname_from_catalog(s.catalog)
+        print s.srcnames
+        s.convert_simbad_coordinates_to_topcat_friendly_file(tableformat)
         #[s.srcnames, s.RAs, s.Decs] = s.read_name_and_position_from_catalog()
         #s.convert_to_topcat_friendly_file(tableformat)
     def read_name_and_position_from_catalog(s):
@@ -1365,11 +1369,11 @@ class read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file:
                 RAs = np.append(RAs, RA)
                 Decs = np.append(Decs, Dec)
         return srcnames, RAs, Decs
-    def read_srcname_from_catalog1(s):
+    def read_srcname_from_catalog(s, catalog):
         srcnames = np.array([])
-        lines = open(s.catalog).readlines()
+        lines = open(catalog).readlines()
         for line in lines:
-            srcname = line.strip().split('  ')[-1]
+            srcname = line.strip().split('  ')[0]
             srcnames = np.append(srcnames, srcname.strip())
         return srcnames
     def convert_to_topcat_friendly_file(s, tableformat):
