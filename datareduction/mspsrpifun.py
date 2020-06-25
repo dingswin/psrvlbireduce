@@ -1422,6 +1422,22 @@ class read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file:
         output = s.path + '/sources_dms'
         t1.write(output, format='ascii', overwrite=True)
 
+class filter_the_list_of_Gaia_candidates_for_PRE_bursters_generated_from_topcat_with_cross_match_criterion:
+    path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
+    def __init__(s, catalog, inputformat='ascii', outputformat='ascii'):
+        s.tablename = s.path + catalog
+        s.inputformat, s.outputformat = inputformat, outputformat
+        s.outputfile = s.tablename + '_filtered'
+        s.filter_list_of_Gaia_candidates_for_PRE_bursters_generated_from_topcat_with_cross_match_criterion()
+    def filter_list_of_Gaia_candidates_for_PRE_bursters_generated_from_topcat_with_cross_match_criterion(s):
+        t=Table.read(s.tablename, format=s.inputformat)
+        t.sort(['angDist'])
+        index1 = abs(t['pmra'])/t['pmra_error']>3 
+        index2 = abs(t['pmdec'])/t['pmdec_error']>3
+        index = np.logical_or(np.array(index1), np.array(index2))
+        s.t1 = t[index]
+        s.t1.write(s.outputfile, format=s.outputformat, overwrite=True)
+
 class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     def __init__(s, srcname, AGN_number, count_radius=1, howmanysigma=3):
