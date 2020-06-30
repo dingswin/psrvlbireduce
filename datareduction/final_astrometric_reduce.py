@@ -738,6 +738,9 @@ class vlbireduce(support_vlbireduce):
     
     def load_the_user_flags_if_any(self, tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
             inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated):
+        """
+        flagging can be appointed to specific inbeamcal or target, but not for phscal; for phscal, just use additionaledit.flag
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Loading user flags"
             userflagfiles = glob.glob(tabledir + '/*.flag')
