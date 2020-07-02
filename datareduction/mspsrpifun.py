@@ -3072,4 +3072,26 @@ class generatepmparin:
         v_l_loc = v_l_gsr - V0*math.sin(alpha)
         v_b_loc = v_b_gsr + V0*math.cos(alpha)*math.sin(b)
         return v_b_loc, v_l_loc         
+    def calculate_apparent_proper_motion_in_LSR(s, RA, Dec, d, v_l_loc=0, v_b_loc=0): #in h, deg
+        """
+        calculate the apparent proper motion of LSR (v_b_loc=v_l_loc=0) observed from the solar system
+        """
+        R0 = 8.15 #(+-0.15kpc) Reid et al. 2019
+        V_Sun2GC = 247 #(+-4km/s)
+        V0 = 236 #(+-7km/s)
+        aa = howfun.equatorial2galactic_coordinates(RA, Dec)
+        l, b = aa.equatorial_position2galactic_position() #deg, deg
+        l *= math.pi/180
+        b *= math.pi/180
+        alpha = math.atan((R0*math.cos(l)-d)/(R0*math.sin(l)))
+        v_l_gsr = V0*math.sin(alpha) + v_l_loc
+        v_b_gsr = -V0*math.cos(alpha)*math.sin(b) + v_b_loc
+        v_b_obs = v_b_gsr + V_Sun2GC*math.sin(l)*math.sin(b) #in km/s
+        v_l_obs = v_l_gsr - V_Sun2GC*math.cos(l) #in km/s
+        ab = estimate_uncertainty('J1012+5307') # targetname irrelevant
+        mu_l, mu_b = v_l_obs/d/ab.A, v_b_obs/d/ab.A #in mas/yr
+        mu_a, mu_d = aa.galactic_proper_motion2equatorial_proper_motion(mu_l, mu_b)
+        return mu_a, mu_d
+
+
 

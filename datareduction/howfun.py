@@ -584,3 +584,17 @@ class equatorial2galactic_coordinates:
         solution = A * B
         mu_l, mu_b = solution[0,0], solution[1,0]
         return mu_l, mu_b
+    def galactic_proper_motion2equatorial_proper_motion(s, mu_l, mu_b):
+        l, b = s.equatorial_position2galactic_position()
+        a = 15*s.RA - s.a0 #in deg
+        a, d, d0, l_N, l, b = math.pi/180*np.array([a, s.Dec, s.d0, s.l_NCP, l, b]) #in rad
+        A_G = np.mat([[0,             np.cos(b)              ], #galactic matrix
+                      [np.cos(l_N-l), np.sin(b)*np.sin(l_N-l)]]) 
+        A_E = np.mat([[-np.cos(d0)*np.sin(a), np.cos(d)*np.sin(d0)-np.sin(d)*np.cos(d0)*np.cos(a)],
+                      [-np.cos(a),            np.sin(d)*np.sin(a)                                ]])
+        A = A_G.I * A_E
+        B = np.mat([[mu_l],
+                    [mu_b]])
+        solution = A.I * B
+        mu_a, mu_d = solution[0,0], solution[1,0]
+        return mu_a, mu_d
