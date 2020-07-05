@@ -43,8 +43,8 @@ def dms2deg(array):
     return degrees
 
 def separation(RA1,Dec1,RA2,Dec2): #-- calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format
-    RA0 = np.array([dms2deg(RA1), dms2deg(RA2)])
-    Dec = np.array([dms2deg(Dec1), dms2deg(Dec2)])
+    RA0 = np.array([dms2deg(str(RA1)), dms2deg(str(RA2))])
+    Dec = np.array([dms2deg(str(Dec1)), dms2deg(str(Dec2))])
     Dec_rad = Dec*math.pi/180
     #RA = RA0*np.cos(Dec_rad)*15 # hour to deg
     RA = RA0*15 #hour to deg
@@ -56,6 +56,19 @@ def separation(RA1,Dec1,RA2,Dec2): #-- calculate angular separation (in min) giv
     sep = sep*180/math.pi*60 # rad to arcmin
     #sep = math.sqrt(diffRA**2+diffDec**2)
     return sep
+def separations(RA, Dec, RAs, Decs):
+    """
+    like the 'separation' function, but working for array as well.
+    """
+    if type(RAs) == str:
+        sep = separation(str(RA), str(Dec), RAs, Decs)
+        return sep
+    else:
+        seps = np.array([])
+        for i in range(len(RAs)):
+            sep = separation(str(RA), str(Dec), str(RAs[i]), str(Decs[i]))
+            seps = np.append(seps, sep)
+        return seps
 
 def distance_from_an_array_of_positions_to_one_specific_position(X,Y,xs,ys):
     if type(xs)==int or type(xs)==float:
@@ -67,7 +80,6 @@ def distance_from_an_array_of_positions_to_one_specific_position(X,Y,xs,ys):
             D = ((X-xs[i])**2+(Y-ys[i])**2)**0.5
             Ds = np.append(Ds, D)
         return Ds
-
 def solve_the_distance_from_a_point_to_a_line_segment(xs,ys,x1,y1,x2,y2, SNR_assoc_mode=False):
     """
     work for an array of xs and ys;
@@ -83,7 +95,6 @@ def solve_the_distance_from_a_point_to_a_line_segment(xs,ys,x1,y1,x2,y2, SNR_ass
             D, lamda = solve_the_distance_from_a_point_to_a_line_segment1(xs[i],ys[i],x1,y1,x2,y2, SNR_assoc_mode)
             Ds, lamdas = np.append(Ds,D), np.append(lamdas, lamda)
         return Ds, lamdas
-
 def solve_the_distance_from_a_point_to_a_line_segment1(x,y,x1,y1,x2,y2, SNR_assoc_mode):
     """
     (x1,y1) and (x2,y2) are the endpoints of a continuous line segment; 
@@ -107,6 +118,45 @@ def solve_the_distance_from_a_point_to_a_line_segment1(x,y,x1,y1,x2,y2, SNR_asso
     lamda = (X-x2)/(x1-x2)
     D = ((X-x)**2+(Y-y)**2)**0.5
     return D, lamda
+
+class spherical_astrometry:
+    """
+    This class does astrometric calculations on a spherical 2-D surface. 
+    Some functions that belong here but have been developed won't be included.
+    """
+    def __init__(s):
+        pass
+    def calculate_positions_at_another_time_with_intial_position_and_proper_motion(s, RA, Dec, mu_a, mu_d, T):
+        """
+        RA in 'HH:MM:SS.SS', Dec in 'dd:mm:ss.s', mu_a and mu_d in mas/yr, t in yr and in the positive direction.
+        Caveat: the bevahior around the two poles (Dec=+/-90deg) is not well modeled.
+        """
+        a0, d0 = dms2deg(str(RA)), dms2deg(str(Dec)) #a0 in h, d0 in deg,
+        mu_a, mu_d = mu_a/1000./3600., mu_d/1000./3600. #both in deg/yr
+        d = mu_d*T + d0
+        d_rad, d0_rad = d*math.pi/180, d0*math.pi/180
+        a = np.log(abs(1./np.cos(d_rad) + np.tan(d_rad)))
+        a -= np.log(abs(1./np.cos(d0_rad) + np.tan(d0_rad)))
+        a *= mu_a/mu_d/15.
+        a += a0
+        return deg2dms(a), deg2dms(d) #a in h-str, d in deg-str; (a,d) is the position extrapolated at time t (t can be negative, which is the past)
+    def plot_the_trajectory_of_a_pulsar_with_a_constant_proper_motion_on_an_Euclidean_canvas(s, RA, Dec, mu_a, mu_d, T):
+        """
+        RA in 'HH:MM:SS.SS', Dec in 'dd:mm:ss.s', mu_a and mu_d in mas/yr, t in yr and in the positive direction.
+        the plot is made by sampling time from 0 to t (t can be negative, which means the past)
+        """
+        if T < 0:
+            ts = np.arange(T, 0, -T/1000)
+        else:
+            ts = np.arange(0, T, T/1000)
+        RA1s = Dec1s = np.array([])
+        for t in ts:
+            RA1, Dec1 = s.calculate_positions_at_another_time_with_intial_position_and_proper_motion(RA, Dec, mu_a, mu_d, t)
+            RA1s, Dec1s = np.append(RA1s, RA1), np.append(Dec1s, Dec1)
+        plt.plot(RA1s, Dec1s)
+        plt.xlabel('RA. (h)')
+        plt.ylabel('Decl. (deg)')
+        plt.show()
 
 def colonizedms(string):
     import re

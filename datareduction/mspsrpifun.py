@@ -969,9 +969,9 @@ def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, excep
         if dualphscal:
             [diffRA_mas, diffDec_mas] = np.array(diffposition(refRA, RA1calibrator, refDec, Dec1calibrator))*dualphscalratio
     diffRA_ms = howfun.mas2ms(diffRA_mas, refDec) 
-    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000/3600
+    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000./3600.
     RA2 = howfun.deg2dms(RA2)
-    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000/3600
+    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000./3600.
     Dec2 = howfun.deg2dms(Dec2)
     return RA2, errRA2, Dec2, errDec2
 def align_position_in_adhoc_experiment1(RA, errRA, Dec, errDec, targetname, exceptions, dualphscal=False, dualphscalratio=1): #str, float in s, str, float in "...
@@ -1003,9 +1003,9 @@ def align_position_in_adhoc_experiment1(RA, errRA, Dec, errDec, targetname, exce
     if dualphscal:
         [diffRA_mas, diffDec_mas] = np.array(diffposition(RA1prIBC, refRA, Dec1prIBC, refDec))*dualphscalratio
     diffRA_ms = howfun.mas2ms(diffRA_mas, refDec) 
-    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000/3600
+    RA2 = howfun.dms2deg(RA) + diffRA_ms/1000./3600.
     RA2 = howfun.deg2dms(RA2)
-    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000/3600
+    Dec2 = howfun.dms2deg(Dec) + diffDec_mas/1000./3600.
     Dec2 = howfun.deg2dms(Dec2)
     return RA2, errRA2, Dec2, errDec2
 def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exceptions): #str, float in s, str, float in "...
@@ -1132,7 +1132,7 @@ class estimate_uncertainty:
             DTm = 1/s.piTm*1000*s.pc2ly #kpc ->ly
             error_piTm = error_piTm/1000/s.pc2ly
             muTm = np.array([s.mu_aTm, error_mu_aTm, s.mu_dTm, error_mu_dTm])
-            muTm = muTm/1000/3600/180*math.pi #mas/yr -> rad/yr
+            muTm = muTm/1000./3600./180*math.pi #mas/yr -> rad/yr
             [mu_aTm, error_mu_aTm, mu_dTm, error_mu_dTm] = muTm
             Pb = s.Pb/s.yr2d 
             PbShk = (mu_aTm**2+mu_dTm**2)*DTm*Pb
@@ -1767,7 +1767,7 @@ class pulsars_based_GdotG_kD(object):
         return np2darray
     def prepare_pulsardats_for_abcfitting(s): # Z=a*(c*X-1)+b*c**2*Y
         Pbs = s.Pbs/estimate_uncertainty.yr2d # in yr
-        T = estimate_uncertainty.T/3600/24/estimate_uncertainty.yr2d # in yr
+        T = estimate_uncertainty.T/3600./24./estimate_uncertainty.yr2d # in yr
         Zs = -s.Pbdot_exs/2/Pbs # in 1/yr
         errZs = abs(s.err_Pbdot_exs/2/Pbs) #in 1/yr
         Xs = (1+0.5/(s.qs+1))*s.qs*s.m_cs 
@@ -1945,7 +1945,7 @@ class pulsars_based_GdotG_kD_Sp_via_monte_carlo_from_base_observables(pulsars_ba
         for parameter in ['Pbdot_ex', 'm_c', 'q']:
             exec("%ss = t1['%s']" % (parameter, parameter))
         Pbs = s.Pbs/estimate_uncertainty.yr2d # in yr
-        T = estimate_uncertainty.T/3600/24/estimate_uncertainty.yr2d # in yr
+        T = estimate_uncertainty.T/3600./24./estimate_uncertainty.yr2d # in yr
         Zs = -Pbdot_exs/2/Pbs # in 1/yr
         errZs = abs(s.err_Pbdot_exs/2/Pbs) #in 1/yr
         Xs = (1+0.5/(qs+1))*qs*m_cs 
@@ -1998,7 +1998,7 @@ class simulate_fake_pulsars_for_abcfitting_check(pulsars_based_GdotG_kD):
         print GdotG, kD, alpha
         [m_ps, qs, Pbs1] = s.monte_carlo_Pb_Mp_q()
         Pbs = Pbs1/estimate_uncertainty.yr2d # in yr
-        T = estimate_uncertainty.T/3600/24/estimate_uncertainty.yr2d # in yr
+        T = estimate_uncertainty.T/3600./24./estimate_uncertainty.yr2d # in yr
         Pbdot_dipoles = -4*math.pi**2*T*m_ps/Pbs/(qs+1)*kD*(alpha*m_ps)**2
         Pbdot_GdotGs = -2*GdotG*Pbs
         Pbdot_GdotGs *= 1 - alpha*m_ps*(1+0.5/(1+qs))
@@ -2080,8 +2080,8 @@ class find_virtual_calibrator_position_with_colinear_calibrators:
         s.prepare_positions()
         s.quantify_the_plane1_paramters_defined_by_two_phscals_and_000point()
         s.get_the_plane2_perpendicular_to_plane1_and_pass_target_and_000point()
-        s.solve_the_position_of_virtual_phscal()
-        s.separation_between_virtual_phscal_and_sources()
+        #s.solve_the_position_of_virtual_phscal()
+        #s.separation_between_virtual_phscal_and_sources()
     def prepare_positions(s):
         for source in ['target', 'phscal1', 'phscal2']:
             if not s.calibrator_search_mode:
@@ -3102,11 +3102,11 @@ class look_for_indirect_SNR_associations:
     Due to the apparent proper motion of the progenitors of SNRs (~2'/100kyr), we start from a pulsar sample with age_i<100kyr (age_i is defined in PSRCAT).
     """
     SNR_dir = '/fred/oz002/hding/SNR/'
-    def __init__(s, age_threshold=1e5, SNR_catalog='SNR_catalog.txt', filter_maximum_distance=2): #age in yr, distance in deg
+    def __init__(s, age_threshold=1e6, filter_maximum_distance=10, SNR_catalog='SNR_catalog.txt'): #age in yr, distance in deg
         s.SNR_infile, s.age_threshold = s.SNR_dir + SNR_catalog, age_threshold
         s.parse_SNR_catalog_to_table(s.SNR_infile)
         s.gather_pulsar_side_infos_from_PSRCAT(s.age_threshold)
-        s.search_for_closest_SNR_for_a_pulsar_trajectory(filter_maximum_distance)
+        s.search_for_closest_SNR_for_a_pulsar_trajectory(filter_maximum_distance, s.age_threshold)
     def parse_SNR_catalog_to_table(s, SNR_infile):
         SNR_table = s.SNR_dir + 'SNR_table'
         if os.path.exists(SNR_table):
@@ -3129,9 +3129,8 @@ class look_for_indirect_SNR_associations:
                 shape = infos[5].strip()
                 sizes, shapes = np.append(sizes, size), np.append(shapes, shape)
             RAs_h, Decs_deg = howfun.dms2deg(RAs), howfun.dms2deg(Decs)
-            RAs_deg = RAs_h * 15 * np.cos(Decs_deg*math.pi/180) # Note that RAs_deg is defined differently from simpy times 15 !!!
-            s.t_SNR = Table([SNRnames, RAs, Decs, RAs_deg, Decs_deg, sizes, shapes], \
-                names=['SNRname', 'RA', 'Dec', 'RA_deg', 'Dec_deg', 'size', 'shape']) 
+            s.t_SNR = Table([SNRnames, RAs, Decs, RAs_h, Decs_deg, sizes, shapes], \
+                names=['SNRname', 'RA', 'Dec', 'RA_h', 'Dec_deg', 'size', 'shape']) 
             s.t_SNR.write(SNR_table, format='ascii', overwrite=True)
     def gather_pulsar_side_infos_from_PSRCAT(s, age_threshold):
         """
@@ -3152,14 +3151,16 @@ class look_for_indirect_SNR_associations:
             PSRJnames, age_Is, mu_as, mu_ds, RAs, Decs, refepochs = np.append(PSRJnames, PSRJname), np.append(age_Is, age_I),\
                 np.append(mu_as, mu_a), np.append(mu_ds, mu_d), np.append(RAs, RA), np.append(Decs, Dec), np.append(refepochs, refepoch)
         RAs_h, Decs_deg = howfun.dms2deg(RAs), howfun.dms2deg(Decs)
-        RAs_deg = RAs_h * 15 * np.cos(Decs_deg*math.pi/180) # Note that RAs_deg is defined differently from simpy times 15 !!!
         age_Is, mu_as, mu_ds, refepochs  = np.array(age_Is).astype(np.float), np.array(mu_as).astype(np.float),\
             np.array(mu_ds).astype(np.float), np.array(refepochs).astype(np.float)
-        s.t_psr = Table([PSRJnames, age_Is, mu_as, mu_ds, RAs, Decs, RAs_deg, Decs_deg, refepochs],\
-            names=['PSRJname', 'age_I', 'mu_a', 'mu_d', 'RA', 'Dec', 'RA_deg', 'Dec_deg', 'refepoch'])
+        s.t_psr = Table([PSRJnames, age_Is, mu_as, mu_ds, RAs, Decs, RAs_h, Decs_deg, refepochs],\
+            names=['PSRJname', 'age_I', 'mu_a', 'mu_d', 'RA', 'Dec', 'RA_h', 'Dec_deg', 'refepoch'])
         psr_table = s.SNR_dir + 'psr_table'
         s.t_psr.write(psr_table, format='ascii', overwrite=True)
-    def search_for_closest_SNR_for_a_pulsar_trajectory(s, filter_maximum_distance): #in deg
+    def search_for_closest_SNR_for_a_pulsar_trajectory1(s, filter_maximum_distance): #in deg
+        """
+        This function is an Euclidean approximation, and has been deprecated!!!
+        """
         PSRJnames = age_Is = age_Ks = SNRs = minDs = SNRsizes = nowDs = np.array([])
         X1s_SNR, Y1s_SNR = s.t_SNR['RA_deg'], s.t_SNR['Dec_deg']
         for i in range(len(s.t_psr)):
@@ -3172,8 +3173,8 @@ class look_for_indirect_SNR_associations:
                 continue
             ## solve the closest distance from an SNR center to the line segment defined by two endpoints of the puslar
             Xs_SNR, Ys_SNR = t_SNR['RA_deg'], t_SNR['Dec_deg']
-            x1 = x2 - mu_a/1000/3600*age_I
-            y1 = y2 - mu_d/1000/3600*age_I
+            x1 = x2 - mu_a/1000./3600.*age_I
+            y1 = y2 - mu_d/1000./3600.*age_I
             Ds, lamdas = howfun.solve_the_distance_from_a_point_to_a_line_segment(Xs_SNR,Ys_SNR,x1,y1,x2,y2,True)
             if min(Ds) == float('inf'):
                 continue
@@ -3191,6 +3192,63 @@ class look_for_indirect_SNR_associations:
             age_Ks    = np.append(age_Ks, age_I*lamda)
             SNRs      = np.append(SNRs, t_SNR1['SNRname'][0])
             minDs     = np.append(minDs, 60*minD) #in arcmin
+            SNRsizes  = np.append(SNRsizes, t_SNR1['size'][0]) #in arcmin
+            nowDs     = np.append(nowDs, nowD)
+        s.t_paired = Table([PSRJnames, age_Is, age_Ks, SNRs, minDs, SNRsizes, nowDs],\
+            names=['PSRJnames', 'age_I', 'age_K', 'SNR', 'minD', 'SNRsize', 'nowD'])
+        indirectly_paired_table = s.SNR_dir + 'indirectly_paired_table'
+        s.t_paired.write(indirectly_paired_table, format='ascii', overwrite=True)
+    def search_for_closest_SNR_for_a_pulsar_trajectory(s, filter_maximum_distance, age_threshold): #in deg
+        PSRJnames = age_Is = age_Ks = SNRs = minDs = SNRsizes = nowDs = np.array([])
+        RAs_SNR, Decs_SNR = s.t_SNR['RA'], s.t_SNR['Dec']
+        print(RAs_SNR, Decs_SNR)
+        for i in range(len(s.t_psr)):
+            ## narrow SNR with a radius
+            RA2, Dec2, mu_a, mu_d, age_I = s.t_psr[i]['RA'], s.t_psr[i]['Dec'], s.t_psr[i]['mu_a'],\
+                s.t_psr[i]['mu_d'], s.t_psr[i]['age_I']
+            Ds = 1./60. * howfun.separations(str(RA2), str(Dec2), RAs_SNR, Decs_SNR) #in deg
+            t_SNR = s.t_SNR[Ds<filter_maximum_distance]
+            if len(t_SNR) == 0:
+                continue
+            ## solve the closest distance from an SNR center to the line segment defined by two endpoints of the puslar
+            RA1s_SNR, Dec1s_SNR = t_SNR['RA'], t_SNR['Dec']
+            aa = howfun.spherical_astrometry()
+            RA1, Dec1 = aa.calculate_positions_at_another_time_with_intial_position_and_proper_motion(RA2, Dec2, mu_a, mu_d, 70./31*age_threshold)
+            D12 = howfun.separation(RA1, Dec1, RA2, Dec2) #in arcmin
+            position2 = RA2 + ',' + Dec2
+            position1 = RA1 + ',' + Dec1
+            D1s = lamdas = np.array([])
+            for j in range(len(t_SNR)):
+                position_SNR = RA1s_SNR[j] + ',' + Dec1s_SNR[j]
+                ab = find_virtual_calibrator_position_with_colinear_calibrators(position_SNR, position1, position2)
+                RA_v, Dec_v = ab.solve_the_position_of_virtual_phscal()
+                D_v2 = howfun.separation(RA_v, Dec_v, RA2, Dec2) #in arcmin
+                if howfun.separation(RA_v, Dec_v, RA1, Dec1) > D12:
+                    #RA_v = Dec_v = 'inf'
+                    D1s = np.append(D1s, float('inf'))
+                    lamdas = np.append(lamdas, float('inf'))
+                    continue
+                elif D_v2 > D12:
+                    RA_v, Dec_v = RA1, Dec1
+                D_VS = howfun.separation(RA_v, Dec_v, RA1s_SNR[j], Dec1s_SNR[j])
+                D1s = np.append(D1s, D_VS) #in arcmin
+                lamda = D_v2/D12
+                lamdas = np.append(lamdas, lamda)
+            minD = min(D1s)
+            if minD == float('inf'):
+                continue
+            t_SNR1 = t_SNR[D1s==minD]
+            lamda = lamdas[D1s==minD]
+            print(minD, lamda)
+            print(t_SNR1)
+            RA_SNR, Dec_SNR = t_SNR1['RA'][0], t_SNR1['Dec'][0]
+            nowD = howfun.separation(RA_SNR, Dec_SNR, RA2, Dec2)
+            ## print a table summarizing the results
+            PSRJnames = np.append(PSRJnames, s.t_psr[i]['PSRJname'])
+            age_Is    = np.append(age_Is, s.t_psr[i]['age_I'])
+            age_Ks    = np.append(age_Ks, age_I*lamda)
+            SNRs      = np.append(SNRs, t_SNR1['SNRname'][0])
+            minDs     = np.append(minDs, minD) #in arcmin
             SNRsizes  = np.append(SNRsizes, t_SNR1['size'][0]) #in arcmin
             nowDs     = np.append(nowDs, nowD)
         s.t_paired = Table([PSRJnames, age_Is, age_Ks, SNRs, minDs, SNRsizes, nowDs],\
