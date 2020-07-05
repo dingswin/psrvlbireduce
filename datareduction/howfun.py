@@ -57,6 +57,57 @@ def separation(RA1,Dec1,RA2,Dec2): #-- calculate angular separation (in min) giv
     #sep = math.sqrt(diffRA**2+diffDec**2)
     return sep
 
+def distance_from_an_array_of_positions_to_one_specific_position(X,Y,xs,ys):
+    if type(xs)==int or type(xs)==float:
+        D = ((X-xs)**2+(Y-ys)**2)**0.5
+        return D
+    else:
+        Ds = np.array([])
+        for i in range(len(xs)):
+            D = ((X-xs[i])**2+(Y-ys[i])**2)**0.5
+            Ds = np.append(Ds, D)
+        return Ds
+
+def solve_the_distance_from_a_point_to_a_line_segment(xs,ys,x1,y1,x2,y2, SNR_assoc_mode=False):
+    """
+    work for an array of xs and ys;
+    see solve_the_distance_from_a_point_to_a_line_segment1 for more explanation
+    Note that in SNR_assoc_mode, x2, y2 is the current position of pulsar
+    """
+    if type(xs)==int or type(xs)==float:
+        D = solve_the_distance_from_a_point_to_a_line_segment1(xs,ys,x1,y1,x2,y2, SNR_assoc_mode)
+        return D, lamda
+    else:
+        Ds = lamdas = np.array([])
+        for i in range(len(xs)):
+            D, lamda = solve_the_distance_from_a_point_to_a_line_segment1(xs[i],ys[i],x1,y1,x2,y2, SNR_assoc_mode)
+            Ds, lamdas = np.append(Ds,D), np.append(lamdas, lamda)
+        return Ds, lamdas
+
+def solve_the_distance_from_a_point_to_a_line_segment1(x,y,x1,y1,x2,y2, SNR_assoc_mode):
+    """
+    (x1,y1) and (x2,y2) are the endpoints of a continuous line segment; 
+    (x2,y2) for current position, (x1,y1) stands for the earlier end;
+    the function is made to solve the distance from (x,y) to the line segment;
+    output: distance D (from X,Y to x,y), lamda - tracing the proportional position of X,Y
+    """
+    if (x2-x1)*(x-x1)+(y2-y1)*(y-y1) < 0: 
+        X, Y = x1, y1
+    elif (x1-x2)*(x-x2)+(y1-y2)*(y-y2) < 0:
+        X, Y = x2, y2
+        if SNR_assoc_mode:
+            X = Y = float('inf')
+    else:
+        A = np.mat([[y2-y1, x1-x2],
+                    [x2-x1, y2-y1]])
+        B = np.mat([[x1*y2-y1*x2],
+                    [x*(x2-x1)+y*(y2-y1)]])
+        solution = A.I * B
+        X, Y = solution[0,0], solution[1,0]
+    lamda = (X-x2)/(x1-x2)
+    D = ((X-x)**2+(Y-y)**2)**0.5
+    return D, lamda
+
 def colonizedms(string):
     import re
     string = string.strip()

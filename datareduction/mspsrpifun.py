@@ -3093,5 +3093,107 @@ class generatepmparin:
         mu_a, mu_d = aa.galactic_proper_motion2equatorial_proper_motion(mu_l, mu_b)
         return mu_a, mu_d
 
-
-
+class look_for_indirect_SNR_associations:
+    """
+    Sometimes a pulsar is not directly associated with an SNR, but its divorced companion is. That we term indirect SNR association.
+    This class deals with and studies the SNRs from the Green SNR catalog and pulsars recorded in PSRCAT.
+    We are looking for pulsars not directly associated with their immediately nearby SNRs (beta=sep/R_SNR>3). 
+    We focus on pulsars with precise proper motion measurements and search within their characteristic ages for SNRs on its reverse trajectory.
+    Due to the apparent proper motion of the progenitors of SNRs (~2'/100kyr), we start from a pulsar sample with age_i<100kyr (age_i is defined in PSRCAT).
+    """
+    SNR_dir = '/fred/oz002/hding/SNR/'
+    def __init__(s, age_threshold=1e5, SNR_catalog='SNR_catalog.txt', filter_maximum_distance=2): #age in yr, distance in deg
+        s.SNR_infile, s.age_threshold = s.SNR_dir + SNR_catalog, age_threshold
+        s.parse_SNR_catalog_to_table(s.SNR_infile)
+        s.gather_pulsar_side_infos_from_PSRCAT(s.age_threshold)
+        s.search_for_closest_SNR_for_a_pulsar_trajectory(filter_maximum_distance)
+    def parse_SNR_catalog_to_table(s, SNR_infile):
+        SNR_table = s.SNR_dir + 'SNR_table'
+        if os.path.exists(SNR_table):
+            s.t_SNR = Table.read(SNR_table, format='ascii')
+        else:
+            SNRnames = RAs = Decs = sizes = shapes = np.array([])
+            lines = open(SNR_infile).readlines()
+            for line in lines:
+                line = line.strip()
+                if not line[0].isdigit():
+                    continue
+                infos = line.split('  ')
+                SNRname = 'G' + infos[0].strip() + infos[1].strip()
+                RA = infos[2].strip().replace(' ',':')
+                Dec = infos[3].strip().replace(' ',':')
+                SNRnames, RAs, Decs = np.append(SNRnames, SNRname), np.append(RAs, RA), np.append(Decs, Dec)
+                size1 = infos[4].replace('?','').strip().split('x')
+                size = np.array(size1).astype(np.float)
+                size = max(size)
+                shape = infos[5].strip()
+                sizes, shapes = np.append(sizes, size), np.append(shapes, shape)
+            RAs_h, Decs_deg = howfun.dms2deg(RAs), howfun.dms2deg(Decs)
+            RAs_deg = RAs_h * 15 * np.cos(Decs_deg*math.pi/180) # Note that RAs_deg is defined differently from simpy times 15 !!!
+            s.t_SNR = Table([SNRnames, RAs, Decs, RAs_deg, Decs_deg, sizes, shapes], \
+                names=['SNRname', 'RA', 'Dec', 'RA_deg', 'Dec_deg', 'size', 'shape']) 
+            s.t_SNR.write(SNR_table, format='ascii', overwrite=True)
+    def gather_pulsar_side_infos_from_PSRCAT(s, age_threshold):
+        """
+        run psrcat command -> write to a file -> parse the file -> produce a table
+        """
+        psrcat_command = ("psrcat -l 'age_i<%f && age_i>0 pmra!=0 && pmdec!=0' -s age_i -c\
+            'jname age_i pmra pmdec raj decj posepoch' -o short_csv" % age_threshold)
+        psrcat_output = s.SNR_dir + 'psrcat_output'
+        os.system(psrcat_command + '>' + psrcat_output) #inquire and output to csv format
+        PSRJnames = age_Is = mu_as = mu_ds = RAs = Decs = refepochs = np.array([])
+        lines = open(psrcat_output).readlines()
+        for line in lines:
+            line = line.strip()
+            if not line[0].isdigit():
+                continue
+            infos = line.split(';')
+            junk1, PSRJname, age_I, mu_a, mu_d, RA, Dec, refepoch, junk2 = infos
+            PSRJnames, age_Is, mu_as, mu_ds, RAs, Decs, refepochs = np.append(PSRJnames, PSRJname), np.append(age_Is, age_I),\
+                np.append(mu_as, mu_a), np.append(mu_ds, mu_d), np.append(RAs, RA), np.append(Decs, Dec), np.append(refepochs, refepoch)
+        RAs_h, Decs_deg = howfun.dms2deg(RAs), howfun.dms2deg(Decs)
+        RAs_deg = RAs_h * 15 * np.cos(Decs_deg*math.pi/180) # Note that RAs_deg is defined differently from simpy times 15 !!!
+        age_Is, mu_as, mu_ds, refepochs  = np.array(age_Is).astype(np.float), np.array(mu_as).astype(np.float),\
+            np.array(mu_ds).astype(np.float), np.array(refepochs).astype(np.float)
+        s.t_psr = Table([PSRJnames, age_Is, mu_as, mu_ds, RAs, Decs, RAs_deg, Decs_deg, refepochs],\
+            names=['PSRJname', 'age_I', 'mu_a', 'mu_d', 'RA', 'Dec', 'RA_deg', 'Dec_deg', 'refepoch'])
+        psr_table = s.SNR_dir + 'psr_table'
+        s.t_psr.write(psr_table, format='ascii', overwrite=True)
+    def search_for_closest_SNR_for_a_pulsar_trajectory(s, filter_maximum_distance): #in deg
+        PSRJnames = age_Is = age_Ks = SNRs = minDs = SNRsizes = nowDs = np.array([])
+        X1s_SNR, Y1s_SNR = s.t_SNR['RA_deg'], s.t_SNR['Dec_deg']
+        for i in range(len(s.t_psr)):
+            ## narrow SNR with a radius
+            x2, y2, mu_a, mu_d, age_I = s.t_psr[i]['RA_deg'], s.t_psr[i]['Dec_deg'], s.t_psr[i]['mu_a'],\
+                s.t_psr[i]['mu_d'], s.t_psr[i]['age_I']
+            D1s = howfun.distance_from_an_array_of_positions_to_one_specific_position(x2,y2, X1s_SNR, Y1s_SNR)
+            t_SNR = s.t_SNR[D1s<filter_maximum_distance]
+            if len(t_SNR) == 0:
+                continue
+            ## solve the closest distance from an SNR center to the line segment defined by two endpoints of the puslar
+            Xs_SNR, Ys_SNR = t_SNR['RA_deg'], t_SNR['Dec_deg']
+            x1 = x2 - mu_a/1000/3600*age_I
+            y1 = y2 - mu_d/1000/3600*age_I
+            Ds, lamdas = howfun.solve_the_distance_from_a_point_to_a_line_segment(Xs_SNR,Ys_SNR,x1,y1,x2,y2,True)
+            if min(Ds) == float('inf'):
+                continue
+            minD = min(Ds)
+            t_SNR1 = t_SNR[Ds==minD]
+            lamda = lamdas[Ds==minD][0]
+            print(min(Ds)*60, lamda)
+            print(t_SNR1)
+            x_SNR, y_SNR = t_SNR1['RA_deg'][0], t_SNR1['Dec_deg'][0]
+            print(x_SNR, y_SNR, x2, y2)
+            nowD = 60*((x_SNR-x2)**2+(y_SNR-y2)**2)**0.5 #in arcmin
+            ## print a table summarizing the results
+            PSRJnames = np.append(PSRJnames, s.t_psr[i]['PSRJname'])
+            age_Is    = np.append(age_Is, s.t_psr[i]['age_I'])
+            age_Ks    = np.append(age_Ks, age_I*lamda)
+            SNRs      = np.append(SNRs, t_SNR1['SNRname'][0])
+            minDs     = np.append(minDs, 60*minD) #in arcmin
+            SNRsizes  = np.append(SNRsizes, t_SNR1['size'][0]) #in arcmin
+            nowDs     = np.append(nowDs, nowD)
+        s.t_paired = Table([PSRJnames, age_Is, age_Ks, SNRs, minDs, SNRsizes, nowDs],\
+            names=['PSRJnames', 'age_I', 'age_K', 'SNR', 'minD', 'SNRsize', 'nowD'])
+        indirectly_paired_table = s.SNR_dir + 'indirectly_paired_table'
+        s.t_paired.write(indirectly_paired_table, format='ascii', overwrite=True)
