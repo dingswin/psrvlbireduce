@@ -137,7 +137,7 @@ class spherical_astrometry:
         d_rad, d0_rad = d*math.pi/180, d0*math.pi/180
         a = np.log(abs(1./np.cos(d_rad) + np.tan(d_rad)))
         a -= np.log(abs(1./np.cos(d0_rad) + np.tan(d0_rad)))
-        a *= mu_a/mu_d/15.
+        a *= mu_a/mu_d/15.*180/math.pi
         a += a0
         return deg2dms(a), deg2dms(d) #a in h-str, d in deg-str; (a,d) is the position extrapolated at time t (t can be negative, which is the past)
     def plot_the_trajectory_of_a_pulsar_with_a_constant_proper_motion_on_an_Euclidean_canvas(s, RA, Dec, mu_a, mu_d, T):
@@ -152,10 +152,12 @@ class spherical_astrometry:
         RA1s = Dec1s = np.array([])
         for t in ts:
             RA1, Dec1 = s.calculate_positions_at_another_time_with_intial_position_and_proper_motion(RA, Dec, mu_a, mu_d, t)
+            RA1, Dec1 = dms2deg(RA1), dms2deg(Dec1)
             RA1s, Dec1s = np.append(RA1s, RA1), np.append(Dec1s, Dec1)
         plt.plot(RA1s, Dec1s)
         plt.xlabel('RA. (h)')
         plt.ylabel('Decl. (deg)')
+        plt.gca().invert_xaxis()
         plt.show()
 
 def colonizedms(string):

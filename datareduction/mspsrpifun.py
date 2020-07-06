@@ -43,7 +43,7 @@ def prepare_path_source(targetname):
     expconfigfile = configdir + '/' + targetname + '.yaml'
     targetdir = auxdir + '/processing/' + targetname
     if not os.path.exists(targetdir):
-        print("%s doesn't exist; aborting\n" % targetdir)
+        print("%s doesn't exist; return False\n" % targetdir)
         return False
         sys.exit()
     expconfig = yaml.load(open(expconfigfile))
@@ -2073,7 +2073,7 @@ class find_virtual_calibrator_position_with_colinear_calibrators:
         s.targetname = targetname
         s.phscal1name = phscal1name
         s.phscal2name = phscal2name
-        print s.targetname, s.phscal1name
+        #print s.targetname, s.phscal1name
         s.calibrator_search_mode = False
         if prepare_path_source(s.targetname) == False:
             s.calibrator_search_mode = True
@@ -3102,11 +3102,15 @@ class look_for_indirect_SNR_associations:
     Due to the apparent proper motion of the progenitors of SNRs (~2'/100kyr), we start from a pulsar sample with age_i<100kyr (age_i is defined in PSRCAT).
     """
     SNR_dir = '/fred/oz002/hding/SNR/'
-    def __init__(s, age_threshold=1e6, filter_maximum_distance=10, SNR_catalog='SNR_catalog.txt'): #age in yr, distance in deg
+    def __init__(s, age_threshold=1e6, filter_maximum_distance=10, years_forward=False, SNR_catalog='SNR_catalog.txt'): #age in yr, distance in deg
+        """
+        years_forward is for chance-alignment testing, see the docstring for the 'search...' funtion
+        """
         s.SNR_infile, s.age_threshold = s.SNR_dir + SNR_catalog, age_threshold
         s.parse_SNR_catalog_to_table(s.SNR_infile)
         s.gather_pulsar_side_infos_from_PSRCAT(s.age_threshold)
-        s.search_for_closest_SNR_for_a_pulsar_trajectory(filter_maximum_distance, s.age_threshold)
+        s.search_for_closest_SNR_for_a_pulsar_trajectory(filter_maximum_distance, years_forward)
+        s.recognize_potential_directly_and_indirectly_associated_SNR_pulsar_pairs()
     def parse_SNR_catalog_to_table(s, SNR_infile):
         SNR_table = s.SNR_dir + 'SNR_table'
         if os.path.exists(SNR_table):
@@ -3198,7 +3202,12 @@ class look_for_indirect_SNR_associations:
             names=['PSRJnames', 'age_I', 'age_K', 'SNR', 'minD', 'SNRsize', 'nowD'])
         indirectly_paired_table = s.SNR_dir + 'indirectly_paired_table'
         s.t_paired.write(indirectly_paired_table, format='ascii', overwrite=True)
-    def search_for_closest_SNR_for_a_pulsar_trajectory(s, filter_maximum_distance, age_threshold): #in deg
+    def search_for_closest_SNR_for_a_pulsar_trajectory(s, filter_maximum_distance, years_forward=False): #in deg
+        """
+        compatible with spherical geomemtry, yet might run into some bugs near Decl=+/-90deg
+        years_forward=True is for chance alignment testing because indirect assoc made with years_foward=True must be fake.
+        """
+        years_forward = -2 * int(years_forward) + 1 #False -> 1, True -> -1
         PSRJnames = age_Is = age_Ks = SNRs = minDs = SNRsizes = nowDs = np.array([])
         RAs_SNR, Decs_SNR = s.t_SNR['RA'], s.t_SNR['Dec']
         print(RAs_SNR, Decs_SNR)
@@ -3212,8 +3221,9 @@ class look_for_indirect_SNR_associations:
                 continue
             ## solve the closest distance from an SNR center to the line segment defined by two endpoints of the puslar
             RA1s_SNR, Dec1s_SNR = t_SNR['RA'], t_SNR['Dec']
+            years_back = age_I * 70./31 #the ratio of interest particularly for J1810-197
             aa = howfun.spherical_astrometry()
-            RA1, Dec1 = aa.calculate_positions_at_another_time_with_intial_position_and_proper_motion(RA2, Dec2, mu_a, mu_d, 70./31*age_threshold)
+            RA1, Dec1 = aa.calculate_positions_at_another_time_with_intial_position_and_proper_motion(RA2, Dec2, mu_a, mu_d, -years_back*years_forward)
             D12 = howfun.separation(RA1, Dec1, RA2, Dec2) #in arcmin
             position2 = RA2 + ',' + Dec2
             position1 = RA1 + ',' + Dec1
@@ -3232,7 +3242,8 @@ class look_for_indirect_SNR_associations:
                     RA_v, Dec_v = RA1, Dec1
                 D_VS = howfun.separation(RA_v, Dec_v, RA1s_SNR[j], Dec1s_SNR[j])
                 D1s = np.append(D1s, D_VS) #in arcmin
-                lamda = D_v2/D12
+                D1_v2 = howfun.separation(RA_v, Dec_v, RA2, Dec2) #in arcmin
+                lamda = D1_v2/D12
                 lamdas = np.append(lamdas, lamda)
             minD = min(D1s)
             if minD == float('inf'):
@@ -3246,7 +3257,7 @@ class look_for_indirect_SNR_associations:
             ## print a table summarizing the results
             PSRJnames = np.append(PSRJnames, s.t_psr[i]['PSRJname'])
             age_Is    = np.append(age_Is, s.t_psr[i]['age_I'])
-            age_Ks    = np.append(age_Ks, age_I*lamda)
+            age_Ks    = np.append(age_Ks, years_back*lamda)
             SNRs      = np.append(SNRs, t_SNR1['SNRname'][0])
             minDs     = np.append(minDs, minD) #in arcmin
             SNRsizes  = np.append(SNRsizes, t_SNR1['size'][0]) #in arcmin
@@ -3255,3 +3266,8 @@ class look_for_indirect_SNR_associations:
             names=['PSRJnames', 'age_I', 'age_K', 'SNR', 'minD', 'SNRsize', 'nowD'])
         indirectly_paired_table = s.SNR_dir + 'indirectly_paired_table'
         s.t_paired.write(indirectly_paired_table, format='ascii', overwrite=True)
+    def recognize_potential_directly_and_indirectly_associated_SNR_pulsar_pairs(s):
+        s.t_paired['direct_assoc'] = s.t_paired['nowD'] < s.t_paired['SNRsize'] #SNRsize is 2 times the radius for shell SNRs
+        s.t_paired['indirect_assoc'] = (s.t_paired['nowD']>s.t_paired['SNRsize']) &\
+            (s.t_paired['minD']<1./2.*s.t_paired['SNRsize']) #note that we compare minD to half of SNRsize (roughly the radius), stricter than direct assoc.
+        s.t_indirect_assoc = s.t_paired[s.t_paired['indirect_assoc']]
