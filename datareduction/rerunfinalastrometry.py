@@ -22,7 +22,7 @@ parser.add_option("-p", "--prepare", dest="prepare", default=False,
 parser.add_option("-o", "--prepareonly", dest="prepareonly", default=False,
                   action="store_true",help="run prepare_astrometric_epoch.py only")
 parser.add_option("-r", "--runlevel", dest="runlevel", default=1,
-                  help="runlevel at which to start")
+                  help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2")
 (options, junk) = parser.parse_args()
 targetname      = options.target
 experiment      = options.experiment

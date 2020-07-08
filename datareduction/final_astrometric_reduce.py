@@ -828,14 +828,26 @@ class vlbireduce(support_vlbireduce):
 
     def duplicate_the_initial_CL_table(self, targetonly, numinbeams, inbeamuvdatas, gateduvdata,
             ungateduvdata):
+        """
+        In cases where runlevel starts from 2, CL>=2 and SN>=2 are deleted here.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Duplicating CL table 1"
             if not targetonly:
                 for i in range(numinbeams):
+                    for j in range(20):
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'SN', j+1+self.snversion) #in cases runlevel starts from 2.
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'CL', j+1+self.snversion)
                     vlbatasks.tacop(inbeamuvdatas[i], 'CL', 1, inbeamuvdatas[i], 2)
             if not calonly:
+                for j in range(20):
+                    vlbatasks.deletetable(gateduvdata, 'SN', j+1+self.snversion) #in cases runlevel starts from 2.
+                    vlbatasks.deletetable(gateduvdata, 'CL', j+1+self.snversion)
                 vlbatasks.tacop(gateduvdata, 'CL', 1, gateduvdata, 2)
                 if haveungated:
+                    for j in range(20):
+                        vlbatasks.deletetable(ungateduvdata, 'SN', j+1+self.snversion) #in cases runlevel starts from 2.
+                        vlbatasks.deletetable(ungateduvdata, 'CL', j+1+self.snversion)
                     vlbatasks.tacop(ungateduvdata, 'CL', 1, ungateduvdata, 2)
         else:
             print "Skipping duplication of initial CL table"
