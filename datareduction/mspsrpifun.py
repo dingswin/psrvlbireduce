@@ -3271,3 +3271,40 @@ class look_for_indirect_SNR_associations:
         s.t_paired['indirect_assoc'] = (s.t_paired['nowD']>s.t_paired['SNRsize']) &\
             (s.t_paired['minD']<1./2.*s.t_paired['SNRsize']) #note that we compare minD to half of SNRsize (roughly the radius), stricter than direct assoc.
         s.t_indirect_assoc = s.t_paired[s.t_paired['indirect_assoc']]
+
+class measure_the_angular_broadened_size_of_the_target:
+    def __init__(s, targetname):
+        s.targetname = targetname
+        [auxdir, configdir, s.targetdir, phscalname, prIBCname] = prepare_path_source(s.targetname)
+        #s.compile_the_deconvolved_size_of_the_target_and_calculate_statistics()
+    def compile_the_deconvolved_size_of_the_target_and_calculate_statistics(s):
+        s.statsfiles=glob.glob(r'%s/*/*_jmfit_%s.stats' % (s.targetdir, s.targetname)) #find statsfile for each epoch
+        s.statsfiles.sort()
+        major_axs = np.array([])
+        minor_axs = np.array([])
+        for statsfile in s.statsfiles:
+            lines = open(statsfile).readlines()[-10:]
+            for line in lines:
+                if 'Major ax' in line:
+                    line = line.replace('      ','')
+                    major_ax = line.split('    ')[2].strip()
+                    major_axs = np.append(major_axs, major_ax)
+                if 'Minor ax' in line:
+                    line = line.replace('      ','')
+                    minor_ax = line.split('    ')[2].strip()
+                    minor_axs = np.append(minor_axs, minor_ax)
+        major_axs = major_axs.astype(np.float)
+        minor_axs = minor_axs.astype(np.float)
+        sizes = (major_axs + minor_axs) / 2.
+        av_major_ax = np.average(major_axs)
+        std_major_ax = np.std(major_axs)
+        av_minor_ax = np.average(minor_axs)
+        std_minor_ax = np.std(minor_axs)
+        av_size = np.average(sizes)
+        std_size = np.std(sizes)
+        return av_major_ax, std_major_ax, av_minor_ax, std_minor_ax, av_size, std_size
+      
+
+
+
+        
