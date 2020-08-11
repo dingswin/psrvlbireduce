@@ -2836,8 +2836,10 @@ class generatepmparin:
         c = ChainConsumer().add_chain(np.transpose(data), parameters=labels[:HowManyParameters])
         #fig = c.plotter.plot(truth=truth)
         #outputfigure = s.pmparesultsdir + '/covariance_2d_plots_' + str(HowManyParameters) + '_parameters.pdf'
-        c.configure(summary=False, colors="#388E3C", kde=False, bins=plot_bins, sigma2d=False)
-        fig = c.plotter.plot(parameters=labels[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
+        if not mark_median_instead_of_most_probable_value:
+            plot_extents_from_saved = [tuple(xlim_PI), tuple(xlim_mu_a), tuple(xlim_mu_d), tuple(xlim_rRA), tuple(xlim_rDec)]
+            c.configure(summary=False, colors="#388E3C", kde=False, bins=plot_bins, sigma2d=False)
+            fig = c.plotter.plot(parameters=labels[:HowManyParameters], extents = plot_extents_from_saved[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
         if plot_extents != [(),(),(),(),()]:
             fig = c.plotter.plot(parameters=labels[:HowManyParameters], extents=plot_extents[:HowManyParameters], figsize='page', truth=truths[:HowManyParameters])
         #fig.set_size_inches(3 + fig.get_size_inches())
