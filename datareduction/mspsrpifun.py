@@ -2542,14 +2542,15 @@ class generatepmparin:
             if os.path.exists(bootstrapped_relative_positions_table):
                 for estimate in ['rRA', 'rDec']:
                     exec("s.median_low_end_%s, s.median_high_end_%s = howfun.sample2median_range(%ss, CL)" % (estimate, estimate, estimate))
-            ## error in mas relative to most+probable_RA/Dec, get the symmetric error form 
-            [error_RA_mas1, error_Dec_mas1] = diffposition(howfun.deg2dms(s.value_RA+s.error_RA), howfun.deg2dms(s.most_probable_RA),
-                                                           howfun.deg2dms(s.value_Dec+s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
-            [error_RA_mas2, error_Dec_mas2] = diffposition(howfun.deg2dms(s.value_RA-s.error_RA), howfun.deg2dms(s.most_probable_RA),
-                                                           howfun.deg2dms(s.value_Dec-s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
-            error_RA_mas = max(abs(error_RA_mas1), abs(error_RA_mas2))
-            error_Dec_mas = max(abs(error_Dec_mas1), abs(error_Dec_mas2))
-                ## transverse velocity ########################################################
+            ## error in mas relative to most+probable_RA/Dec, get the symmetric error form
+            if os.path.exists(saved_plot_parameters):
+                [error_RA_mas1, error_Dec_mas1] = diffposition(howfun.deg2dms(s.value_RA+s.error_RA), howfun.deg2dms(s.most_probable_RA),
+                                                               howfun.deg2dms(s.value_Dec+s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
+                [error_RA_mas2, error_Dec_mas2] = diffposition(howfun.deg2dms(s.value_RA-s.error_RA), howfun.deg2dms(s.most_probable_RA),
+                                                               howfun.deg2dms(s.value_Dec-s.error_Dec), howfun.deg2dms(s.most_probable_Dec))
+                error_RA_mas = max(abs(error_RA_mas1), abs(error_RA_mas2))
+                error_Dec_mas = max(abs(error_Dec_mas1), abs(error_Dec_mas2))
+            ## transverse velocity ########################################################
             min_v_t = s.calculate_v_t(s.value_PI+s.error_PI, min(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
                                                              min(abs(s.value_mu_d-s.error_mu_d), abs(s.value_mu_d+s.error_mu_d)))
             max_v_t = s.calculate_v_t(s.value_PI-s.error_PI, max(abs(s.value_mu_a-s.error_mu_a), abs(s.value_mu_a+s.error_mu_a)), 
@@ -2592,6 +2593,9 @@ class generatepmparin:
                 fileWrite.write("most_probable_v_t = %f + %f - %f (km/s)\n" % (most_probable_v_t, max_v_t-most_probable_v_t, most_probable_v_t-min_v_t))
         fileWrite.close()
         os.system("cat %s" % bootstrap_estimates_output)
+        # recover the original data, since they are apparently sorted when running the functions 
+        #for estimate in ['PI', 'mu_a', 'mu_d', 'RA', 'Dec']:
+        #    exec("%ss = np.array(t['%s'])" % (estimate, estimate))
         return PIs, mu_as, mu_ds, RAs, Decs
     
     def plot_three_histograms_with_bootstrap_results(s, use_saved_plot_parameters=False, binno_PI=500, binno_mu_a=300, binno_mu_d=150, xlim_PI=[], xlim_mu_a=[], xlim_mu_d=[], save_plot_parameters=False):
@@ -3279,6 +3283,7 @@ class measure_the_angular_broadened_size_of_the_target:
         #s.compile_the_deconvolved_size_of_the_target_and_calculate_statistics()
     def compile_the_deconvolved_size_of_the_target_and_calculate_statistics(s):
         s.statsfiles=glob.glob(r'%s/*/*_jmfit_%s.stats' % (s.targetdir, s.targetname)) #find statsfile for each epoch
+        # here, the statsfiles were generated separately with "jmfitfromfile.py *ii.a junk > *.stats" 
         s.statsfiles.sort()
         major_axs = np.array([])
         minor_axs = np.array([])

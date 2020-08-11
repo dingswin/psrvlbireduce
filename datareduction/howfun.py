@@ -228,8 +228,8 @@ def ms2mas(ErrArray_ms, Dec):
     ErrArray_mas = ErrArray_ms*15*math.cos(d)
     return ErrArray_mas
 
-def sample2estimate(array,confidencelevel):
-    array.sort()
+def sample2estimate(array1,confidencelevel):
+    array = sorted(array1)
     CL = confidencelevel
     if CL<1:
         SV = int(CL*len(array)) #SV -> significant volume
@@ -250,24 +250,24 @@ def sample2estimate(array,confidencelevel):
     error = 0.5*(confidence_max-confidence_min)
     return value,error
 
-def sample2most_probable_value(array, bins=1000):
-    array.sort()
+def sample2most_probable_value(array1, bins=1000):
+    array = sorted(array1)
     bins = int(bins)
     [counts, values] = np.histogram(array, bins)
     index_max_count = np.argmax(counts)
     most_probable_value = 0.5*(values[index_max_count] + values[index_max_count+1])
     return most_probable_value
 
-def sample2median(array):
-    array.sort()
+def sample2median(array1):
+    array = sorted(array1)
     length = len(array)
     if length % 2 == 0:
         median = 0.5*(array[length/2-1] + array[length/2])
     else:
         median = array[(length-1)/2]
     return median
-def sample2median_range(array, confidencelevel):
-    array.sort()
+def sample2median_range(array1, confidencelevel):
+    array = sorted(array1)
     CL = confidencelevel
     if CL<1:
         SV = int(CL*len(array)) #SV -> significant volume
@@ -339,8 +339,8 @@ def nD_sample2estimates(howmanysigma=1, *arrays):
     start_ratios = np.array([])
     end_ratios = np.array([])
     l = []
-    for array in arrays:
-        array.sort()
+    for array1 in arrays:
+        array = sorted(array1)
         start_ratios = np.append(start_ratios, CL)
         end_ratios = np.append(end_ratios, 1-margin)
     #start_ratios = np.array([0.83,0.90,0.82])
@@ -401,8 +401,8 @@ def nD_ratios(arrays, start_ratios, end_ratios, CL, trials=5):
         count += 1
     return V_compare, ratios_optimal, values_optimal, errors_optimal
 
-def sample2uncertainty(array,estimate,confidencelevel): #offered with an estimate and present symmetric format
-    array.sort()
+def sample2uncertainty(array1,estimate,confidencelevel): #offered with an estimate and present symmetric format
+    array = sorted(array1)
     CL = confidencelevel
     SV = int(CL*len(array))
     delta = float('inf')
