@@ -1496,16 +1496,18 @@ class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
         return r
 
 class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
+    """
+    workflow is the default one-stop function
+    """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     def __init__(s, srcname, magnitude_match_offset=0.02):
+        s.srcname, s.MMO = srcname, magnitude_match_offset
+    def workflow(s):        
         import copy
-        s.srcname = srcname
-        s.MMO = magnitude_match_offset
-        s.T0 = s.read_catalog_of_Gaia_counterparts_for_AGNs(srcname)
+        s.T0 = s.read_catalog_of_Gaia_counterparts_for_AGNs(s.srcname)
         print s.T0
         s.T2 = s.delete_rows_where_the_required_parameter_is_absent(s.T0, 'parallax')
         s.T1 = copy.deepcopy(s.T2)
-        
         s.mag_g = s.read_phot_g_mean_mag_of_target(s.srcname)
         s.T3 = s.get_like_magnitude_AGNs(s.T2, s.mag_g, s.MMO)
         print s.T3
@@ -1637,6 +1639,101 @@ class plot_positions_of_like_magnitude_background_AGNs(catalog_of_Gaia_counterpa
         plt.savefig('%s/positions_of_background_quasars_for_%s.eps' % (s.path, s.srcname.replace(' ', '')))
         plt.clf()
         
+class plot_Gaia_sources_around_a_source:
+    path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
+    def __init__(s, srcname, radius=10):
+        """
+        radius in arcsecond;
+        workflow is the default function that would make the plots for you.
+        """
+        s.srcname, s.radius = srcname, radius
+    def workflow(s):
+        RA_deg, Dec_deg = s.Simbad_srcname_to_position(s.srcname)
+        s.T = s.cone_search_Gaia_sources_within_given_radius(RA_deg, Dec_deg, s.radius)
+        s.plot_RAs_Decs(s.srcname, s.radius, RA_deg, Dec_deg)
+    def Simbad_srcname_to_position(s, srcname):
+        from astroquery.simbad import Simbad
+        queryresult = Simbad.query_object(srcname)
+        print queryresult
+        #print type(queryresult['RA'])
+        a = read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file()
+        RA_deg = 15*a.simbad_coordinate2deg(queryresult['RA'])
+        Dec_deg = a.simbad_coordinate2deg(queryresult['DEC'])
+        return RA_deg, Dec_deg
+    def cone_search_Gaia_sources_within_given_radius(s, RA_deg, Dec_deg, radius):
+        import astropy.units as u
+        from astropy.coordinates import SkyCoord
+        from astroquery.gaia import Gaia
+        coord = SkyCoord(ra=RA_deg, dec=Dec_deg, unit=(u.degree, u.degree), frame='icrs')
+        radius_unit = u.Quantity(radius, u.arcsec)
+        j = Gaia.cone_search_async(coord, radius_unit)
+        return j.get_results()
+    def plot_RAs_Decs(s, srcname, radius, RA_t_deg, Dec_t_deg):
+        import matplotlib.pyplot as plt
+        #av_RAs = s.RAs.mean()
+        #av_Decs = s.Decs.mean()
+        RA_t_dms, Dec_t_dms = howfun.deg2dms(RA_t_deg/15), howfun.deg2dms(Dec_t_deg)
+        RAs_dms, Decs_dms = howfun.deg2dms(s.T['ra']/15), howfun.deg2dms(s.T['dec'])
+        diffRAs, diffDecs = diffposition(RAs_dms, RA_t_dms, Decs_dms, Dec_t_dms) #in mas
+        diffRAs /= 1000 #in arcsec
+        diffDecs /= 1000 #in arcsec
+        plt.scatter(diffRAs, diffDecs, marker='.')
+        #plt.plot(av_RAs, av_Decs, 'rs')
+        plt.plot(0, 0, 'g^')
+        plt.ylabel('relative Decl. (arcsec)')
+        plt.xlabel('relative RA (arcsec)')
+        plt.gca().invert_xaxis()
+        plt.savefig('%s/Gaia_sources_within_%darcsec_radius_around_%s.eps' % (s.path, radius, srcname.replace(' ', '')))
+        plt.clf()
+
+class use_high_precision_Gaia_subset_to_estimate_parallax_zero_point:
+    """
+    use Gaia DR2 sources with high-precision parallaxes to find sources with no detected proper motions (and parallaxes),
+    then use these extragalactic-looking sources to constrain parallax zero point.
+    """
+    def __init__(s, srcname, radius=1, parallax_precision_threshold=1):
+        """
+        radius in arcmin, parallax_precision_threshold in mas;
+        workflow is the one-stop function that chains all functions
+        """
+        s.srcname, s.radius, s.PPT = srcname, radius, parallax_precision_threshold
+    def workflow(s):
+        import copy
+        classA = plot_Gaia_sources_around_a_source(s.srcname, s.radius)
+        RA_deg, Dec_deg = classA.Simbad_srcname_to_position(s.srcname)
+        s.T = s.cone_search_Gaia_search_within_given_radius_in_deg(RA_deg, Dec_deg, s.radius)
+        s.T0 = copy.deepcopy(s.T)
+        classB = catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(s.srcname)
+        s.T = classB.delete_rows_where_the_required_parameter_is_absent(s.T, 'parallax')
+        s.T1 = copy.deepcopy(s.T)
+        s.T = s.filter_in_high_precision_subset(s.T, s.PPT)
+        s.T2 = copy.deepcopy(s.T)
+        s.T = s.filter_out_sources_with_detected_proper_motions(s.T, 1)
+        s.T3 = copy.deepcopy(s.T)
+        s.av_parallax, s.integral_error_parallax, s.std_parallax = classB.calculate_zero_parallax_and_its_sigma(s.T)
+    def cone_search_Gaia_search_within_given_radius_in_deg(s, RA_deg, Dec_deg, radius):
+        import astropy.units as u
+        from astropy.coordinates import SkyCoord
+        from astroquery.gaia import Gaia
+        coord = SkyCoord(ra=RA_deg, dec=Dec_deg, unit=(u.degree, u.degree), frame='icrs')
+        radius_unit = u.Quantity(radius, u.arcmin)
+        j = Gaia.cone_search_async(coord, radius_unit)
+        return j.get_results()
+    def filter_in_high_precision_subset(s, input_table, PPT):
+        """
+        PPT --> parallax_precision_threshold; PPT in mas
+        """
+        t = input_table
+        index = t['parallax_error'] < PPT
+        return t[index]
+    def filter_out_sources_with_detected_proper_motions(s, input_table, threshold_SNR=1):
+        t = input_table
+        index1 = abs(t['pmra'])/t['pmra_error'] < threshold_SNR
+        index2 = abs(t['pmdec'])/t['pmdec_error'] < threshold_SNR
+        index3 = t['parallax']/t['parallax_error'] < threshold_SNR
+        index = np.logical_and(np.array(index1), np.array(index2))
+        index = np.logical_and(np.array(index), np.array(index3))
+        return s.T[index]
 
 class pulsars_based_GdotG_kD(object):
     def __init__(s):
@@ -2080,8 +2177,8 @@ class find_virtual_calibrator_position_with_colinear_calibrators:
         s.prepare_positions()
         s.quantify_the_plane1_paramters_defined_by_two_phscals_and_000point()
         s.get_the_plane2_perpendicular_to_plane1_and_pass_target_and_000point()
-        #s.solve_the_position_of_virtual_phscal()
-        #s.separation_between_virtual_phscal_and_sources()
+        s.solve_the_position_of_virtual_phscal()
+        s.separation_between_virtual_phscal_and_sources()
     def prepare_positions(s):
         for source in ['target', 'phscal1', 'phscal2']:
             if not s.calibrator_search_mode:
@@ -2365,7 +2462,9 @@ class generatepmparin:
     def write_out_pmparin_incl_sysErr(s, pmparesultsdir, targetname, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA_rchsq):
         errorRAs   = np.array([])
         errorDecs  = np.array([])
-        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in.' + pulsition_suffix
+        if pulsition_suffix != '':
+            pulsition_suffix = '.' + pulsition_suffix
+        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in' + pulsition_suffix
         fileWrite = open(pulsitions, 'w')
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + targetname + "\n")
@@ -2388,7 +2487,9 @@ class generatepmparin:
     def write_out_pmparin_incl_sysErr_two_paraA_rchsq(s, pmparesultsdir, targetname, exceptions, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA1_rchsq, paraA2_rchsq):
         errorRAs   = np.array([])
         errorDecs  = np.array([])
-        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in.' + pulsition_suffix
+        if pulsition_suffix != '':
+            pulsition_suffix = '.' + pulsition_suffix
+        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in' + pulsition_suffix
         fileWrite = open(pulsitions, 'w')
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + targetname + "\n")
