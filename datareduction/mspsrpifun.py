@@ -1500,19 +1500,26 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
     workflow is the default one-stop function
     """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
-    def __init__(s, srcname, magnitude_match_offset=0.02):
-        s.srcname, s.MMO = srcname, magnitude_match_offset
+    global_mean_parallax_zero_point = -0.03
+    def __init__(s, srcname, magnitude_match_offset=0.02, use_high_precision_subset=False):
+        """
+        use_high_precision_subset satisfies "table['parallax_error'<1]" (mas)
+        """
+        s.srcname, s.MMO, s.use_high_precision_subset = srcname, magnitude_match_offset, use_high_precision_subset
     def workflow(s):        
         import copy
-        s.T0 = s.read_catalog_of_Gaia_counterparts_for_AGNs(s.srcname)
-        print s.T0
-        s.T2 = s.delete_rows_where_the_required_parameter_is_absent(s.T0, 'parallax')
-        s.T1 = copy.deepcopy(s.T2)
+        s.T = s.read_catalog_of_Gaia_counterparts_for_AGNs(s.srcname)
+        s.T0 = copy.deepcopy(s.T)
+        s.T = s.delete_rows_where_the_required_parameter_is_absent(s.T, 'parallax')
+        s.T1 = copy.deepcopy(s.T)
+        s.T = s.filter_out_sources_with_detected_proper_motions(s.T, 3, s.use_high_precision_subset)
+        s.T2 = copy.deepcopy(s.T)
         s.mag_g = s.read_phot_g_mean_mag_of_target(s.srcname)
-        s.T3 = s.get_like_magnitude_AGNs(s.T2, s.mag_g, s.MMO)
+        s.T = s.get_like_magnitude_AGNs(s.T, s.mag_g, s.MMO)
+        s.T3 = copy.deepcopy(s.T)
         print s.T3
-        [zero_parallax_point, err_ZPP, std_parallax] = s.calculate_zero_parallax_and_its_sigma(s.T3)
-        print zero_parallax_point, err_ZPP, std_parallax
+        [s.zero_parallax_point, s.err_ZPP, s.std_parallax] = s.calculate_zero_parallax_and_its_sigma(s.T3)
+        print s.zero_parallax_point, s.err_ZPP, s.std_parallax
     def workflow_analysing_parallax2magnitude_or_parallax2color_relation(s, parameter_str):
         s.T2 = s.sort_table_according_to_magnitude_or_color(s.T2, parameter_str)
         t0 = s.get_parallax_parameter_relation(s.T2, parameter_str, 100)
@@ -1539,6 +1546,19 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
                 i -= 1
             i += 1
         return catalogtable
+    def filter_out_sources_with_detected_proper_motions(s, input_table, threshold_SNR=3, use_high_precision_subset=False):
+        """
+        also can filter in high_precision_subset with condition "parallax_error<1 (mas)"
+        """
+        t = input_table
+        index1 = abs(t['pmra'])/t['pmra_error'] < threshold_SNR
+        index2 = abs(t['pmdec'])/t['pmdec_error'] < threshold_SNR
+        index = np.logical_and(np.array(index1), np.array(index2))
+        if use_high_precision_subset:
+            #index3 = (t['parallax']-s.global_mean_parallax_zero_point)/t['parallax_error'] < 3
+            index3 = t['parallax_error'] < 1
+            index = np.logical_and(np.array(index), np.array(index3))
+        return s.T[index]
     def sort_table_according_to_magnitude_or_color(s, catalogtable, parameter_str):
         T0 = s.delete_rows_where_the_required_parameter_is_absent(catalogtable, parameter_str)
         T0.sort(parameter_str)
@@ -1688,20 +1708,27 @@ class plot_Gaia_sources_around_a_source:
 
 class use_high_precision_Gaia_subset_to_estimate_parallax_zero_point:
     """
-    use Gaia DR2 sources with high-precision parallaxes to find sources with no detected proper motions (and parallaxes),
+    This is an 'attempt' 
+    to use Gaia DR2 sources with high-precision parallaxes to find sources with no detected proper motions (and parallaxes),
     then use these extragalactic-looking sources to constrain parallax zero point.
+    It might not be of real use.
     """
+    path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     def __init__(s, srcname, radius=1, parallax_precision_threshold=1):
         """
         radius in arcmin, parallax_precision_threshold in mas;
         workflow is the one-stop function that chains all functions
         """
         s.srcname, s.radius, s.PPT = srcname, radius, parallax_precision_threshold
+        s.cone_search_result = s.path + '/.' + s.srcname.replace(' ', '') + '_' + str(s.radius) + 'arcmin_radius_search_result'
     def workflow(s):
         import copy
-        classA = plot_Gaia_sources_around_a_source(s.srcname, s.radius)
-        RA_deg, Dec_deg = classA.Simbad_srcname_to_position(s.srcname)
-        s.T = s.cone_search_Gaia_search_within_given_radius_in_deg(RA_deg, Dec_deg, s.radius)
+        if not os.path.exists(s.cone_search_result):
+            classA = plot_Gaia_sources_around_a_source(s.srcname, s.radius)
+            RA_deg, Dec_deg = classA.Simbad_srcname_to_position(s.srcname)
+            s.T = s.cone_search_Gaia_search_within_given_radius_in_deg(RA_deg, Dec_deg, s.radius)
+            s.T.write(s.cone_search_result, format='ascii', overwrite=True)
+        s.T = Table.read(s.cone_search_result, format='ascii')
         s.T0 = copy.deepcopy(s.T)
         classB = catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(s.srcname)
         s.T = classB.delete_rows_where_the_required_parameter_is_absent(s.T, 'parallax')
@@ -1727,10 +1754,13 @@ class use_high_precision_Gaia_subset_to_estimate_parallax_zero_point:
         index = t['parallax_error'] < PPT
         return t[index]
     def filter_out_sources_with_detected_proper_motions(s, input_table, threshold_SNR=1):
+        """
+        note that a parallax filter is also applied here
+        """
         t = input_table
         index1 = abs(t['pmra'])/t['pmra_error'] < threshold_SNR
         index2 = abs(t['pmdec'])/t['pmdec_error'] < threshold_SNR
-        index3 = t['parallax']/t['parallax_error'] < threshold_SNR
+        index3 = t['parallax']/t['parallax_error'] < 3
         index = np.logical_and(np.array(index1), np.array(index2))
         index = np.logical_and(np.array(index), np.array(index3))
         return s.T[index]

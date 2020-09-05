@@ -503,6 +503,8 @@ def weighted_avg_and_std(Xs, errs_X):
     w = errs_X/sum_err 
     Xbar = np.average(Xs, weights=w)
     variance = np.average((Xs-Xbar)**2, weights=w)
+    N = len(errs_X)
+    variance *= N/(N-1)
     return (Xbar, math.sqrt(variance))
 
 def is_pure_number_or_space(str):
