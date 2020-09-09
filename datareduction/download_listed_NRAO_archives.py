@@ -4,6 +4,7 @@ import os, sys
 copy the archive info to a downloads.txt at the webpage step to select 'Retrieve over internet',
 then you have to copy and paste webpage link into the downloads.txt after a '#' symbol, and copy user and password in the same line separated with '#',
 then run download*py downloads.txt
+An example can be found at /fred/oz002/hding/mspsrpi/processing/J1818-1607/bd232b/downloads.txt
 """
 usage = "download_listed_NRAO_archives.py downloads.txt\n"
 if len(sys.argv) != 2:
