@@ -497,14 +497,17 @@ def weightX(Xs,errs_X): #both numpy array
     err = 1./sum_err**0.5
     return Xbar, err
 
-def weighted_avg_and_std(Xs, errs_X):
-    errs_X = 1./errs_X**2
-    sum_err = sum(errs_X)
-    w = errs_X/sum_err 
+def weighted_avg_and_std(Xs, errs_X=1):
+    N = len(Xs)
+    if type(errs_X) != int:
+        errs_X = 1./errs_X**2
+        sum_err = sum(errs_X)
+        w = errs_X/sum_err
+    else:
+        w = np.ones(N)
     Xbar = np.average(Xs, weights=w)
     variance = np.average((Xs-Xbar)**2, weights=w)
-    N = len(errs_X)
-    variance *= N/(N-1)
+    variance *= N*1./(N-1) #if 1. is not added, then it becomes 1
     return (Xbar, math.sqrt(variance))
 
 def is_pure_number_or_space(str):

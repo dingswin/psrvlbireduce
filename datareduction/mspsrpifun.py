@@ -1501,11 +1501,12 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
     """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     global_mean_parallax_zero_point = -0.03
-    def __init__(s, srcname, magnitude_match_offset=0.02, use_high_precision_subset=False):
+    def __init__(s, srcname, magnitude_match_offset=0.02, use_high_precision_subset=False, color_match_offset=1):
         """
         use_high_precision_subset satisfies "table['parallax_error'<1]" (mas)
         """
-        s.srcname, s.MMO, s.use_high_precision_subset = srcname, magnitude_match_offset, use_high_precision_subset
+        s.srcname,   s.MMO,                  s.use_high_precision_subset, s.CMO = \
+            srcname, magnitude_match_offset, use_high_precision_subset,   color_match_offset
     def workflow(s):        
         import copy
         s.T = s.read_catalog_of_Gaia_counterparts_for_AGNs(s.srcname)
@@ -1516,10 +1517,185 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
         s.T2 = copy.deepcopy(s.T)
         s.mag_g = s.read_phot_g_mean_mag_of_target(s.srcname)
         s.T = s.get_like_magnitude_AGNs(s.T, s.mag_g, s.MMO)
+        #s.T3 = copy.deepcopy(s.T)
+        s.bp_rp = s.read_bp_rp_of_target(s.srcname)
+        s.T = s.get_like_color_AGNs(s.T, s.bp_rp, s.CMO)
         s.T3 = copy.deepcopy(s.T)
-        print s.T3
-        [s.zero_parallax_point, s.err_ZPP, s.std_parallax] = s.calculate_zero_parallax_and_its_sigma(s.T3)
-        print s.zero_parallax_point, s.err_ZPP, s.std_parallax
+        if len(s.T3)>1:
+            [s.zero_parallax_point, s.err_ZPP, s.std_parallax] = s.calculate_zero_parallax_and_its_sigma(s.T3)
+            print s.zero_parallax_point, s.err_ZPP, s.std_parallax
+    def plot__S_MMO_relation(s, lg_MMO_step=0.1):
+        """
+        an extra function that plots S-MMO relation, where
+        S stands for weighted standard deviation of parallaxes;
+        MMO stands for relative half width of G-band magnitude used to define the magnitude filter.
+        This function is not a part of the workflow. It calls workflow many times to make the plot.
+        """
+        import matplotlib.pyplot as plt
+        lg_MMOs = Ss = Ns = np.array([]) #N stands for volume of s.T3
+        #for i in np.arange(-3, lg_MMO_step, lg_MMO_step):
+        for i in np.arange(-2.0, -1+lg_MMO_step, lg_MMO_step):
+            s.MMO = 10**i
+            s.workflow()
+            N = len(s.T3)
+            lg_MMOs = np.append(lg_MMOs, i)
+            Ss = np.append(Ss, s.std_parallax)
+            Ns = np.append(Ns, N)
+            lg_Ns = np.log10(Ns)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i+3)/3.*1000)/10) + " \r")
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.plot(lg_MMOs, Ss, color='b')
+        #ax1.axvline(x=-1.78, c='black', linestyle='--', linewidth=0.5)
+        #ax1.axvline(x=-1.89, c='black', linestyle='--', linewidth=0.5)
+        ax1.axvline(x=-1.41, c='black', linestyle='--', linewidth=0.5)
+        ax1.axvline(x=-1.45, c='black', linestyle='--', linewidth=0.5)
+        #ax1.axvline(x=s.value_PI+s.error_PI, c='black', linestyle='-.', linewidth=0.5)
+        ax1.set_ylabel(r'$s_{\pi_0}$ (mas)', color='b')
+        ax1.set_xlabel(r'$\log_{10} \Delta m_G$')
+        ax2 = ax1.twinx()
+        ax2.set_ylabel(r'$\log_{10} N_\mathrm{quasar}$', color='r', alpha=0.4)
+        ax2.plot(lg_MMOs, lg_Ns, color='r', alpha=0.4)
+        #plt.ylabel(r'$s_{\pi_0}$ (mas)')
+        #plt.xlabel(r'$\lg{\Delta m_G}$')
+        #plt.show()
+        plt.savefig('%s/S_MMO_relation_for_%s.pdf' % (s.path, s.srcname.replace(' ', '')))
+        plt.clf()
+    def plot__S_CMO_relation(s, lg_CMO_step=0.1):
+        """
+        an extra function that plots S-CMO relation, where
+        S stands for weighted standard deviation of parallaxes;
+        CMO stands for relative half width of bp_rp used to define the color filter.
+        This function is not a part of the workflow. It calls workflow many times to make the plot.
+        """
+        import matplotlib.pyplot as plt
+        lg_CMOs = Ss = Ns = np.array([]) #N stands for volume of s.T3
+        for i in np.arange(-3, lg_CMO_step, lg_CMO_step):
+        #for i in np.arange(-2.2, -1.8+lg_CMO_step, lg_CMO_step):
+            s.CMO = 10**i
+            s.workflow()
+            N = len(s.T3)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i+3)/3.*1000)/10) + " \r")
+            if N in [0, 1]:
+                continue
+            lg_CMOs = np.append(lg_CMOs, i)
+            Ss = np.append(Ss, s.std_parallax)
+            Ns = np.append(Ns, N)
+            lg_Ns = np.log10(Ns)
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.plot(lg_CMOs, Ss, color='b')
+        ax1.axvline(x=-1.98, c='black', linestyle='--', linewidth=0.5)
+        ax1.set_ylabel(r'$s_{\pi_0}$ (mas)', color='b')
+        ax1.set_xlabel(r'$\log_{10} \Delta m_\mathrm{bp-rp}$')
+        ax2 = ax1.twinx()
+        ax2.set_ylabel(r'$\log_{10} N_\mathrm{quasar}$', color='r', alpha=0.4)
+        ax2.plot(lg_CMOs, lg_Ns, color='r', alpha=0.4)
+        #plt.ylabel(r'$s_{\pi_0}$ (mas)')
+        #plt.xlabel(r'$\lg{\Delta m_G}$')
+        #plt.show()
+        plt.savefig('%s/S_CMO_relation_for_%s.pdf' % (s.path, s.srcname.replace(' ', '')))
+        plt.clf()
+    
+    def plot__S_MMO__and__S_CMO__relations_for_CygX2_and_CenX4(s, lg_MMO_step=0.1, lg_CMO_step=0.1):
+        """
+        only used to make the plot in the paper
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.gridspec as gridspec
+        plt.rc('text', usetex=True)
+        lg_CMOs_CenX4 = lg_MMOs_CenX4 = lg_CMOs_CygX2 = SsM_CenX4 = SsC_CenX4 = SsC_CygX2 = \
+            NsM_CenX4 = NsC_CenX4 = NsC_CygX2 = np.array([]) #N stands for volume of s.T3
+        s.MMO = s.CMO = 1
+        s.srcname = 'Cen X-4'
+        s.workflow()
+        Nmax_CenX4 = len(s.T3)
+        for i in np.arange(-3, lg_MMO_step, lg_MMO_step): #S-MMO relation for Cen X-4
+            s.MMO = 10**i
+            s.workflow()
+            N = len(s.T3)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i+3)/3.*1000)/10) + " \r")
+            if N in [0, 1]:
+                continue
+            lg_MMOs_CenX4 = np.append(lg_MMOs_CenX4, i)
+            SsM_CenX4 = np.append(SsM_CenX4, s.std_parallax)
+            NsM_CenX4 = np.append(NsM_CenX4, N)
+            lg_NsM_CenX4 = np.log10(NsM_CenX4)
+            if N == Nmax_CenX4:
+                break
+        
+        s.MMO = s.MMO = 1
+        for i in np.arange(-3, 3, lg_CMO_step): #S-CMO relation for Cen X-4
+            s.CMO = 10**i
+            s.workflow()
+            N = len(s.T3)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i+3)/3.*1000)/10) + " \r")
+            if N in [0, 1]:
+                continue
+            lg_CMOs_CenX4 = np.append(lg_CMOs_CenX4, i)
+            SsC_CenX4 = np.append(SsC_CenX4, s.std_parallax)
+            NsC_CenX4 = np.append(NsC_CenX4, N)
+            lg_NsC_CenX4 = np.log10(NsC_CenX4)
+            if N == Nmax_CenX4:
+                break
+        
+        s.MMO = s.CMO = 1
+        s.srcname = 'Cyg X-2'
+        s.workflow()
+        Nmax_CygX2 = len(s.T3)
+        for i in np.arange(-3, 3, lg_CMO_step): #S-MMO relation for Cen X-4
+            s.CMO = 10**i
+            s.workflow()
+            N = len(s.T3)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i+3)/3.*1000)/10) + " \r")
+            if N in [0, 1]:
+                continue
+            lg_CMOs_CygX2 = np.append(lg_CMOs_CygX2, i)
+            SsC_CygX2 = np.append(SsC_CygX2, s.std_parallax)
+            NsC_CygX2 = np.append(NsC_CygX2, N)
+            lg_NsC_CygX2 = np.log10(NsC_CygX2)
+            if N == Nmax_CygX2:
+                break
+
+        #fig = plt.figure(figsize=[8,6])
+        fig = plt.figure()
+        gs = gridspec.GridSpec(4, 4)
+        #subplot1
+        ax1 = fig.add_subplot(gs[:2, :2])
+        ax1.plot(lg_MMOs_CenX4, SsM_CenX4, color='b')
+        ax1.axvline(x=-1.45, c='black', linestyle='--', linewidth=0.5)
+        ax1.set_ylabel(r'$s_{\pi_0}$ (mas)', color='b')
+        ax1.set_xlabel(r'$\log_{10} \Delta m_G$')
+        #ax1.set_title(r'$s_{\pi_0}-\Delta m_G$ relation for Cen~X$-$4')
+        ax1.set_title(r'Cen~X$-$4')
+        ax2 = ax1.twinx()
+        ax2.set_ylabel(r'$\log_{10} N_\mathrm{quasar}$', color='r', alpha=0.4)
+        ax2.plot(lg_MMOs_CenX4, lg_NsM_CenX4, color='r', alpha=0.4)
+        #subplot2 
+        ax3 = fig.add_subplot(gs[:2, 2:4])
+        ax3.plot(lg_CMOs_CenX4, SsC_CenX4, color='b')
+        ax3.set_ylabel(r'$s_{\pi_0}$ (mas)', color='b')
+        ax3.set_xlabel(r'$\log_{10} \Delta m_\mathrm{B-R}$')
+        #ax3.set_title(r'$s_{\pi_0}-\Delta m_\mathrm{bp-rp}$ relation for Cen~X$-$4')
+        ax3.set_title(r'Cen~X$-$4')
+        ax4 = ax3.twinx()
+        ax4.set_ylabel(r'$\log_{10} N_\mathrm{quasar}$', color='r', alpha=0.4)
+        ax4.plot(lg_CMOs_CenX4, lg_NsC_CenX4, color='r', alpha=0.4)
+        #subplot3
+        ax5 = fig.add_subplot(gs[2:4, 1:3])
+        ax5.plot(lg_CMOs_CygX2, SsC_CygX2, color='b')
+        ax5.set_ylabel(r'$s_{\pi_0}$ (mas)', color='b')
+        ax5.set_xlabel(r'$\log_{10} \Delta m_\mathrm{B-R}$')
+        #ax5.set_title(r'$s_{\pi_0}-\Delta m_\mathrm{bp-rp}$ relation for Cyg~X$-$2')
+        ax5.set_title(r'Cyg~X$-$2')
+        ax6 = ax5.twinx()
+        ax6.set_ylabel(r'$\log_{10} N_\mathrm{quasar}$', color='r', alpha=0.4)
+        ax6.plot(lg_CMOs_CygX2, lg_NsC_CygX2, color='r', alpha=0.4)
+        
+        gs.tight_layout(fig) #rect=[0, 0.1, 1, 1])
+        plt.savefig('%s/S_CMO__and__S_MMO__relations_for_CenX4_and_CygX2.pdf' % s.path)
+        plt.clf()
+
     def workflow_analysing_parallax2magnitude_or_parallax2color_relation(s, parameter_str):
         s.T2 = s.sort_table_according_to_magnitude_or_color(s.T2, parameter_str)
         t0 = s.get_parallax_parameter_relation(s.T2, parameter_str, 100)
@@ -1611,11 +1787,26 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
         elif srcname == 'Cyg X-2':
             mag_g = 17.66 #14.726028
         return mag_g
+    def read_bp_rp_of_target(s, srcname):
+        if srcname == 'NP Ser':
+            bp_rp = 1.56335 
+        elif srcname == 'Cen X-4':
+            bp_rp = 1.64234
+        elif srcname == 'Cyg X-2':
+            bp_rp = 0.70213
+        return bp_rp
     def get_like_magnitude_AGNs(s, catalogtable, mag_g, magnitude_match_offset):
         MMO = magnitude_match_offset
         i = catalogtable['phot_g_mean_mag']<mag_g*(1+MMO)
         T1 = catalogtable[i]
         i = T1['phot_g_mean_mag']>mag_g*(1-MMO)
+        T2 = T1[i]
+        return T2
+    def get_like_color_AGNs(s, catalogtable, bp_rp, color_match_offset):
+        CMO = color_match_offset
+        i = catalogtable['bp_rp'] < bp_rp + abs(CMO*bp_rp)
+        T1 = catalogtable[i]
+        i = T1['bp_rp'] > bp_rp - abs(CMO*bp_rp)
         T2 = T1[i]
         return T2
     def calculate_zero_parallax_and_its_sigma(s, catalogtable):
