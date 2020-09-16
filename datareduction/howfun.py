@@ -8,6 +8,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.table import Table
 
+def upper_limit_or_lower_limit_with_larger_magnitude(value, err):
+    if value < 0:
+        output = value - abs(err)
+    else:
+        output = value + abs(err)
+    return output
+def upper_limit_or_lower_limit_with_smaller_magnitude(value, err):
+    if value < 0:
+        output = value + abs(err)
+    else:
+        output = value - abs(err)
+    return output
+
 def table_str(string_in_table):
     a = str(string_in_table)
     b = a.split('\n')[-1].strip()
@@ -657,9 +670,9 @@ class equatorial2galactic_coordinates:
     l_NCP = 122.93192 #in deg; the Galactic longitude of the North Celestial Pole
     def __init__(s, RA, Dec, mu_a=0, mu_d=0, err_mu_a=1, err_mu_d=1):
         s.RA, s.Dec, s.mu_a, s.mu_d, s.err_mu_a, s.err_mu_d = RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d
-        if type(s.RA) != float:
+        if type(s.RA) != float and type(s.RA) != np.float64:
             s.RA = dms2deg(s.RA)
-        if type(s.Dec) != float:
+        if type(s.Dec) != float and type(s.Dec) != np.float64:
             s.Dec = dms2deg(s.Dec)
     def equatorial_position2galactic_position(s):
         """
@@ -677,6 +690,8 @@ class equatorial2galactic_coordinates:
         sinl1 = math.cos(d)*math.sin(a)/math.cos(b)
         l1 = math.atan2(sinl1, cosl1) #in rad
         l = s.l_NCP - 180/math.pi*l1 #in deg
+        if l < 0:
+            l += 360
         return l, b*180/math.pi
     def equatorial_proper_motion2galactic_proper_motion(s):
         l, b = s.equatorial_position2galactic_position()

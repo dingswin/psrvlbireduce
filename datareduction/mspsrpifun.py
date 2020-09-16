@@ -1052,20 +1052,23 @@ class estimate_uncertainty:
     errM_c = 0.011
     T = constants.G*AC.M_sun.value/constants.c**3
 
-    def __init__(s, targetname, timingfityear=''): #s -> self
-        print readpulsition(targetname)
-        s.targetname = targetname
+    def __init__(s, targetname='', timingfityear=''): #s -> self
+        s.targetname, s.timingfityear = targetname, timingfityear
+    def workflow():
+        """
+        to initiate the code
+        """
+        #print readpulsition(targetname)
         [s.RA, s.Dec, s.epoch, s.pi, s.mu_a, s.mu_d, s.error0_pi, s.error0_mu_a, 
-        s.error0_mu_d, s.l, s.b, funk1] = readpulsition(targetname)
-        if timingfityear != '':
-            if type(timingfityear) != str:
-                timingfityear = str(timingfityear)
-            s.timingfityear = timingfityear
-            print '\n' + timingfityear
-            [s.epochTm, s.DM, s.Pb, s.estimatesTm, s.errorsTm] = s.readtimingfit(timingfityear)
+        s.error0_mu_d, s.l, s.b, funk1] = readpulsition(s.targetname)
+        if s.timingfityear != '':
+            if type(s.timingfityear) != str:
+                s.timingfityear = str(s.timingfityear)
+            print '\n' + s.timingfityear
+            [s.epochTm, s.DM, s.Pb, s.estimatesTm, s.errorsTm] = s.readtimingfit(s.timingfityear)
             [s.RATm, s.DecTm, s.piTm, s.mu_aTm, s.mu_dTm] = s.estimatesTm
             [s.error_RATm, s.error_DecTm, s.error_piTm, s.error_mu_aTm, s.error_mu_dTm] = s.errorsTm
-            print s.readtimingfit(timingfityear)
+            print s.readtimingfit(s.timingfityear)
     def readtimingfit(s, timingfityear):
         [junk1,junk2,targetdir,junk3,junk4] = prepare_path_source(s.targetname)
         timingfitfile = targetdir + '/pmparesults/timing_results/' + str(timingfityear) + 'timingfit'
@@ -1852,24 +1855,31 @@ class plot_positions_of_like_magnitude_background_AGNs(catalog_of_Gaia_counterpa
         
 class plot_Gaia_sources_around_a_source:
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
-    def __init__(s, srcname, radius=10):
+    def __init__(s, srcname, radius=10, src_position=''):
         """
         radius in arcsecond;
         workflow is the default function that would make the plots for you.
+        srcposition in the form of 'HH:MM:SS.SSSSS,dd:mm:ss.sss';
+        if srcposition is not given, then position will be searched and obtained from SIMBAD
         """
-        s.srcname, s.radius = srcname, radius
+        s.srcname, s.radius, s.src_position = srcname, radius, src_position
     def workflow(s):
         RA_deg, Dec_deg = s.Simbad_srcname_to_position(s.srcname)
         s.T = s.cone_search_Gaia_sources_within_given_radius(RA_deg, Dec_deg, s.radius)
         s.plot_RAs_Decs(s.srcname, s.radius, RA_deg, Dec_deg)
     def Simbad_srcname_to_position(s, srcname):
         from astroquery.simbad import Simbad
-        queryresult = Simbad.query_object(srcname)
-        print queryresult
-        #print type(queryresult['RA'])
-        a = read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file()
-        RA_deg = 15*a.simbad_coordinate2deg(queryresult['RA'])
-        Dec_deg = a.simbad_coordinate2deg(queryresult['DEC'])
+        if s.src_position != '':
+            [RA, Dec] = s.src_position.split(',')
+            RA_deg = 15*howfun.dms2deg(RA.strip())
+            Dec_deg = howfun.dms2deg(Dec.strip())
+        else:
+            queryresult = Simbad.query_object(srcname)
+            print queryresult
+            #print type(queryresult['RA'])
+            a = read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file()
+            RA_deg = 15*a.simbad_coordinate2deg(queryresult['RA'])
+            Dec_deg = a.simbad_coordinate2deg(queryresult['DEC'])
         return RA_deg, Dec_deg
     def cone_search_Gaia_sources_within_given_radius(s, RA_deg, Dec_deg, radius):
         import astropy.units as u
@@ -1888,14 +1898,131 @@ class plot_Gaia_sources_around_a_source:
         diffRAs, diffDecs = diffposition(RAs_dms, RA_t_dms, Decs_dms, Dec_t_dms) #in mas
         diffRAs /= 1000 #in arcsec
         diffDecs /= 1000 #in arcsec
-        plt.scatter(diffRAs, diffDecs, marker='.')
-        #plt.plot(av_RAs, av_Decs, 'rs')
-        plt.plot(0, 0, 'g^')
-        plt.ylabel('relative Decl. (arcsec)')
-        plt.xlabel('relative RA (arcsec)')
+        #comments = ['Ser X-1 (DSe)','DSw','DN','','','']
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.scatter(diffRAs, diffDecs, marker='.', s=200)
+        #for i, comment in enumerate(comments):
+        #    ax.annotate(comment, (diffRAs[i], diffDecs[i]), color='cyan', )
+        #ax.annotate('Ser X-1 (DSe)', (diffRAs[0], diffDecs[0]), color='cyan', xytext=(3.3,-0.1))
+        #ax.annotate('DSw', (diffRAs[1], diffDecs[1]), color='cyan', xytext=(-1.5,-0.5))
+        #ax.annotate('DN', (diffRAs[2], diffDecs[2]), color='cyan', xytext=(0.4,2))
+        ax.text(5.0,-0.1,'Ser X-1 (DSe)', size=15, color='cyan')
+        ax.text(-1.5,-0.5,'DSw', size=15, color='cyan')
+        ax.text(0.8,2.2,'DN', size=15, color='cyan')
+        #ax.plot(0, 0, 'g^', markersize=2)
+        ax.set_ylabel('relative Decl. (arcsec)', fontsize='xx-large')
+        ax.set_ylim(-4,4)
+        #ax.set_yticklabels(y_ticks, fontsize='x-large')
+        plt.yticks([-2,0,2], fontsize='xx-large')
+        ax.set_xlabel('relative RA. (arcsec)', fontsize='xx-large')
+        ax.set_xlim(-9,8)
+        #ax.set_xticklabels(x_ticks, fontsize='x-large')
+        plt.xticks(np.arange(-8,8,2), fontsize='xx-large')
         plt.gca().invert_xaxis()
-        plt.savefig('%s/Gaia_sources_within_%darcsec_radius_around_%s.eps' % (s.path, radius, srcname.replace(' ', '')))
+        ax.set_aspect('equal')
+        plt.savefig('%s/Gaia_sources_within_%darcsec_radius_around_%s.eps' % (s.path, radius, srcname.replace(' ', '')), transparent=True)
         plt.clf()
+
+class estimate_space_velocities_of_PRE_bursters:
+    """
+    read in proper motions and distances for PRE bursters and generate their apparent/peculiar transverse velocities;
+    """
+    path = '/fred/oz002/hding/AQLX-1/PREBursters_catalog/'
+    R0 = 8.15 #(+-0.15kpc) Reid et al. 2019
+    V_Sun2GC = 247 #(+-4km/s)
+    V0 = 236 #(+-7km/s)
+    def __init__(s):
+        pass
+    def calculate_v_t_with_distance(s, D, mu_a, mu_d):
+        a = estimate_uncertainty()
+        v_t = (mu_a**2+mu_d**2)**0.5 * D * a.A
+        return v_t
+    def calculate_peculiar_transverse_velocity_in_the_Galaxy(s, d, l, b, mu_l, mu_b): #in kpc, deg, deg, mas/yr, mas/yr
+        """
+        It is originally designed for J1810 falling into the first quadrant of the Galactic coordinates.
+        It might need extra inspection for the validity in other qudrants.
+        This function will be improved later.
+        Non-circular motion of the Sun is neglected.
+        """
+        l *= math.pi/180
+        b *= math.pi/180
+        v_b_obs = v_t * mu_b / (mu_b**2 + mu_l**2)**0.5
+        v_l_obs = v_t * mu_l / (mu_b**2 + mu_l**2)**0.5
+        v_b_gsr = v_b_obs - V_Sun2GC*math.sin(l)*math.sin(b)
+        v_l_gsr = v_l_obs + V_Sun2GC*math.cos(l)
+        alpha = math.atan((R0*math.cos(l)-d)/(R0*math.sin(l)))
+        v_l_loc = v_l_gsr - V0*math.sin(alpha)
+        v_b_loc = v_b_gsr + V0*math.cos(alpha)*math.sin(b)
+        return v_b_loc, v_l_loc
+    def distance_to_the_Galatic_center_based_on_D_and_l(s, D, l):
+        """
+        D in kpc, l in deg, D_GC in kpc.
+        """
+        l *= math.pi/180
+        D_GC = s.R0**2 + D**2 - 2*s.R0*D*math.cos(l)
+        return D_GC**0.5
+    def distances_to_the_Galatic_center_based_on_D_and_l(s):
+        s.write_out_new_table_summaring_l_b_mu_l_mu_d_and_v_t()
+        Dmaxs, Dmins, ls = s.t['Dmax'], s.t['Dmin'], s.t1['l']
+        Dmax_GCs = Dmin_GCs = np.array([])
+        for i in range(len(ls)):
+            D1_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmaxs[i], ls[i])
+            D2_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmins[i], ls[i])
+            Dmax_GC, Dmin_GC = max(D1_GC, D2_GC), min(D1_GC, D2_GC)
+            Dmax_GCs, Dmin_GCs = np.append(Dmax_GCs, Dmax_GC), np.append(Dmin_GCs, Dmin_GC)
+        s.t2 = Table([s.t['srcname'], Dmin_GCs, Dmax_GCs], names=['srcname', 'Dmin_GC', 'Dmax_GC'])
+    def parse_rotation_curve_from_Reid2019(s):
+        rotation_curve = s.path + 'rotation_curve_Reid2019'
+        """
+        lins = open(rotation_curve).readlines()
+        for line in lines:
+            line = line.strip()
+            line.split(' ')[0] + 
+        """
+        s.t3 = Table.read(rotation_curve, format='ascii')
+    def calculate_proper_motion_in_Galactic_coordinates_with_uncertainties(s, RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d):
+        """
+        RA in h, Dec in deg, or both in 'xx:xx:xx.xxx';
+        mu_a and mu_d in mas/yr
+        """
+        mu_a_l = howfun.upper_limit_or_lower_limit_with_larger_magnitude(mu_a, err_mu_a)
+        mu_a_s = howfun.upper_limit_or_lower_limit_with_smaller_magnitude(mu_a, err_mu_a)
+        mu_d_l = howfun.upper_limit_or_lower_limit_with_larger_magnitude(mu_d, err_mu_d)
+        mu_d_s = howfun.upper_limit_or_lower_limit_with_smaller_magnitude(mu_d, err_mu_d)
+        a = howfun.equatorial2galactic_coordinates(RA, Dec, mu_a, mu_d)
+        mu_l, mu_b = a.equatorial_proper_motion2galactic_proper_motion()
+        a_l = howfun.equatorial2galactic_coordinates(RA, Dec, mu_a_l, mu_d_l)
+        mu_l_l, mu_b_l = a_l.equatorial_proper_motion2galactic_proper_motion()
+        a_s = howfun.equatorial2galactic_coordinates(RA, Dec, mu_a_s, mu_d_s)
+        mu_l_s, mu_b_s = a_s.equatorial_proper_motion2galactic_proper_motion()
+        err_mu_l = max(abs(mu_l-mu_l_l), abs(mu_l-mu_l_s))
+        err_mu_b = max(abs(mu_b-mu_b_l), abs(mu_b-mu_b_s))
+        #print('mu_l = %f +- %f \n mu_b = %f +- %f' % (mu_l, err_mu_l, mu_b, err_mu_b))
+        return mu_l, err_mu_l, mu_b, err_mu_b
+    def load_table(s, tablename='Gaia_counterparts_for_10_PRE_bursters', tableformat='ascii'):
+        tablename = s.path + '/' + tablename
+        s.t = Table.read(tablename, format=tableformat)
+        s.t['ra_x'] = s.t['ra_x']/15
+    def write_out_new_table_summaring_l_b_mu_l_mu_d_and_v_t(s, tableformat='ascii'):
+        s.load_table()
+        ls = bs = mu_ls = err_mu_ls = mu_bs = err_mu_bs = np.array([])
+        RAs, Decs = s.t['ra_x'], s.t['dec_x']
+        mu_as, err_mu_as, mu_ds, err_mu_ds = s.t['pmra'], s.t['pmra_error'], s.t['pmdec'], s.t['pmdec_error']
+        #Dmaxs, Dmins = s.t['Dmax'], s.t['Dmin']
+        for i in range(len(s.t)):
+            a = howfun.equatorial2galactic_coordinates(RAs[i], Decs[i])
+            l, b = a.equatorial_position2galactic_position()
+            ls, bs = np.append(ls, l), np.append(bs, b)
+            mu_l, err_mu_l, mu_b, err_mu_b = s.calculate_proper_motion_in_Galactic_coordinates_with_uncertainties(\
+                RAs[i], Decs[i], mu_as[i], mu_ds[i], err_mu_as[i], err_mu_ds[i])
+            mu_ls, err_mu_ls, mu_bs, err_mu_bs = np.append(mu_ls, mu_l), np.append(err_mu_ls, err_mu_l), np.append(mu_bs, mu_b),\
+                np.append(err_mu_bs, err_mu_b)
+        s.t1 = Table([s.t['srcname'], RAs, Decs, ls, bs, mu_ls, err_mu_ls, mu_bs, err_mu_bs], \
+            names=['srcname', 'RA', 'Dec', 'l', 'b', 'mu_l', 'err_mu_l', 'mu_b', 'err_mu_b']) 
+        output = s.path + '/space_velocities_of_PRE_bursters.' + tableformat
+        s.t1.write(output, format=tableformat, overwrite=True)
+
 
 class use_high_precision_Gaia_subset_to_estimate_parallax_zero_point:
     """
