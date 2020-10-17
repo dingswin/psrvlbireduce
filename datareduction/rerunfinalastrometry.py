@@ -72,12 +72,12 @@ sys.stdout = howfun.Logger(targetdir + "/rerun_finalastrometricreduce_runlog.txt
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 print "%s\nRunning script at %s (UTC)\n%s\n" % (70*'=',current_time,70*'=')
 
-tablefolders=glob.glob(r'%s/*/tables' % (targetdir)) 
-tablefolders.sort() 
-print 'tablefolders=' 
-print tablefolders
-for tablefolder in tablefolders:
-    experiment = tablefolder.split('/')[-2].strip()
+vexfiles = glob.glob(r'%s/*/*.vex' % (targetdir)) 
+vexfiles.sort() 
+print 'vexfiles=' 
+print vexfiles
+for vexfile in vexfiles:
+    experiment = vexfile.split('/')[-2].strip()
     expdir     = exp2expdir(experiment)
     if prepare:
         os.chdir(expdir)

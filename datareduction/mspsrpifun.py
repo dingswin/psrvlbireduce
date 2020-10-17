@@ -1931,9 +1931,11 @@ class estimate_space_velocities_of_PRE_bursters:
     path = '/fred/oz002/hding/AQLX-1/PREBursters_catalog/'
     R0 = 8.15 #(+-0.15kpc) Reid et al. 2019
     V_Sun2GC = 247 #(+-4km/s)
-    V0 = 236 #(+-7km/s)
+    #V0 = 236 #(+-7km/s)
     def __init__(s):
-        pass
+        s.load_rotation_curve_by_Reid2019()
+        a = estimate_uncertainty()
+        s.A = a.A
     def calculate_v_t_with_distance(s, D, mu_a, mu_d):
         a = estimate_uncertainty()
         v_t = (mu_a**2+mu_d**2)**0.5 * D * a.A
@@ -1955,32 +1957,109 @@ class estimate_space_velocities_of_PRE_bursters:
         v_l_loc = v_l_gsr - V0*math.sin(alpha)
         v_b_loc = v_b_gsr + V0*math.cos(alpha)*math.sin(b)
         return v_b_loc, v_l_loc
-    def distance_to_the_Galatic_center_based_on_D_and_l(s, D, l):
+    def distance_to_the_Galatic_center_based_on_D_and_l(s, D, l, b):
         """
         D in kpc, l in deg, D_GC in kpc.
         """
         l *= math.pi/180
-        D_GC = s.R0**2 + D**2 - 2*s.R0*D*math.cos(l)
+        b *= math.pi/180
+        D1 = D * math.cos(b)
+        D_GC = s.R0**2 + D1**2 - 2*s.R0*D1*math.cos(l)
         return D_GC**0.5
     def distances_to_the_Galatic_center_based_on_D_and_l(s):
-        s.write_out_new_table_summaring_l_b_mu_l_mu_d_and_v_t()
-        Dmaxs, Dmins, ls = s.t['Dmax'], s.t['Dmin'], s.t1['l']
+        """
+        D_GC means the distance from the target to the Galactic center;
+        given up upon in the end.
+        """
+        s.write_out_table_summaring_l_b_mu_l_mu_d()
+        Dmaxs, Dmins, ls, bs = s.t['Dmax'], s.t['Dmin'], s.t1['l'], s.t1['b']
         Dmax_GCs = Dmin_GCs = np.array([])
         for i in range(len(ls)):
-            D1_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmaxs[i], ls[i])
-            D2_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmins[i], ls[i])
+            D1_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmaxs[i], ls[i], bs[i])
+            D2_GC = s.distance_to_the_Galatic_center_based_on_D_and_l(Dmins[i], ls[i], bs[i])
             Dmax_GC, Dmin_GC = max(D1_GC, D2_GC), min(D1_GC, D2_GC)
             Dmax_GCs, Dmin_GCs = np.append(Dmax_GCs, Dmax_GC), np.append(Dmin_GCs, Dmin_GC)
         s.t2 = Table([s.t['srcname'], Dmin_GCs, Dmax_GCs], names=['srcname', 'Dmin_GC', 'Dmax_GC'])
-    def parse_rotation_curve_from_Reid2019(s):
+    def load_rotation_curve_by_Reid2019(s):
         rotation_curve = s.path + 'rotation_curve_Reid2019'
+        s.RC = Table.read(rotation_curve, format='ascii')
+    def interpolate_local_circular_velocity_with_the_rotation_curve_from_Reid2019(s, R):
         """
-        lins = open(rotation_curve).readlines()
-        for line in lines:
-            line = line.strip()
-            line.split(' ')[0] + 
+        R in kpc; R means the distance from the target to the Galactic center, same as D_GC;
+        v0 represents the rotation velocity of a target around the Galactic center.
         """
-        s.t3 = Table.read(rotation_curve, format='ascii')
+        index = abs(s.RC['R'] - R) < 0.25
+        RC1 = s.RC[index]
+        if len(RC1) != 2:
+            if len(RC1) == 1:
+                v0 = RC1['v0'][0]
+            else:
+                print('%f is out of the range of the rotation curve by Reid et al. 2019.' % R)
+                sys.exit()
+        else:
+            v0 = abs(RC1['R'][0]-R)/0.25*RC1['v0'][1] + abs(RC1['R'][1]-R)/0.25*RC1['v0'][0]
+        return v0
+    def v_l_pec__for_the_first_and_fourth_Galactic_quadrants(s, D, mu_l, l, b):
+        """
+        v_l_pec is the v_l relative to that of the neighbourhood of the target;
+        D in kpc, mu_l in mas/yr, l in deg, b in deg;
+        V_Sun2GC is regarded a constant (without accounting for its uncertainty).
+        """
+        R = s.distance_to_the_Galatic_center_based_on_D_and_l(D, l, b) 
+        v0 = s.interpolate_local_circular_velocity_with_the_rotation_curve_from_Reid2019(R)
+        l *= math.pi/180
+        alpha = math.acos(s.R0*math.sin(l)/R)
+        d1 = D - s.R0*math.cos(l)
+        v_l_pec = mu_l * D * s.A + s.V_Sun2GC * math.cos(l) + d1/abs(d1)*v0*math.sin(alpha)
+        return v_l_pec
+    def v_l_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(s, l, b, mu_l, err_mu_l, Dmin, Dmax, D_step=0.1):
+        v_l_pec_max = float('-inf')
+        v_l_pec_min = float('inf')
+        for mu_l1 in [mu_l-err_mu_l, mu_l+err_mu_l]:
+            for D in np.arange(Dmin, Dmax+D_step, D_step):
+                v_l_pec = s.v_l_pec__for_the_first_and_fourth_Galactic_quadrants(D, mu_l1, l, b)
+                if v_l_pec > v_l_pec_max:
+                    v_l_pec_max = v_l_pec
+                if v_l_pec < v_l_pec_min:
+                    v_l_pec_min = v_l_pec
+        return v_l_pec_min, v_l_pec_max
+    def v_b_pec__for_the_first_and_fourth_Galactic_quadrants(s, D, mu_b, l, b):
+        """
+        b in deg; mu_l in mas/yr; D in kpc.
+        """
+        R = s.distance_to_the_Galatic_center_based_on_D_and_l(D, l, b) 
+        v0 = s.interpolate_local_circular_velocity_with_the_rotation_curve_from_Reid2019(R)
+        l *= math.pi/180
+        b *= math.pi/180
+        cos_alpha = s.R0*math.sin(l)/R
+        v_b_pec = mu_b*D*s.A - s.V_Sun2GC*math.sin(l)*math.sin(b) + v0*cos_alpha*math.sin(b)*math.sin(l)/abs(math.sin(l))
+        return v_b_pec
+    def v_b_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(s, l, b, mu_b, err_mu_b, Dmin, Dmax, D_step=0.1):
+        v_b_pec_max = float('-inf')
+        v_b_pec_min = float('inf')
+        for mu_b1 in [mu_b-err_mu_b, mu_b+err_mu_b]:
+            for D in np.arange(Dmin, Dmax+D_step, D_step):
+                v_b_pec = s.v_b_pec__for_the_first_and_fourth_Galactic_quadrants(D, mu_b1, l, b)
+                if v_b_pec > v_b_pec_max:
+                    v_b_pec_max = v_b_pec
+                if v_b_pec < v_b_pec_min:
+                    v_b_pec_min = v_b_pec
+        return v_b_pec_min, v_b_pec_max
+    def v_t_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(s, l, b, mu_l, err_mu_l,\
+            mu_b, err_mu_b, Dmin, Dmax, D_step=0.1):
+        v_t_pec_max = float('-inf')
+        v_t_pec_min = float('inf')
+        for mu_l1 in [mu_l-err_mu_l, mu_l+err_mu_l]:
+            for mu_b1 in [mu_b-err_mu_b, mu_b+err_mu_b]:
+                for D in np.arange(Dmin, Dmax+D_step, D_step):
+                    v_l_pec = s.v_l_pec__for_the_first_and_fourth_Galactic_quadrants(D, mu_l1, l, b)
+                    v_b_pec = s.v_b_pec__for_the_first_and_fourth_Galactic_quadrants(D, mu_b1, l, b)
+                    v_t_pec = (v_l_pec**2 + v_b_pec**2)**0.5
+                    if v_t_pec > v_t_pec_max:
+                        v_t_pec_max = v_t_pec
+                    if v_t_pec < v_t_pec_min:
+                        v_t_pec_min = v_t_pec
+        return v_t_pec_min, v_t_pec_max
     def calculate_proper_motion_in_Galactic_coordinates_with_uncertainties(s, RA, Dec, mu_a, mu_d, err_mu_a, err_mu_d):
         """
         RA in h, Dec in deg, or both in 'xx:xx:xx.xxx';
@@ -2004,10 +2083,45 @@ class estimate_space_velocities_of_PRE_bursters:
         tablename = s.path + '/' + tablename
         s.t = Table.read(tablename, format=tableformat)
         s.t['ra_x'] = s.t['ra_x']/15
-    def write_out_new_table_summaring_l_b_mu_l_mu_d_and_v_t(s, tableformat='ascii'):
+    def write_out_new_table_summaring_l_b_mu_l_mu_d_and__v_t_pec(s, tableformat='ascii', D_step=0.1):
         s.load_table()
         ls = bs = mu_ls = err_mu_ls = mu_bs = err_mu_bs = np.array([])
-        RAs, Decs = s.t['ra_x'], s.t['dec_x']
+        RAs, Decs, Dmins, Dmaxs = s.t['ra_x'], s.t['dec_x'], s.t['Dmin'], s.t['Dmax']
+        mu_as, err_mu_as, mu_ds, err_mu_ds = s.t['pmra'], s.t['pmra_error'], s.t['pmdec'], s.t['pmdec_error']
+        #Dmaxs, Dmins = s.t['Dmax'], s.t['Dmin']
+        for i in range(len(s.t)):
+            a = howfun.equatorial2galactic_coordinates(RAs[i], Decs[i])
+            l, b = a.equatorial_position2galactic_position()
+            ls, bs = np.append(ls, l), np.append(bs, b)
+            mu_l, err_mu_l, mu_b, err_mu_b = s.calculate_proper_motion_in_Galactic_coordinates_with_uncertainties(\
+                RAs[i], Decs[i], mu_as[i], mu_ds[i], err_mu_as[i], err_mu_ds[i])
+            mu_ls, err_mu_ls, mu_bs, err_mu_bs = np.append(mu_ls, mu_l), np.append(err_mu_ls, err_mu_l), np.append(mu_bs, mu_b),\
+                np.append(err_mu_bs, err_mu_b)
+        #estimate v_t_pec and its l- and b-components 
+        v_t_pec_mins = v_t_pec_maxs = v_b_pec_mins = v_b_pec_maxs = v_l_pec_mins = v_l_pec_maxs = np.array([])
+        for i in range(len(s.t)):
+            v_l_pec_min, v_l_pec_max = s.v_l_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(ls[i], bs[i],\
+                mu_ls[i], err_mu_ls[i], Dmins[i], Dmaxs[i], D_step)   
+            v_b_pec_min, v_b_pec_max = s.v_b_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(ls[i], bs[i],\
+                mu_bs[i], err_mu_bs[i], Dmins[i], Dmaxs[i], D_step)   
+            v_t_pec_min, v_t_pec_max = s.v_t_pec__and_uncertainty_for_the_first_and_fourth_Galactic_quadrants(ls[i], bs[i],\
+                mu_ls[i], err_mu_ls[i], mu_bs[i], err_mu_bs[i], Dmins[i], Dmaxs[i], D_step)
+            v_l_pec_mins = np.append(v_l_pec_mins, v_l_pec_min)
+            v_l_pec_maxs = np.append(v_l_pec_maxs, v_l_pec_max)
+            v_b_pec_mins = np.append(v_b_pec_mins, v_b_pec_min)
+            v_b_pec_maxs = np.append(v_b_pec_maxs, v_b_pec_max)
+            v_t_pec_mins = np.append(v_t_pec_mins, v_t_pec_min)
+            v_t_pec_maxs = np.append(v_t_pec_maxs, v_t_pec_max)
+        s.t3 = Table([s.t['srcname'], RAs, Decs, ls, bs, mu_ls, err_mu_ls, mu_bs, err_mu_bs,\
+            v_l_pec_mins, v_l_pec_maxs, v_b_pec_mins, v_b_pec_maxs, v_t_pec_mins, v_t_pec_maxs], \
+            names=['srcname', 'RA', 'Dec', 'l', 'b', 'mu_l', 'err_mu_l', 'mu_b', 'err_mu_b',\
+            'v_l_pec_min', 'v_l_pec_max', 'v_b_pec_min', 'v_b_pec_max', 'v_t_pec_min', 'v_t_pec_max']) 
+        output = s.path + '/space_velocities_of_PRE_bursters.' + tableformat
+        s.t3.write(output, format=tableformat, overwrite=True)
+    def write_out_table_summaring_l_b_mu_l_mu_d(s, tableformat='ascii', D_step=0.1):
+        s.load_table()
+        ls = bs = mu_ls = err_mu_ls = mu_bs = err_mu_bs = np.array([])
+        RAs, Decs, Dmins, Dmaxs = s.t['ra_x'], s.t['dec_x'], s.t['Dmin'], s.t['Dmax']
         mu_as, err_mu_as, mu_ds, err_mu_ds = s.t['pmra'], s.t['pmra_error'], s.t['pmdec'], s.t['pmdec_error']
         #Dmaxs, Dmins = s.t['Dmax'], s.t['Dmin']
         for i in range(len(s.t)):
@@ -2020,9 +2134,15 @@ class estimate_space_velocities_of_PRE_bursters:
                 np.append(err_mu_bs, err_mu_b)
         s.t1 = Table([s.t['srcname'], RAs, Decs, ls, bs, mu_ls, err_mu_ls, mu_bs, err_mu_bs], \
             names=['srcname', 'RA', 'Dec', 'l', 'b', 'mu_l', 'err_mu_l', 'mu_b', 'err_mu_b']) 
-        output = s.path + '/space_velocities_of_PRE_bursters.' + tableformat
+        output = s.path + '/transfer_to_Galactic_coordinate_proper_motions_and_positions.' + tableformat
         s.t1.write(output, format=tableformat, overwrite=True)
-
+    def read__v_t_pec__and_estimate_weighted_average_and_weighted_std(s):
+        tablename = s.path + '/space_velocities_of_PRE_bursters.ascii'
+        t = Table.read(tablename, format='ascii')
+        v_t_pec_mins, v_t_pec_maxs = t['v_t_pec_min'], t['v_t_pec_max']
+        v_t_pecs = (v_t_pec_mins + v_t_pec_maxs)/2
+        v_t_pec_errs = (v_t_pec_maxs - v_t_pec_mins)/2
+        return howfun.weighted_avg_and_std(v_t_pecs, v_t_pec_errs), howfun.weightX(v_t_pecs, v_t_pec_errs)
 
 class use_high_precision_Gaia_subset_to_estimate_parallax_zero_point:
     """
@@ -3121,6 +3241,11 @@ class generatepmparin:
         import matplotlib.gridspec as gridspec
         plt.rc('text', usetex=True)
         [PIs, mu_as, mu_ds, RAs, Decs] = s.bootstrapped_sample2measured_value()
+        for parameter in ['PI', 'mu_a', 'mu_d']:
+            exec("index = %ss > s.value_%s-9*s.error_%s" % (parameter, parameter, parameter))
+            exec("%s1s = %ss[index]" % (parameter, parameter))
+            exec("index = %s1s < s.value_%s+9*s.error_%s" % (parameter, parameter, parameter))
+            exec("%ss = %s1s[index]" % (parameter, parameter))
         saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
         if use_saved_plot_parameters and os.path.exists(saved_plot_parameters):
             readfile = open(saved_plot_parameters, 'r')
@@ -3145,7 +3270,7 @@ class generatepmparin:
         if xlim_PI != []:
             ax1.set_xlim(xlim_PI[0], xlim_PI[1])
         ax1.set_ylabel('probability density')
-        ax1.axvline(x=most_probable_PI, c='black', linestyle='--', linewidth=0.5)
+        #ax1.axvline(x=most_probable_PI, c='black', linestyle='--', linewidth=0.5)
         ax1.axvline(x=s.value_PI+s.error_PI, c='black', linestyle='-.', linewidth=0.5)
         ax1.axvline(x=s.value_PI-s.error_PI, c='black', linestyle='-.', linewidth=0.5)
         ax1.axvline(x=s.median_PI, c='blue', linestyle='--', linewidth=0.5)
@@ -3157,7 +3282,7 @@ class generatepmparin:
         if xlim_mu_a != []:
             ax2.set_xlim(xlim_mu_a[0], xlim_mu_a[1])
         ax2.set_xlabel(r'$\rm \mu_{\alpha}~(mas~yr^{-1})$')
-        ax2.axvline(x=most_probable_mu_a, c='black', linestyle='dashed', linewidth=0.5)
+        #ax2.axvline(x=most_probable_mu_a, c='black', linestyle='dashed', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a+s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
         ax2.axvline(x=s.value_mu_a-s.error_mu_a, c='black', linestyle='-.', linewidth=0.5)
         ax2.axvline(x=s.median_mu_a, c='blue', linestyle='dashed', linewidth=0.5)
@@ -3169,7 +3294,7 @@ class generatepmparin:
         if xlim_mu_d != []:
             ax3.set_xlim(xlim_mu_d[0], xlim_mu_d[1])
         ax3.set_xlabel(r'$\rm \mu_{\delta}~(mas~yr^{-1})$')
-        ax3.axvline(x=most_probable_mu_d, c='black', linestyle='dashed', linewidth=0.5)
+        #ax3.axvline(x=most_probable_mu_d, c='black', linestyle='dashed', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d+s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
         ax3.axvline(x=s.value_mu_d-s.error_mu_d, c='black', linestyle='-.', linewidth=0.5)
         ax3.axvline(x=s.median_mu_d, c='blue', linestyle='dashed', linewidth=0.5)
@@ -3192,13 +3317,22 @@ class generatepmparin:
             t_RP.write(bootstrapped_relative_positions_table, format='ascii', overwrite=True)
         [value_rRA, error_rRA] = howfun.sample2estimate(rRAs, 1)
         [value_rDec, error_rDec] = howfun.sample2estimate(rDecs, 1)
+        #trim rRAs and rDecs to within +-9 sigma to ease plotting
+        index = rRAs > value_rRA - 9*error_rRA
+        rRA1s = rRAs[index]
+        index = rRA1s < value_rRA + 9*error_rRA
+        rRAs = rRA1s[index]
+        index = rDecs > value_rDec - 9*error_rDec
+        rDec1s = rDecs[index]
+        index = rDec1s < value_rDec + 9*error_rDec
+        rDecs = rDec1s[index]
         #plot rRAs
         ax4 = fig.add_subplot(gs[2:4, 1:3])
         ax4.hist(rRAs, binno_RA, density=True, facecolor='g', alpha=0.75)
         if xlim_rRA != []:
             ax4.set_xlim(xlim_rRA[0], xlim_rRA[1])
         ax4.set_xlabel(r'relative RA.\,(mas)')
-        ax4.axvline(x=most_probable_rRA, c='black', linestyle='dashed', linewidth=0.5)
+        #ax4.axvline(x=most_probable_rRA, c='black', linestyle='dashed', linewidth=0.5)
         ax4.axvline(x=value_rRA+error_rRA, c='black', linestyle='-.', linewidth=0.5)
         ax4.axvline(x=value_rRA-error_rRA, c='black', linestyle='-.', linewidth=0.5)
         ax4.axvline(x=0, c='blue', linestyle='dashed', linewidth=0.5)
@@ -3208,7 +3342,7 @@ class generatepmparin:
         if xlim_rDec != []:
             ax5.set_xlim(xlim_rDec[0], xlim_rDec[1])
         ax5.set_xlabel(r'relative Decl.\,(mas)')
-        ax5.axvline(x=most_probable_rDec, c='black', linestyle='dashed', linewidth=0.5)
+        #ax5.axvline(x=most_probable_rDec, c='black', linestyle='dashed', linewidth=0.5)
         ax5.axvline(x=value_rDec+error_rDec, c='black', linestyle='-.', linewidth=0.5)
         ax5.axvline(x=value_rDec-error_rDec, c='black', linestyle='-.', linewidth=0.5)
         ax5.axvline(x=0, c='blue', linestyle='dashed', linewidth=0.5)

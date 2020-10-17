@@ -4,6 +4,7 @@
 ### read timing fit, gaussianly generate astrometric parameters, and pmparfit the
 ### position at targeted time
 ### usage: estimateTimingPosition.py -f timingfit_inputfile -t epoch
+### all timingfit_inputfile under /fred/oz002/hding/mspsrpi/processing/J1012+5307/pmparesults/timing_results/
 #####################################################################################
 import os,glob,sys,yaml,math,pickle
 import howfun,mspsrpifun
