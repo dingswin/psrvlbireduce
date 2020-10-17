@@ -79,6 +79,7 @@ print vexfiles
 for vexfile in vexfiles:
     experiment = vexfile.split('/')[-2].strip()
     expdir     = exp2expdir(experiment)
+    tablefolder = expdir + '/tables/'
     if prepare:
         os.chdir(expdir)
         print "\nrun prepare_astrometric_epoch.py...\n"
