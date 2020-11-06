@@ -1,5 +1,5 @@
 #!/usr/bin/env ParselTongue
-import os,glob,sys,yaml,pickle
+import os,glob,sys,pickle,yaml
 import howfun,mspsrpifun
 import vlbatasks
 #import numpy as np
@@ -32,6 +32,13 @@ def src_RA_Dec(targetname, srcname): #use different (for target/other calibrator
         if modeldata.exists():
             modeldata.zap()
         vlbatasks.fitld_image(srcmodel, modeldata)
+        #fitld = AIPSTask('fitld', version = '31DEC18')
+        #fitld.datain = srcmodel
+        #fitld.outdata = modeldata
+        #fitld.dotable = 1
+        #fitld.douvcomp = -1
+        #fitld()
+        
     if srcname != targetname:
         RA_deg = modeldata.header.crval[0]
         Dec_deg = modeldata.header.crval[1]

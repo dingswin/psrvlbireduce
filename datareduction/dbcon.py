@@ -12,7 +12,7 @@ import os, sys, glob
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC20'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("--rootdir", dest="rootdir",

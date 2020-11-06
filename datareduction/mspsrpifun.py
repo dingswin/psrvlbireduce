@@ -2988,7 +2988,7 @@ class generatepmparin:
         [RA0, Dec0, junk1, PI0, mu_a0, mu_d0, junk2, junk3, junk4, junk5, junk6, rchsq] = readpmparout(pmparout)
         D0 = 1/PI0
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq
-    def write_out_final_pmpar_in(s, paraA_rchsq=3.102e-4, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
+    def write_out_final_pmpar_in(s, paraA_rchsq=1e-3, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
         s.write_out_preliminary_pmpar_in()
         if not s.dualphscal:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, 1e-3)

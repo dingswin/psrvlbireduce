@@ -10,6 +10,7 @@
 ################################################################################
 from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
+AIPSTask.isbatch = 0
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from AIPSTV import AIPSTV
 
@@ -3019,7 +3020,7 @@ except KeyError:
     try:
         aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
     except KeyError:
-        aipsver = '31DEC18'
+        aipsver = '31DEC20'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("-e", "--experiment", dest="experiment", default="",

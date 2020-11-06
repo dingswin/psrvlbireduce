@@ -27,7 +27,7 @@ AIPS.userno = 123
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC20'
 imagefile = sys.argv[1]
 #if len(imagefile) > 10:
 #    imagefile = imagefile[-10:]

@@ -20,7 +20,7 @@ except KeyError:
     try:
         aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
     except KeyError:
-        aipsver = '31DEC18'
+        aipsver = '31DEC20'
 
 speedOfLight = 299792458.
 
