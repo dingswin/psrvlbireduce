@@ -11,7 +11,7 @@ import vlbatasks
 import sys, os, math
 import numpy
 import scipy.ndimage
-#import pyrap.images
+#import casacore.images
 import casacore.images
 from optparse import OptionParser
 
@@ -363,11 +363,12 @@ def main(options, args):
     cctable = wiztempimage.table("CC", 2)
     rowcount = 0
     for row in cctable:
-         row['deltax'] = newentries[rowcount][0]
-         row['deltay'] = newentries[rowcount][1]
-         row['flux']   = newentries[rowcount][2]
-         rowcount += 1
-         row.update()
+        if rowcount < len(newentries):
+            row['deltax'] = newentries[rowcount][0]
+            row['deltay'] = newentries[rowcount][1]
+            row['flux']   = newentries[rowcount][2]
+            rowcount += 1
+            row.update()
     cctable.close()
 
     #tabed = AIPSTask("TABED", aips_version = aipsver)
