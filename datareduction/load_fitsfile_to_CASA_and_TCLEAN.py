@@ -3,14 +3,16 @@ import sys,os,glob
 class making_frequency_dependent_calibrator_model_using_CASA:
     """
     load the *pipeline_uv.fits (uvfits files should have been copied to the folder);
-    TCLEAN jointly 
+    TCLEAN jointly
+    usage:
+    start from table_number=0, then incrementally moving further 
     """
     def __init__(s):
         s.uvfitsfiles = glob.glob(r'*pipeline_uv.fits')
         s.uvfitsfiles.sort()
-        print(s.uvfitsfiles)
+        print((s.uvfitsfiles))
         s.MSs = [uvfitsfile.replace('fits', 'ms') for uvfitsfile in s.uvfitsfiles]
-        print s.MSs
+        print(s.MSs)
     def source_name(s):
         path = os.getcwd()
         sourcename = path.split('/')[-1]
@@ -24,29 +26,57 @@ class making_frequency_dependent_calibrator_model_using_CASA:
             script_write.write("importuvfits(fitsfile='%s', vis='%s')\n" % (uvfitsfile, MS))
         script_write.close()
         os.system('casa -c .junkscript.py')
-    def TCLEAN_jointly(s, table_number=1, niter_value=100):
+    def TCLEAN_jointly(s, table_number, niter_value=100, savemodel_value='modelcolumn'):
+        """
+        table_number=0,1,2,...
+        """
         imagefoldername = s.source_name()+'v'+str(table_number)
         print(imagefoldername)
-        os.system("rm -rf %s" % imagefoldername)
+        os.system("rm -rf %s*" % imagefoldername)
         script_write = open('.junkscript.py', 'w')
-        script_write.write("tclean(vis=%s, imagename='%s', imsize=[512,512], cell=[0.0005,0.0005], deconvolver='mtmfs',\
-            nterms=2, threshold='0mJy', interactive=True, niter=%d, gain=0.1, savemodel='modelcolumn')\n" % (s.MSs, imagefoldername, niter_value))
+        #if table_number > 0:
+        #    datacolumn_value = 'data'
+        #    savemodel_value = 'modelcolumn'
+        #else:
+        #    datacolumn_value = 'corrected'
+        #    savemodel_value = 'none'
+        script_write.write("tclean(vis=%s, imagename='%s', datacolumn='data', imsize=[256,256], cell=[0.001,0.001], deconvolver='mtmfs',\
+            nterms=2, threshold='0mJy', interactive=True, niter=%d, gain=0.1, savemodel='%s')\n" % (s.MSs, imagefoldername, niter_value, savemodel_value))
         script_write.close()
         os.system('casa -c .junkscript.py')
-    def GAINCAL_and_APPLYCAL_and_SPLIT(s, table_number=1, calmode_value='p', solint_value='6s'):
+    def GAINCAL_and_APPLYCAL_and_SPLIT(s, table_number, calmode_value='p', solint_value='6s'):
+        """
+        table_number=0,1,2,...
+        """
+        uvfitsfiles = glob.glob(r'*pipeline_uv.fits')
+        uvfitsfiles.sort()
+        MS0s = [uvfitsfile.replace('fits', 'ms') for uvfitsfile in uvfitsfiles]
         script_write = open('.junkscript.py', 'w')
-        for MS in s.MSs:
+        if table_number > 0:
+            suffix = '.v' + str(table_number) + '.ms'
+            old_MSs = [MS0.replace('.ms', suffix) for MS0 in MS0s]
+        else:
+            suffix = '.ms'
+            old_MSs = MS0s
+        print(old_MSs)
+        s.MSs = []
+        for MS in old_MSs:
             epoch = MS.split('_')[0]
             caltable_value = epoch + '.' + calmode_value + str(table_number) + '.table'
             print(caltable_value)
             os.system("rm -rf %s" % caltable_value)
-            script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='G', caltable='%s', minsnr=5)\n" % (MS,\
-                calmode_value, solint_value, caltable_value))
+            if calmode_value == 'p':
+                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='G', caltable='%s', minsnr=5)\n" % (MS,\
+                    calmode_value, solint_value, caltable_value))
+            elif calmode_value == 'ap':
+                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='T', caltable='%s', minsnr=5, solnorm=True, normtype='median')\n" % (MS,\
+                    calmode_value, solint_value, caltable_value))
             script_write.write("applycal(vis='%s', gaintable='%s')\n" % (MS, caltable_value))
-            splitted_MS = MS.replace('.ms', '.'+calmode_value+str(table_number)+'.ms')
-            print(splitted_MS)
-            os.system("rm -rf %s " % splitted_MS)
-            script_write.write("split(vis='%s', outputvis='%s', datacolumn='corrected')\n" % (MS, splitted_MS))
+            next_MS = MS.replace(suffix, '.v'+str(table_number+1)+'.ms')
+            s.MSs.append(next_MS)
+            print(next_MS)
+            os.system("rm -rf %s " % next_MS)
+            script_write.write("split(vis='%s', outputvis='%s', datacolumn='corrected')\n" % (MS, next_MS))
         script_write.close()
         os.system('casa -c .junkscript.py')
     def plotms(s, vis_value, xaxis_value, yaxis_value):
