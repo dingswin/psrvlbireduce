@@ -414,9 +414,12 @@ parser.add_option("-m", "--mask", dest="mask", help="CASA mask image; If provide
 parser.add_option("-c", "--clip-level", type="float", dest="clip_level", default=100.0, help="Percentage [0.0, 100.0] of the total flux that should be kept (default: %default). If there are CLEAN components with negative flux in the CLEAN component image, you may not recover all CLEAN components even if you specify 100% here. This is due to the way the cumulative flux builds up in the presence of negative components.")
 parser.add_option("-o", "--outputfrequency", type="float", dest="outputfrequency", default=-1, help="Desired output frequency (in MHz) for the case of multi-Taylor term models")
 parser.add_option("-r", "--referencefrequency", type="float", dest="referencefrequency", default=-1, help="Reference frequency (in MHz) of the model for the case of multi-Taylor term models")
+parser.add_option("-f", "--frequencylist", dest="frequencylist", default=[], help="a list of frequencies in MHz which are also used to estimate reference frequency; bandwidth needs to be provided in addition to frequencylist")
+parser.add_option("-w", "--bandwidth", dest="bandwidth", default=32, help="bandwidth (in MHz) can be negative; it is only needed when frequencylist is provided")
 
 (options, args) = parser.parse_args()
 options.use_patches = False
+
 
 if options.clip_level < 0.0 or options.clip_level > 100.0:
     parser.error("option -c: invalid percentage: %.2f" % options.clip_level)
@@ -424,20 +427,41 @@ if options.clip_level < 0.0 or options.clip_level > 100.0:
 if len(args) != 3:
     parser.error("incorrect number of arguments")
 
-if os.path.exists(args[0] + ".tt0") and os.path.exists(args[0] + ".tt1"):
-    if options.outputfrequency > 0:
-        if not options.referencefrequency > 0:
-            parser.error("If output frequency is specified, reference frequency must also be specified")
-        outfilename = args[0][:-5] + str(int(options.outputfrequency)) + ".model"
-        if os.path.exists(outfilename):
-            os.system("rm -rf " + outfilename)
-        output = open("junkscript", "w")
-        output.write("immath(imagename=['%s.tt0','%s.tt1'], mode='evalexpr', expr='IM0+((%.6f-%.6f)/%.6f)*IM1', outfile='%s')\n" % (args[0], args[0], options.outputfrequency, options.referencefrequency, options.referencefrequency, outfilename))
-        output.close()
-        os.system("casa -c junkscript")
-        args[0] = outfilename
-    else:
-        print "No output reference frequency specified - will just take the tt0 model"
-        args[0] = args[0] + ".tt0"
+def prepare_for_main(options, args):
+    if os.path.exists(args[0] + ".tt0") and os.path.exists(args[0] + ".tt1"):
+        if options.outputfrequency > 0:
+            if not options.referencefrequency > 0:
+                parser.error("If output frequency is specified, reference frequency must also be specified")
+            outfilename = args[0][:-5] + str(int(options.outputfrequency)) + ".model"
+            if os.path.exists(outfilename):
+                os.system("rm -rf " + outfilename)
+            output = open("junkscript", "w")
+            output.write("immath(imagename=['%s.tt0','%s.tt1'], mode='evalexpr', expr='IM0+((%.6f-%.6f)/%.6f)*IM1', outfile='%s')\n" % (args[0], args[0], options.outputfrequency, options.referencefrequency, options.referencefrequency, outfilename))
+            output.close()
+            os.system("casa -c junkscript")
+            args[0] = outfilename
+        else:
+            print "No output reference frequency specified - will just take the tt0 model"
+            args[0] = args[0] + ".tt0"
 
-main(options, args)
+if options.frequencylist == '[]':
+    prepare_for_main(options, args)
+    main(options, args)
+else:
+    exec('options.frequencylist = %s' % options.frequencylist)
+    options.referencefrequency = (options.frequencylist[0] + options.frequencylist[-1])/2. + options.bandwidth/2.
+    print("reference frequncy is: %f" % options.referencefrequency)
+    IFnum = 1
+    output_image_prefix = args[2]
+    CASA_model = args[0]
+    for freq in options.frequencylist:
+        IF_central_freq = freq + options.bandwidth/2.
+        options.outputfrequency = IF_central_freq
+        print('Central frequency for IF%d is %f.' % (IFnum, options.outputfrequency))
+        args[2] = output_image_prefix + '.IF' + str(IFnum) + '.clean.fits'
+        IFnum += 1
+        args[0] = CASA_model
+        prepare_for_main(options, args)
+        print(options, args)
+        main(options,args)
+
