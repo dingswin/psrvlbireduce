@@ -408,7 +408,7 @@ def main(options, args):
     vlbatasks.deletetable(tempimage, "CC", 1)
     vlbatasks.writedata(tempimage, outputimagefilename, True)
 
-parser = OptionParser(usage="%prog [options] <CASA .model file (no .tt0 extension if multiple TTs)> <Input FITS file with CC table> <output fits file name>")
+parser = OptionParser(usage="%prog [options] <CASA .model file (no .tt0 extension if multiple TTs)> <Input clean image with CC table> <output fits image name>")
 #parser.add_option("-n", "--no-patches", action="store_false", dest="use_patches", default=True, help="Do not group components into patches. All CLEAN components will be written as separate components.")
 parser.add_option("-m", "--mask", dest="mask", help="CASA mask image; If provided, the islands in the mask image define separate patches; CLEAN components that do not fall on an island are discarded, as are islands that do not contain any CLEAN components.")
 parser.add_option("-c", "--clip-level", type="float", dest="clip_level", default=100.0, help="Percentage [0.0, 100.0] of the total flux that should be kept (default: %default). If there are CLEAN components with negative flux in the CLEAN component image, you may not recover all CLEAN components even if you specify 100% here. This is due to the way the cumulative flux builds up in the presence of negative components.")
