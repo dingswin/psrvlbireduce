@@ -5,13 +5,22 @@ class making_frequency_dependent_calibrator_model_using_CASA:
     load the *pipeline_uv.fits (uvfits files should have been copied to the folder);
     TCLEAN jointly
     usage:
-    start from table_number=0, then incrementally moving further 
+    start from table_number=0, then incrementally moving further, then TCLEAN(N, 100, 'data') in the end to make the image 
     """
     def __init__(s):
         s.uvfitsfiles = glob.glob(r'*pipeline_uv.fits')
         s.uvfitsfiles.sort()
         print((s.uvfitsfiles))
-        s.MSs = [uvfitsfile.replace('fits', 'ms') for uvfitsfile in s.uvfitsfiles]
+        s.MS0s = [uvfitsfile.replace('fits', 'ms') for uvfitsfile in s.uvfitsfiles]
+        print(s.MS0s)
+        i = 20
+        s.MSs = []
+        while s.MSs == [] or len(s.MSs) != len(s.MS0s):
+            s.MSs = glob.glob(r'*pipeline_uv.v%d.ms' % i)
+            i -= 1
+            if i < 0:
+                s.MSs = s.MS0s
+                break
         print(s.MSs)
     def source_name(s):
         path = os.getcwd()
@@ -26,13 +35,14 @@ class making_frequency_dependent_calibrator_model_using_CASA:
             script_write.write("importuvfits(fitsfile='%s', vis='%s')\n" % (uvfitsfile, MS))
         script_write.close()
         os.system('casa -c .junkscript.py')
-    def TCLEAN_jointly(s, table_number, niter_value=100, savemodel_value='modelcolumn'):
+    def TCLEAN_jointly(s, image_number=1, niter_value=100, savemodel_value='modelcolumn', overwrite=False):
         """
-        table_number=0,1,2,...
+        image_number always 0 unless wanting to start from scratch
         """
-        imagefoldername = s.source_name()+'v'+str(table_number)
+        imagefoldername = s.source_name()+'v'+str(image_number)
         print(imagefoldername)
-        os.system("rm -rf %s*" % imagefoldername)
+        if overwrite:
+            os.system("rm -rf %s*" % imagefoldername)
         script_write = open('.junkscript.py', 'w')
         #if table_number > 0:
         #    datacolumn_value = 'data'
@@ -40,17 +50,15 @@ class making_frequency_dependent_calibrator_model_using_CASA:
         #else:
         #    datacolumn_value = 'corrected'
         #    savemodel_value = 'none'
-        script_write.write("tclean(vis=%s, imagename='%s', datacolumn='data', imsize=[256,256], cell=[0.001,0.001], deconvolver='mtmfs',\
-            nterms=2, threshold='0mJy', interactive=True, niter=%d, gain=0.1, savemodel='%s')\n" % (s.MSs, imagefoldername, niter_value, savemodel_value))
+        script_write.write("tclean(vis=%s, imagename='%s', datacolumn='data', imsize=[256,256], cell=[0.0001,0.0001], deconvolver='mtmfs',\
+            nterms=2, threshold='0mJy', interactive=True, niter=%d, gain=0.1, savemodel='%s', restart=True)\n" % (s.MSs, imagefoldername, niter_value, savemodel_value))
         script_write.close()
         os.system('casa -c .junkscript.py')
-    def GAINCAL_and_APPLYCAL_and_SPLIT(s, table_number, calmode_value='p', solint_value='6s'):
+    def GAINCAL_and_APPLYCAL_and_SPLIT(s, table_number, calmode_value='p', solint_value='30s'):
         """
         table_number=0,1,2,...
         """
-        uvfitsfiles = glob.glob(r'*pipeline_uv.fits')
-        uvfitsfiles.sort()
-        MS0s = [uvfitsfile.replace('fits', 'ms') for uvfitsfile in uvfitsfiles]
+        MS0s = s.MS0s
         script_write = open('.junkscript.py', 'w')
         if table_number > 0:
             suffix = '.v' + str(table_number) + '.ms'
@@ -66,10 +74,10 @@ class making_frequency_dependent_calibrator_model_using_CASA:
             print(caltable_value)
             os.system("rm -rf %s" % caltable_value)
             if calmode_value == 'p':
-                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='G', caltable='%s', minsnr=5)\n" % (MS,\
+                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='G', caltable='%s', minsnr=0)\n" % (MS,\
                     calmode_value, solint_value, caltable_value))
             elif calmode_value == 'ap':
-                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='T', caltable='%s', minsnr=5, solnorm=True, normtype='median')\n" % (MS,\
+                script_write.write("gaincal(vis='%s', calmode='%s', solint='%s', gaintype='T', caltable='%s', minsnr=0, solnorm=True, normtype='median')\n" % (MS,\
                     calmode_value, solint_value, caltable_value))
             script_write.write("applycal(vis='%s', gaintable='%s')\n" % (MS, caltable_value))
             next_MS = MS.replace(suffix, '.v'+str(table_number+1)+'.ms')
