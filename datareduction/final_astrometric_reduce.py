@@ -1618,30 +1618,29 @@ class vlbireduce(support_vlbireduce):
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + '.clean.fits'
-                    if not config['separateifmodel']:
-                        if os.path.exists(phscalmodelfile):
-                            aipscalname = phscal
-                            if len(phscal) > 12:
-                                aipscalname = phscal[:12]
-                            print "Using " + modeltype + " model for " + phscal
-                            phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
-                            if phscalmodeldata.exists():
-                                phscalmodeldata.zap()
-                            vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
-                        else:
-                            print "Currently no " + modeltype + " model for " + phscal
-                            if modeltype == "preliminary":
-                                try:
-                                    allowphscalpointmodel = expconfig['allowphscalpointmodel']
-                                    if not allowphscalpointmodel:
-                                        print "Using a point source, will dump output after FRING"
-                                        dophscaldump = True
-                                except KeyError:
+                    if os.path.exists(phscalmodelfile):
+                        aipscalname = phscal
+                        if len(phscal) > 12:
+                            aipscalname = phscal[:12]
+                        print "Using " + modeltype + " model for " + phscal
+                        phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                        if phscalmodeldata.exists():
+                            phscalmodeldata.zap()
+                        vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
+                    else:
+                        print "Currently no " + modeltype + " model for " + phscal
+                        if modeltype == "preliminary":
+                            try:
+                                allowphscalpointmodel = expconfig['allowphscalpointmodel']
+                                if not allowphscalpointmodel:
                                     print "Using a point source, will dump output after FRING"
                                     dophscaldump = True
-                            else:
-                                print "Aborting!"
-                                sys.exit()
+                            except KeyError:
+                                print "Using a point source, will dump output after FRING"
+                                dophscaldump = True
+                        else:
+                            print "Aborting!"
+                            sys.exit()
                     doband = True
                     if expconfig['ampcalscan'] <= 0:
                         doband = False
@@ -1694,22 +1693,12 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = False
                     print "Delay and rate windows: ", delaywin, ratewin
                     print "UV range: ", phsrefuvrange
-                    if config['separateifmodel']:
-                        tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0], modeldir)
-                        phscalmodeldata = None
-                        vlbatasks.fring(tofringuvdata, self.snversion, self.clversion,  
-                                        config['phsreffringmins'], inttimesecs, phscal, 
-                                        expconfig['refant'], doband, 
-                                        config['phsreffringsnr'], sumifs, phscalmodeldata,
-                                        sumrrll, phsrefuvrange,False,delaywin,ratewin,
-                                        doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
-                    else:
-                        vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
-                                        config['phsreffringmins'], inttimesecs, phscal, 
-                                        expconfig['refant'], doband, 
-                                        config['phsreffringsnr'], sumifs, phscalmodeldata,
-                                        sumrrll, phsrefuvrange,False,delaywin,ratewin,
-                                        doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
+                    vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
+                                    config['phsreffringmins'], inttimesecs, phscal, 
+                                    expconfig['refant'], doband, 
+                                    config['phsreffringsnr'], sumifs, phscalmodeldata,
+                                    sumrrll, phsrefuvrange,False,delaywin,ratewin,
+                                    doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
                 try:
                     dosnsmo = config['dosnsmo']
                 except KeyError:
