@@ -463,6 +463,62 @@ class support_vlbireduce(object):
                 inbeam_uv_data.zap()
         return tocalnames, tocalindices
     
+    def normalise_UVData_with_separate_IF_model_and_concatenate(self, srcname, config, expconfig, uvdata, modeldir):
+        """
+        used when config['separateifmodel']==True, where config=targetconfig[i]
+        """
+        print('Normalise uvdata of %s against its separate_IF_models, then concatenate back together.' % srcname)
+        normed_IF_datas = []
+        subtractif = 0
+        if config['skiplastif']:
+            subtractif = 1
+        shortname = srcname
+        if len(srcname) > 12:
+            shortname = srcname[:12]
+        beginif = 1
+        endif = vlbatasks.getNumIFs(uvdata)
+        for j in range(10,0,-1):
+            splitted_uv_data = AIPSUVData(shortname, 'CALIB', 1, j)
+            if splitted_uv_data.exists():
+                splitted_uv_data.zap()
+        # split out inbeam_uv_data=inbeamsrc.CALIB.1 from inbeamuvdata
+        domulti = False
+        combineifs = False
+        haveampcal = False
+        if expconfig['ampcalscan'] > 0:
+            haveampcal = True
+        vlbatasks.splittoseq(uvdata, clversion, 'CALIB', shortname,
+                             1, domulti, haveampcal, beginif, 
+                             endif-subtractif, combineifs, self.leakagedopol)
+        splitted_uv_data.table('NX', 1).zap()
+
+        for i in range(beginif, endif+1-subtractif):
+            normdata = AIPSUVData(shortname, 'NORMUV', 1, i)
+            if normdata.exists():
+                normdata.zap()
+            IF_image_file = "%s%s.IF%d.clean.fits" % (modeldir, srcname, i)
+            if not os.path.exists(IF_image_file):
+                print "Can't find inbeam model file (multi-IF %d) %s" % (i, IF_image_file)
+                sys.exit()
+            IF_image_data = AIPSImage(shortname, "CLEAN", 1, i)
+            if IF_image_data.exists():
+                IF_image_data.zap()
+            vlbatasks.fitld_image(IF_image_file, IF_image_data)
+            vlbatasks.normaliseUVData(splitted_uv_data, IF_image_data, normdata, i, i)
+            normed_IF_datas.append(normdata)
+            normdata.table('NX', 1).zap()
+        for j in range(10,0,-1):
+            concatuvdata = AIPSUVData('CONCAT' , 'UVSRT', 1, j)
+            if concatuvdata.exists():
+                concatuvdata.zap()
+        for normed_IF_data in normed_IF_datas:
+            vlbatasks.match_headersource(normed_IF_datas[0], normed_IF_data)
+        vlbatasks.dbcon(normed_IF_datas, concatuvdata)
+        for normed_IF_data in normed_IF_datas:
+            normed_IF_data.zap()
+        return concatuvdata
+                
+
     def target2cals(self, targetname, expno=''): #get phscal and bandpass cal given targetname
         """
         Given that the source file feature will be deprecated in 2021, this function will search in exp.yaml first.
@@ -1562,29 +1618,30 @@ class vlbireduce(support_vlbireduce):
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + '.clean.fits'
-                    if os.path.exists(phscalmodelfile):
-                        aipscalname = phscal
-                        if len(phscal) > 12:
-                            aipscalname = phscal[:12]
-                        print "Using " + modeltype + " model for " + phscal
-                        phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
-                        if phscalmodeldata.exists():
-                            phscalmodeldata.zap()
-                        vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
-                    else:
-                        print "Currently no " + modeltype + " model for " + phscal
-                        if modeltype == "preliminary":
-                            try:
-                                allowphscalpointmodel = expconfig['allowphscalpointmodel']
-                                if not allowphscalpointmodel:
+                    if not config['separateifmodel']:
+                        if os.path.exists(phscalmodelfile):
+                            aipscalname = phscal
+                            if len(phscal) > 12:
+                                aipscalname = phscal[:12]
+                            print "Using " + modeltype + " model for " + phscal
+                            phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
+                            if phscalmodeldata.exists():
+                                phscalmodeldata.zap()
+                            vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
+                        else:
+                            print "Currently no " + modeltype + " model for " + phscal
+                            if modeltype == "preliminary":
+                                try:
+                                    allowphscalpointmodel = expconfig['allowphscalpointmodel']
+                                    if not allowphscalpointmodel:
+                                        print "Using a point source, will dump output after FRING"
+                                        dophscaldump = True
+                                except KeyError:
                                     print "Using a point source, will dump output after FRING"
                                     dophscaldump = True
-                            except KeyError:
-                                print "Using a point source, will dump output after FRING"
-                                dophscaldump = True
-                        else:
-                            print "Aborting!"
-                            sys.exit()
+                            else:
+                                print "Aborting!"
+                                sys.exit()
                     doband = True
                     if expconfig['ampcalscan'] <= 0:
                         doband = False
@@ -1637,12 +1694,22 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = False
                     print "Delay and rate windows: ", delaywin, ratewin
                     print "UV range: ", phsrefuvrange
-                    vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
-                                    config['phsreffringmins'], inttimesecs, phscal, 
-                                    expconfig['refant'], doband, 
-                                    config['phsreffringsnr'], sumifs, phscalmodeldata,
-                                    sumrrll, phsrefuvrange,False,delaywin,ratewin,
-                                    doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
+                    if config['separateifmodel']:
+                        tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0], modeldir)
+                        phscalmodeldata = None
+                        vlbatasks.fring(tofringuvdata, self.snversion, self.clversion,  
+                                        config['phsreffringmins'], inttimesecs, phscal, 
+                                        expconfig['refant'], doband, 
+                                        config['phsreffringsnr'], sumifs, phscalmodeldata,
+                                        sumrrll, phsrefuvrange,False,delaywin,ratewin,
+                                        doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
+                    else:
+                        vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
+                                        config['phsreffringmins'], inttimesecs, phscal, 
+                                        expconfig['refant'], doband, 
+                                        config['phsreffringsnr'], sumifs, phscalmodeldata,
+                                        sumrrll, phsrefuvrange,False,delaywin,ratewin,
+                                        doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
                 try:
                     dosnsmo = config['dosnsmo']
                 except KeyError:
@@ -1689,7 +1756,7 @@ class vlbireduce(support_vlbireduce):
         return dophscaldump
 
     def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, targetonly, tabledir, expconfig,
-            numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, directory, experiment):
+            numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, directory, experiment, dophscaldump):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.maxphsreffringmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
@@ -3338,7 +3405,7 @@ dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly,
 ## Copy the phsref FRING SN table around and apply it ##########################
 reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(targetonly,
         tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
-        directory, experiment)
+        directory, experiment, dophscaldump)
 ## Run phase CALIB on the phase reference sources ##############################
 reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(tabledir, targetonly, inbeamuvdatas, expconfig, modeltype)
 ## Load all the phase CALIB solutions #########################################
