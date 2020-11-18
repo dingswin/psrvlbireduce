@@ -5,7 +5,8 @@ class making_frequency_dependent_calibrator_model_using_CASA:
     load the *pipeline_uv.fits (uvfits files should have been copied to the folder);
     TCLEAN jointly
     usage:
-    start from table_number=0, then incrementally moving further, then TCLEAN(N, 100, 'data') in the end to make the image 
+    start from table_number=0, then incrementally moving further, 
+    image_number stay the same, so that tclean can proceed in the difmap manner.
     """
     def __init__(s):
         s.uvfitsfiles = glob.glob(r'*pipeline_uv.fits')
