@@ -3862,14 +3862,42 @@ class look_for_indirect_SNR_associations:
         s.t_indirect_assoc = s.t_paired[s.t_paired['indirect_assoc']]
 
 class measure_the_angular_broadened_size_of_the_target:
-    def __init__(s, targetname):
+    def __init__(s, targetname, exception_epochs=['']):
+        """
+        e.g. exception_epochs = ['bd179h0']
+        you need to run 1) generate_statsfiles*jmfitfromfile(), then run
+                        2) compile_the_deconvolved_*statistics()
+        uncomment the '#' in __init__() will do the trick.
+        """
         s.targetname = targetname
         [auxdir, configdir, s.targetdir, phscalname, prIBCname] = prepare_path_source(s.targetname)
+        s.expnos = s.targetname2expnos(targetname, exception_epochs)
+        print(s.expnos)
+        #s.generate_statsfiles_including_deconvolved_size_info_with_jmfitfromfile()
         #s.compile_the_deconvolved_size_of_the_target_and_calculate_statistics()
+    def targetname2expnos(s, targetname, exception_epochs): 
+        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+        expnos = []
+        vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
+        vexfiles.sort()
+        for vexfile in vexfiles:
+            expno = vexfile.split('/')[-2].strip()
+            if expno not in exception_epochs:
+                expnos.append(expno)
+        return expnos
+    def generate_statsfiles_including_deconvolved_size_info_with_jmfitfromfile(s):
+        for expno in s.expnos:
+            expdir = s.targetdir + '/' + expno
+            os.system('jmfitfromfile.py %s/*difmap.gated.fits.ii.a %s/junk > %s/%s_jmfit_%s.stats' % (expdir, expdir, expdir, expno, s.targetname))
+            print('jmfitfromfile.py %s/*difmap.gated.fits.ii.a %s/junk > %s/%s_jmfit_%s.stats' % (expdir, expdir, expdir, expno, s.targetname))
     def compile_the_deconvolved_size_of_the_target_and_calculate_statistics(s):
+        """
+        return av_major_ax, std_major_ax, av_minor_ax, std_minor_ax, av_size, std_size (in arcsecond)
+        """
         s.statsfiles=glob.glob(r'%s/*/*_jmfit_%s.stats' % (s.targetdir, s.targetname)) #find statsfile for each epoch
         # here, the statsfiles were generated separately with "jmfitfromfile.py *ii.a junk > *.stats" 
         s.statsfiles.sort()
+        print(s.statsfiles)
         major_axs = np.array([])
         minor_axs = np.array([])
         for statsfile in s.statsfiles:

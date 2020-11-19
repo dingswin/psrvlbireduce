@@ -38,7 +38,7 @@ class making_frequency_dependent_calibrator_model_using_CASA:
         os.system('casa -c .junkscript.py')
     def TCLEAN_jointly(s, image_number=1, niter_value=100, savemodel_value='modelcolumn', overwrite=False):
         """
-        image_number always 0 unless wanting to start from scratch
+        image_number always the same unless wanting to start from scratch
         """
         imagefoldername = s.source_name()+'v'+str(image_number)
         print(imagefoldername)
@@ -51,7 +51,7 @@ class making_frequency_dependent_calibrator_model_using_CASA:
         #else:
         #    datacolumn_value = 'corrected'
         #    savemodel_value = 'none'
-        script_write.write("tclean(vis=%s, imagename='%s', datacolumn='data', imsize=[256,256], cell=[0.0001,0.0001], deconvolver='mtmfs',\
+        script_write.write("tclean(vis=%s, imagename='%s', datacolumn='data', imsize=[256,256], cell=[0.0005,0.0005], deconvolver='mtmfs',\
             nterms=2, threshold='0mJy', interactive=True, niter=%d, gain=0.1, savemodel='%s', restart=True)\n" % (s.MSs, imagefoldername, niter_value, savemodel_value))
         script_write.close()
         os.system('casa -c .junkscript.py')
