@@ -4050,13 +4050,17 @@ def fring(uvdataset, snversion, clversion, solintmins, inttimesecs, srcname,
           halfbandwidth=False, dispersivefit=False, dopol=0):
     fring = AIPSTask('fring', version = aipsver)
     fring.indata = uvdataset
-    fring.docal = 2
+    fring.docalib = 2
     fring.gainuse = clversion
     fring.calsour[1] = srcname
     fring.flagver = 1
     fring.doband = -1
     fring.dopol = dopol
     fring.smooth[1] = 5 # Hanning smoothing, width 4 channels
+    
+    if fring.gainuse < 0:
+        fring.docalib = -1
+
     if not modeldata == None:
         fring.in2data = modeldata
     if doband:

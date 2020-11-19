@@ -463,9 +463,9 @@ class support_vlbireduce(object):
                 inbeam_uv_data.zap()
         return tocalnames, tocalindices
     
-    def normalise_UVData_with_separate_IF_model_and_concatenate(self, srcname, config, expconfig, uvdata, modeldir):
+    def normalise_UVData_with_separate_IF_model_and_concatenate(self, srcname, config, expconfig, uvdata, modeldir, clversion):
         """
-        used when config['separateifmodel']==True, where config=targetconfig[i]
+        used when config['phscalseparateifmodel']==True (for phscal) or config['separateifmodel']==True (for inbeams), where config=targetconfig[i]
         """
         print('Normalise uvdata of %s against its separate_IF_models, then concatenate back together.' % srcname)
         normed_IF_datas = []
@@ -1618,7 +1618,7 @@ class vlbireduce(support_vlbireduce):
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + '.clean.fits'
-                    if not config['separateifmodel']:
+                    if not config['phscalseparateifmodel']:
                         if os.path.exists(phscalmodelfile):
                             aipscalname = phscal
                             if len(phscal) > 12:
@@ -1694,15 +1694,20 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = False
                     print "Delay and rate windows: ", delaywin, ratewin
                     print "UV range: ", phsrefuvrange
-                    if config['separateifmodel']:
-                        tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0], modeldir)
-                        phscalmodeldata = None
-                        vlbatasks.fring(tofringuvdata, self.snversion, self.clversion,  
+                    if config['phscalseparateifmodel']:
+                        tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0],\
+                            modeldir, self.clversion)
+                        #phscalmodeldata = None
+                        #doband = False
+                        vlbatasks.fring(tofringuvdata, 1, -1,  
                                         config['phsreffringmins'], inttimesecs, phscal, 
-                                        expconfig['refant'], doband, 
-                                        config['phsreffringsnr'], sumifs, phscalmodeldata,
+                                        expconfig['refant'], False, 
+                                        config['phsreffringsnr'], sumifs, None,
                                         sumrrll, phsrefuvrange,False,delaywin,ratewin,
                                         doexhaustive, halfbandwidth, dispersivefit, self.leakagedopol)
+                        vlbatasks.writetable(tofringuvdata, 'SN', 1, tabledir + \
+                                             'multi_IF_raw_phsreffring.sn')
+                        vlbatasks.loadtable(inbeamuvdatas[0], tabledir + 'multi_IF_raw_phsreffring.sn', self.snversion)
                     else:
                         vlbatasks.fring(inbeamuvdatas[0], self.snversion, self.clversion,  
                                         config['phsreffringmins'], inttimesecs, phscal, 
@@ -1867,13 +1872,24 @@ class vlbireduce(support_vlbireduce):
                         flagwheremodelbelow = expconfig['phsrefminmodelflux'] #Jy
                     except KeyError:
                         flagwheremodelbelow = -1
-                    vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
-                                                 1, expconfig['refant'], False, 
-                                                 config['phsrefcalibpnmins'],
-                                                 False, calibsoltype, 
-                                                 config['phsrefcalibpnsnr'], False,
-                                                 phsrefuvrange, phsrefweightit,
-                                                 flagwheremodelbelow)
+                    if config['phscalseparateifmodel']:
+                        phscal_uv_data = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig,\
+                            inbeamuvdatas[0], modeldir, self.clversion)
+                        vlbatasks.singlesource_calib(phscal_uv_data, None,
+                                                     1, expconfig['refant'], False, 
+                                                     config['phsrefcalibpnmins'],
+                                                     False, calibsoltype, 
+                                                     config['phsrefcalibpnsnr'], False,
+                                                     phsrefuvrange, phsrefweightit,
+                                                     flagwheremodelbelow)
+                    else:
+                        vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
+                                                     1, expconfig['refant'], False, 
+                                                     config['phsrefcalibpnmins'],
+                                                     False, calibsoltype, 
+                                                     config['phsrefcalibpnsnr'], False,
+                                                     phsrefuvrange, phsrefweightit,
+                                                     flagwheremodelbelow)
                     snoutver = 1
                     if not expconfig['skipsnedt']:
                         snoutver = 2
@@ -2049,13 +2065,24 @@ class vlbireduce(support_vlbireduce):
                         phsrefcalibapnclip = tmpphsrefcalibapnclip
                     except KeyError:
                         pass
-                    vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
-                                                 1, expconfig['refant'], True,
-                                                 config['phsrefcalibapnmins'],
-                                                 False, calibsoltype,
-                                                 config['phsrefcalibapnsnr'], False,
-                                                 phsrefuvrange, phsrefweightit,
-                                                 flagwheremodelbelow, normalise)
+                    if config['phscalseparateifmodel']:
+                        phscal_uv_data = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig,\
+                            inbeamuvdatas[0], modeldir, self.clversion)
+                        vlbatasks.singlesource_calib(phscal_uv_data, None,
+                                                     1, expconfig['refant'], True,
+                                                     config['phsrefcalibapnmins'],
+                                                     False, calibsoltype,
+                                                     config['phsrefcalibapnsnr'], False,
+                                                     phsrefuvrange, phsrefweightit,
+                                                     flagwheremodelbelow, normalise)
+                    else:
+                        vlbatasks.singlesource_calib(phscal_uv_data, phscalmodeldata,
+                                                     1, expconfig['refant'], True,
+                                                     config['phsrefcalibapnmins'],
+                                                     False, calibsoltype,
+                                                     config['phsrefcalibapnsnr'], False,
+                                                     phsrefuvrange, phsrefweightit,
+                                                     flagwheremodelbelow, normalise)
                     snoutver = 1
                     if not expconfig['skipsnedt']:
                         snoutver = 2
@@ -2741,25 +2768,30 @@ class vlbireduce(support_vlbireduce):
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                 vlbatasks.writedata(splitdata, self.phscaluvfiles[i], True)
                             else:
-                                vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                                phscal_image_file = modeldir + aipssrcname + ".clean.fits"
-                                if not os.path.exists(phscal_image_file):
-                                    print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
-                                    print "But " + phscal_image_file + " was not found."
-                                    sys.exit()
-                                modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
-                                if modeldata.exists():
-                                    modeldata.zap()
-                                vlbatasks.fitld_image(phscal_image_file, modeldata)
-                                divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                                if divideddata.exists():
-                                    divideddata.zap()
-                                vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
+                                if config['phscalseparateifmodel']:
+                                    divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
+                                        inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
+                                else:
+                                    vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
+                                        splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
+                                    phscal_image_file = modeldir + aipssrcname + ".clean.fits"
+                                    if not os.path.exists(phscal_image_file):
+                                        print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
+                                        print "But " + phscal_image_file + " was not found."
+                                        sys.exit()
+                                    modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
+                                    if modeldata.exists():
+                                        modeldata.zap()
+                                    vlbatasks.fitld_image(phscal_image_file, modeldata)
+                                    divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                                    if divideddata.exists():
+                                        divideddata.zap()
+                                    vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
                                 vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
-                            #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
-                            #if not skipplots:
-                            #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
-                            #                    fullauto, stokesi)
+                                #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
+                                #if not skipplots:
+                                #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
+                                #                    fullauto, stokesi)
                         
                     # Then the inbeams
                     for inbeamsrc in inbeamnames[i]:
