@@ -84,6 +84,7 @@ def pmparin2position_lines(pmparin):
             epoch = line.split('=')[1].strip()
         if line.count(':') == 4 and (not line.strip().startswith('#')):   
             positions = np.append(positions, line)
+            positions.sort()
     return positions, epoch
 ################################################################################
 ## Main code

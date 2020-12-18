@@ -1443,7 +1443,10 @@ class filter_the_list_of_Gaia_candidates_for_PRE_bursters_generated_from_topcat_
 
 class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
-    def __init__(s, srcname, AGN_number, count_radius=1, howmanysigma=3):
+    def __init__(s, srcname, AGN_number=1, count_radius=1, howmanysigma=3):
+        """
+        row_limit=-1 means no row limit for Gaia cone search.
+        """
         s.srcname = srcname
         s.AGN_number = AGN_number
         howmanysigma1 = 1
@@ -1451,7 +1454,7 @@ class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
         [RA_deg, Dec_deg] = s.Simbad_srcname_to_position(s.srcname)
         print RA_deg, Dec_deg
         [Gaia_count, CpSqAs] = s.position_to_Gaia_count_in_1deg_radius(RA_deg, Dec_deg, count_radius)
-        print "%d Gaia sources counted within %f deg radius around %s, equivalent to %f count/arcsecond^2" % (Gaia_count, count_radius, srcname, CpSqAs)
+        print "%d Gaia sources counted within %f-deg radius around %s, equivalent to %f count/arcsecond^2" % (Gaia_count, count_radius, srcname, CpSqAs)
         cross_match_radius1 = s.CpSqAs_and_AGN_number_to_cross_match_radius(CpSqAs, AGN_number, howmanysigma1)
         print "Cross-match radius for each background AGN to %s is %f arcsecond, in order to make sure no random field star cross-matched for the whole sample of %d AGNs at %f percent confidence level." % (srcname, cross_match_radius1, AGN_number, CL1)
         CL = 100*math.erf(howmanysigma/2**0.5)
@@ -1475,15 +1478,26 @@ class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
         return RA_deg, Dec_deg
         
     def position_to_Gaia_count_in_1deg_radius(s, RA_deg, Dec_deg, radius=1.0):
+        """
+        row_limit=-1 means no row limit for Gaia cone search.
+        """
         import astropy.units as u
+        import timeit
         from astropy.coordinates import SkyCoord
         from astroquery.gaia import Gaia
+        #Gaia.ROW_LIMIT = row_limit
         coord = SkyCoord(ra=RA_deg, dec=Dec_deg, unit=(u.degree, u.degree), frame='icrs')
         radius_unit = u.Quantity(radius, u.deg)
+        start_time_cone_search = timeit.default_timer()
         j = Gaia.cone_search_async(coord, radius_unit)
-        r = j.get_results()
-        Gaia_count = len(r)
-        count_per_sq_as = Gaia_count/(radius**2)/(3600**2)
+        stop_time_cone_search = timeit.default_timer()
+        s.time_spent_on_cone_search = stop_time_cone_search - start_time_cone_search
+        print("%f min spent on the cone search within %f-deg radius of the target" % (s.time_spent_on_cone_search/60, float(radius)))
+        s.results = j.get_results()
+        Gaia_count = len(s.results)
+        output = s.path + '/.source_list_' + str(radius) + 'deg_around_' + s.srcname.replace(' ','') + '.ascii'
+        s.results.write(output, format='ascii', overwrite=True)
+        count_per_sq_as = Gaia_count*1.0/(radius**2)/(3600**2)
         print "%d Gaia sources within %fdeg-radius circle of the target" % (Gaia_count,float(radius))
         #print AGN_count, radius
         return Gaia_count, count_per_sq_as
@@ -1497,6 +1511,100 @@ class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
         howmanySqAs = math.log(CL)/math.log(1-CpSqAs)
         r = math.sqrt(howmanySqAs) #unit: arcsecond
         return r
+
+class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
+    """
+    recipe: 1) decompressed AgnCrossId*.csv files; 2) cone searched Gaia sources in ascii format by my default
+    """
+    path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
+    def __init__(s, cone_search_Gaia_sources):
+        """
+        cone_search_Gaia_sources needs to be just the file name, e.g. .source_list_1deg_around_CenX-4.ascii
+        """
+        s.cone_search_Gaia_sources = s.path + cone_search_Gaia_sources
+        s.AgnCrossIDs = s.path + '/.numpy_list_of_AgnCrossIDs.pickle'
+    def read_cone_searched_Gaia_sources(s):
+        #import pandas as pd
+        t = Table.read(s.cone_search_Gaia_sources, format='ascii')
+        #print(t)
+        #t1 = pd.DataFrame(np.array(t))
+        #print(t)
+        return t
+    def filter_source_ID(s, t1, t_filter):
+        source_ids = t_filter['source_id'] 
+        common_ids = set(t1['source_id']).intersection(source_ids)
+        ids = list(common_ids)
+        #print(ids)
+        return ids
+    def merge_AgnCrossIDs(s):
+        AgnCrossID_files = glob.glob(r'%s/edr3_agn_cross_id/AgnCrossId*.csv' % s.path)
+        AgnCrossIDs = np.array([], dtype='int64')
+        for AgnCrossID_file in AgnCrossID_files:
+            t = Table.read(AgnCrossID_file, format='ascii')
+            new_AgnCrossIDs = np.array(t['source_id'], dtype='int64')
+            print(new_AgnCrossIDs)
+            AgnCrossIDs = np.concatenate((AgnCrossIDs, new_AgnCrossIDs))
+            print(AgnCrossIDs)
+        writefile = open(s.AgnCrossIDs, 'w')
+        pickle.dump(AgnCrossIDs, writefile)
+        writefile.close()
+    def make_AgnCrossID_RA_Dec_table_step1(s, start=0):
+        from astropy.table import vstack
+        if not os.path.exists(s.AgnCrossIDs):
+            print('running merge_AgnCrossIDs...')
+            s.merge_AgnCrossIDs()
+        readfile = open(s.AgnCrossIDs, 'r')
+        AgnCrossIDs = pickle.load(readfile)
+        readfile.close()
+        #print(AgnCrossIDs)
+        s.ID_pos = Table(names=['source_id', 'ra', 'dec'], dtype=['int64','float64','float64'])
+        s.GaiaSourceFiles = glob.glob(r'%s/edr3_gaia_source/GaiaSource*.csv' % s.path)
+        s.GaiaSourceFiles.sort()
+        number_files = len(s.GaiaSourceFiles)
+        count = start
+        for GaiaSourceFile in s.GaiaSourceFiles[start:]:
+            count += 1
+            output_table = s.path + '/prepare_edr3_agn_cross_match/ID_ra_dec_' + str(count).zfill(4)
+            if os.path.exists(output_table):
+                continue
+            t = Table.read(GaiaSourceFile, format='ascii')
+            GaiaIDs = np.array(t['source_id'], dtype='int64')
+            #print(GaiaIDs)
+            common_ids = np.intersect1d(AgnCrossIDs, GaiaIDs)
+            #print(common_ids)
+            mask = [x in common_ids for x in GaiaIDs]
+            AGNs = t[mask]
+            AGNs_pos_only = Table([AGNs['source_id'], AGNs['ra'], AGNs['dec']], names=['source_id', 'ra', 'dec'])
+            #s.ID_pos = vstack([s.ID_pos, AGNs_pos_only])
+            print(AGNs_pos_only)
+            #s.ID_pos
+            AGNs_pos_only.write(output_table, format='ascii', overwrite=True)
+            #print(s.ID_pos)
+            print('%d/%d has been finished.' % (count, number_files))
+
+    def single_out_quasars(s):
+        if not os.path.exists(s.AgnCrossIDs):
+            print('running merge_AgnCrossIDs...')
+            s.merge_AgnCrossIDs()
+        readfile = open(s.AgnCrossIDs, 'r')
+        AgnCrossIDs = pickle.load(readfile)
+        readfile.close()
+        print(AgnCrossIDs)
+        s.y1 = AgnCrossIDs
+        s.t = s.read_cone_searched_Gaia_sources()
+        print('Reading cone-searched Gaia results...')
+        coneGaiaIDs = np.array(s.t['source_id'], dtype='int64')
+        print(coneGaiaIDs)
+        s.y2 = coneGaiaIDs
+        s.common_ids = np.intersect1d(AgnCrossIDs, coneGaiaIDs)
+        print('There are %d Gaia counterparts for background AGNs found.' % len(s.common_ids))
+        mask = [x in s.common_ids for x in s.t['source_id']]
+        s.background_AGNs = s.t[mask]
+        #print('There are %d Gaia counterparts for background AGNs found.' % len(s.background_AGNs))
+        output_table = s.path + '/.Gaia_sources_for_background_quasars'
+        s.background_AGNs.write(output_table, format='ascii', overwrite=True)
+        return s.background_AGNs
+        
 
 class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
     """
