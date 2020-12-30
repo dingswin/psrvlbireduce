@@ -1514,7 +1514,9 @@ class Simbad_source_to_Gaia_count_in_1deg_radius_to_AGNs_crossmatch_radius:
 
 class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
     """
-    recipe: 1) decompressed AgnCrossId*.csv files; 2) cone searched Gaia sources in ascii format by my default
+    There are two ways to cross-match Gaia counterparts for backgound AGNs: (a) cross-match cone-searched Gaia sources with AgnCrossId*csv,
+        (b) make my own ID_ra_dec catalog for AGNs using the AgnCrossId*csv, then do cone-search with my own codes.
+    necessities for method (a): 1) decompressed AgnCrossId*.csv files; 2) cone searched Gaia sources in ascii format by my default
     """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
     def __init__(s, cone_search_Gaia_sources):
@@ -1549,7 +1551,6 @@ class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
         pickle.dump(AgnCrossIDs, writefile)
         writefile.close()
     def make_AgnCrossID_RA_Dec_table_step1(s, start=0):
-        from astropy.table import vstack
         if not os.path.exists(s.AgnCrossIDs):
             print('running merge_AgnCrossIDs...')
             s.merge_AgnCrossIDs()
@@ -1557,30 +1558,72 @@ class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
         AgnCrossIDs = pickle.load(readfile)
         readfile.close()
         #print(AgnCrossIDs)
-        s.ID_pos = Table(names=['source_id', 'ra', 'dec'], dtype=['int64','float64','float64'])
+        #s.ID_pos = Table(names=['source_id', 'ra', 'dec'], dtype=['int64','float64','float64'])
         s.GaiaSourceFiles = glob.glob(r'%s/edr3_gaia_source/GaiaSource*.csv' % s.path)
         s.GaiaSourceFiles.sort()
         number_files = len(s.GaiaSourceFiles)
         count = start
         for GaiaSourceFile in s.GaiaSourceFiles[start:]:
             count += 1
-            output_table = s.path + '/prepare_edr3_agn_cross_match/ID_ra_dec_' + str(count).zfill(4)
+            output_table = s.path + '/prepare_edr3_agn_astrometric/ID_astrometric_' + str(count).zfill(4)
             if os.path.exists(output_table):
                 continue
             t = Table.read(GaiaSourceFile, format='ascii')
             GaiaIDs = np.array(t['source_id'], dtype='int64')
             #print(GaiaIDs)
-            common_ids = np.intersect1d(AgnCrossIDs, GaiaIDs)
+            mask = np.in1d(GaiaIDs, AgnCrossIDs)
             #print(common_ids)
-            mask = [x in common_ids for x in GaiaIDs]
+            #mask = [x in common_ids for x in GaiaIDs]
             AGNs = t[mask]
-            AGNs_pos_only = Table([AGNs['source_id'], AGNs['ra'], AGNs['dec']], names=['source_id', 'ra', 'dec'])
-            #s.ID_pos = vstack([s.ID_pos, AGNs_pos_only])
-            print(AGNs_pos_only)
-            #s.ID_pos
-            AGNs_pos_only.write(output_table, format='ascii', overwrite=True)
-            #print(s.ID_pos)
+            AGNs_astrometric = Table([AGNs['source_id'], AGNs['ra'], AGNs['dec'], AGNs['parallax'], AGNs['parallax_error'], AGNs['pmra'], AGNs['pmra_error'], 
+                AGNs['pmdec'], AGNs['pmdec_error']], names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error'])
+            print(AGNs_astrometric)
+            AGNs_astrometric.write(output_table, format='ascii', overwrite=True)
             print('%d/%d has been finished.' % (count, number_files))
+    def make_AgnCrossID_RA_Dec_table_step2(s):
+        from astropy.table import vstack
+        s.AGNs_astrometric_outputs = glob.glob(r'%s/prepare_edr3_agn_astrometric/ID_astrometric*' % s.path)
+        s.AGNs_astrometric_outputs.sort()
+        print(s.AGNs_astrometric_outputs)
+        s.ID_pos = Table(names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error'],
+            dtype=['int64', 'float64', 'float64', 'float64', 'float64', 'float64','float64', 'float64', 'float64'])
+        count = 0
+        number_files = len(s.AGNs_astrometric_outputs)
+        for output in s.AGNs_astrometric_outputs:
+            count += 1
+            t1 = Table.read(output, format='ascii')
+            s.ID_pos = vstack([s.ID_pos, t1])
+            print('%d/%d has been finished.' % (count, number_files))
+        final_output_table = s.path + '/AGNs_ID_astrometric.ascii'
+        s.ID_pos.write(final_output_table, format='ascii', overwrite=True)
+    
+    def Simbad_srcname_to_position(s, srcname):
+        from astroquery.simbad import Simbad
+        queryresult = Simbad.query_object(srcname)
+        print queryresult
+        #print type(queryresult['RA'])
+        a = read_name_and_position_from_catalog_then_covert_to_topcat_friendly_file()
+        RA_deg = 15*a.simbad_coordinate2deg(queryresult['RA'])
+        Dec_deg = a.simbad_coordinate2deg(queryresult['DEC'])
+        return RA_deg, Dec_deg
+
+    def cone_search_given__AGNs_ID_astrometric__catalog(s, targetname, cone_radius_in_deg):
+        r = cone_radius_in_deg
+        final_output_table = s.path + '/AGNs_ID_astrometric.ascii'
+        if not os.path.exists(final_output_table):
+            print('Please make the AGNs_ID_astrometric.ascii first; aborting')
+            sys.exit()
+        [RA_deg, Dec_deg] = s.Simbad_srcname_to_position(targetname)
+        t = Table.read(final_output_table, format='ascii')
+        print(t)
+        Ds_in_deg = howfun.separations_deg(RA_deg, Dec_deg, t['ra'], t['dec'])
+        print(Ds_in_deg)
+        mask = Ds_in_deg < r
+        print(mask)
+        s.t1 = t[mask]
+        output_table = s.path + '/background_Gaia_AGNs_for_' + targetname.replace(' ', '_') + '_within_' + str(r) + 'deg.ascii'
+        s.t1.write(output_table, format='ascii', overwrite=True)
+        return s.t1
 
     def single_out_quasars(s):
         if not os.path.exists(s.AgnCrossIDs):

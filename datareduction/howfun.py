@@ -83,6 +83,46 @@ def separations(RA, Dec, RAs, Decs):
             seps = np.append(seps, sep)
         return seps
 
+def separations_deg1(RA, Dec, RAs, Decs):
+    """
+    like the 'separation_deg' function, but working for array as well.
+    """
+    if type(RAs) == float:
+        sep = separation_deg(RA, Dec, RAs, Decs)
+        return sep
+    else:
+        seps = np.array([])
+        length = len(RAs)
+        count = 0
+        for i in range(length):
+            sep = separation_deg(RA, Dec, RAs[i], Decs[i])
+            seps = np.append(seps, sep)
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((count + 1) * 100 / length)) + " \r")
+            count += 1
+        return seps
+def separation_deg(RA1, Dec1, RA2, Dec2): # all in deg format
+    Dec = np.array([Dec1, Dec2])
+    RA = np.array([RA1, RA2])
+    Dec_rad = Dec*math.pi/180
+    RA_rad = RA*math.pi/180
+    cos_sep = math.cos(Dec_rad[0])*math.cos(Dec_rad[1])*math.cos(RA_rad[0]-RA_rad[1]) + math.sin(Dec_rad[0])*math.sin(Dec_rad[1])
+    sep = math.acos(cos_sep)
+    sep = sep*180/math.pi # rad to deg
+    return sep #in deg
+def separations_deg(RA, Dec, RAs, Decs):
+    """
+    like the 'separation_deg' function, but working for array as well.
+    """
+    if type(RAs) == float:
+        sep = separation_deg(RA, Dec, RAs, Decs)
+        return sep
+    else:
+        RA_rad, Dec_rad, RAs_rad, Decs_rad = RA*math.pi/180, Dec*math.pi/180, RAs*math.pi/180, Decs*math.pi/180
+        cos_seps = np.cos(Dec_rad)*np.cos(Decs_rad)*np.cos(RA_rad-RAs_rad) + np.sin(Dec_rad)*np.sin(Decs_rad)
+        seps = np.arccos(cos_seps)
+        seps *= 180/math.pi
+        return seps
+
 def distance_from_an_array_of_positions_to_one_specific_position(X,Y,xs,ys):
     if type(xs)==int or type(xs)==float:
         D = ((X-xs)**2+(Y-ys)**2)**0.5
