@@ -64,7 +64,7 @@ class support_vlbireduce(object):
                   (snversion, maxsnversion)
         print prtstr + prtstr2
 
-    def parsesourcefile(self, sourcefile):
+    def parsesourcefile(self, sourcefile, experiment, klass, uvsequence):
         """
         source file parser
         Note that the source file feature will be replaced by yaml configuration from 2021.
@@ -117,7 +117,7 @@ class support_vlbireduce(object):
     def inbeamselfcal(self, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
                       expconfig, targetconfigs, modeldir, modeltype, targetonly,
                       calonly, beginif, endif, doampcal, dosecondary, sumifs,
-                      clversion, targetnames, leakagedopol = 0):
+                      clversion, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, leakagedopol=0):
         """
         usage:run CALIB (self-calibration) on in-beam calibrators
         Note: need to be very cautious when removing the input variables of this function 
@@ -587,7 +587,7 @@ class support_vlbireduce(object):
     def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                          expconfig, targetconfigs, targetonly, calonly, doampcal,
                          dosecondary, sumifs, clversion, snversion, inbeamnames, 
-                         targetnames):
+                         targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
         """
         apply CALIB (self-calibration) solutions from in-beam calibrators
         """
@@ -743,7 +743,7 @@ class vlbireduce(support_vlbireduce):
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     def increase_the_number_of_IFs_if_requested(self, targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
-            klass, calonly, gateduvdata, haveungated, ungateduvdata):
+            klass, calonly, gateduvdata, haveungated, ungateduvdata, expconfig):
         try:
             moriffactor = expconfig['moriffactor']
         except KeyError:
@@ -794,7 +794,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def load_the_user_flags_if_any(self, tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
-            inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated):
+            inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated, targetnames):
         """
         flagging can be appointed to specific inbeamcal or target, but not for phscal; for phscal, just use additionaledit.flag
         """
@@ -835,7 +835,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_the_flagging_for_zero_fringe_rate_effects(self, targetconfigs, targetonly, inbeamuvdatas,
-            haveungated, ungateduvdata, gateduvdata):
+            haveungated, ungateduvdata, gateduvdata, calonly):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Running UVFLG for zero fringe rates"
             try:
@@ -884,7 +884,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def duplicate_the_initial_CL_table(self, targetonly, numinbeams, inbeamuvdatas, gateduvdata,
-            ungateduvdata):
+            ungateduvdata, calonly, haveungated):
         """
         In cases where runlevel starts from 2, CL>=2 and SN>=2 are deleted here.
         """
@@ -995,7 +995,7 @@ class vlbireduce(support_vlbireduce):
         self.clversion += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
-    def prepare_leakage_related_variables(self, expconfig):
+    def prepare_leakage_related_variables(self, expconfig, ampcalsrc):
         self.leakagedopol = 0
         try:
             self.xpolscan = expconfig['xpolscan']
@@ -1078,7 +1078,7 @@ class vlbireduce(support_vlbireduce):
             skipapcalaccor = expconfig['skipapcalaccor']
         except KeyError:
             skipapcalaccor = False
-        if runfromlevel <= self.runlevel and runtolevel >= self.runlevel and not skipapcalaccor:
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not skipapcalaccor:
             print "Runlevel " + str(self.runlevel) + ": Doing amplitude calibration"
             if targetonly and (not os.path.exists(tabledir + 'accor.sn') or \
                                not os.path.exists(tabledir + 'apcal.sn')):
@@ -1373,7 +1373,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def copy_the_FRING_SN_table_around_and_apply_it(self, expconfig, targetonly,
-            tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata):
+            tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and expconfig['ampcalscan'] > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading ampcal FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'ampcalfring.sn')):
@@ -1560,7 +1560,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def load_BPASS_solutions(self, expconfig, tabledir, calonly, 
-            gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas):
+            gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             expconfig['ampcalscan'] > 0:
             print "Runlevel " + str(self.runlevel) + ": Loading bandpass corrections"
@@ -1817,7 +1817,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_phase_CALIB_on_the_phase_reference_sources(self,
-            tabledir, targetonly, inbeamuvdatas, expconfig, modeltype):
+            tabledir, targetonly, inbeamuvdatas, expconfig, modeltype, modeldir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibpnmins > 0:
             haveall = True
@@ -1981,7 +1981,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_amp_CALIB_on_the_phase_reference_sources(self, targetconfigs,
-            tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype):
+            tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype, phscalnames):
         #prepare two variables for amp CALIB on the phase calibrators
         self.donephscalnames = []
         self.doneconfigs = []
@@ -2176,7 +2176,7 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
-    def prepare_variables_for_inbeamselfcal(self, inbeamuvdatas, targetconfigs, numtargets, inbeamnames):
+    def prepare_variables_for_inbeamselfcal(self, inbeamuvdatas, targetconfigs, numtargets, inbeamnames, targetnames):
         """
         prepare some variables for operations on inbeam calibrators
         note: must be run before any inbeamselfcal step
@@ -2285,14 +2285,14 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
-            calonly, targetnames, numtargets):
+            calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
-                                       calonly, self.beginif, self.endif, False, False, True, self.clversion, targetnames,
-                                       self.leakagedopol)
+                                       calonly, self.beginif, self.endif, False, False, True, self.clversion, targetnames, numtargets, 
+                                       inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
             print "Skipping inbeam phase-only selfcal (combined IFs)"
             tocalnames = []
@@ -2310,13 +2310,15 @@ class vlbireduce(support_vlbireduce):
         return tocalnames, tocalindices
 
     def load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(self, tocalnames, 
-            tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames):
+            tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, 
+            haveungated, ungateduvdata, dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, targetonly, calonly, False, False, True,
-                                       self.clversion, self.snversion, inbeamnames, targetnames)
+                                       self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
             #sncount is used to point at SN table in post-phscal stage
         else:
             print "Skipping application of inbeam phase-only selfcal (combined IFs)"
@@ -2332,14 +2334,14 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
-            calonly, targetnames, numtargets):
+            calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, False, False, False, self.clversion+self.targetcl, 
-                                       targetnames, self.leakagedopol)
+                                       targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
             print "Skipping inbeam phase-only selfcal (separate IFs)"
             tocalnames = []
@@ -2394,7 +2396,8 @@ class vlbireduce(support_vlbireduce):
                 #apply the corrected p1.sn only to the target
                 junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, True, calonly, False, False, True,
-                                       self.clversion, self.snversion, inbeamnames, targetnames)
+                                       self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion)
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
@@ -2418,13 +2421,15 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def load_inbeam_CALIB_solutions_on_separate_IFs(self, tocalnames, tocalindices, inbeamuvdatas, 
-            gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames):
+            gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB pn sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, False, False,
-                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
+                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
         else:
             print "Skipping application of inbeam phase-only selfcal (separate IFs)"
             if self.maxinbeamcalibpnmins > 0:
@@ -2440,14 +2445,14 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir,
-            modeltype, targetonly, calonly, targetnames, numtargets):
+            modeltype, targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, True, False, True, self.clversion+self.targetcl, 
-                                       targetnames, self.leakagedopol)
+                                       targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
             print "Skipping inbeam amp+phase selfcal (combined IFs)"
             tocalnames = []
@@ -2466,13 +2471,15 @@ class vlbireduce(support_vlbireduce):
         return tocalnames, tocalindices
 
     def load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(self, tocalnames, tocalindices, 
-            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames):
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB ap1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, True,
-                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
+                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
         else:
             print "Skipping application of inbeam amp+phase selfcal (combined IFs)"
             if self.maxinbeamcalibap1mins > 0:
@@ -2488,14 +2495,14 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
-            targetnames, numtargets):
+            targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, True, False, False, self.clversion+self.targetcl,
-                                       targetnames, self.leakagedopol)
+                                       targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
             print "Skipping inbeam amp+phase selfcal (separate IFs)"
             tocalnames = []
@@ -2517,13 +2524,15 @@ class vlbireduce(support_vlbireduce):
         return tocalnames, tocalindices
 
     def load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(self, tocalnames, tocalindices, 
-            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames):
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB apn sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, False,
-                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
+                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
         else:
             print "Skipping application of inbeam amp+phase selfcal (separate IFs)"
             if self.maxinbeamcalibapnmins > 0:
@@ -2539,7 +2548,7 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-            targetonly, calonly, targetnames, numtargets):
+            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
@@ -2547,7 +2556,8 @@ class vlbireduce(support_vlbireduce):
                                        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
                                        modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, False, True, True, 
-                                       self.clversion+self.targetcl, targetnames, self.leakagedopol)
+                                       self.clversion+self.targetcl, targetnames, numtargets, inbeamnames, directory, 
+                                       tabledir, alwayssaved, self.leakagedopol)
         else:
             print "Skipping secondary inbeam phase-only selfcal (combined IFs)"
             tocalnames = []
@@ -2566,13 +2576,14 @@ class vlbireduce(support_vlbireduce):
 
     def load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(self,
             tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly,
-            calonly, inbeamnames, targetnames):
+            calonly, inbeamnames, targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Applying secondary inbeam CALIB sp1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, True, True,
-                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames)
+                                       self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                       dualphscal_setup, tabledir)
         else:
             print "Skipping application of secondary inbeam phase-only selfcal (combined IFs)"
             if self.maxinbeamcalibsp1mins > 0:
@@ -2586,7 +2597,7 @@ class vlbireduce(support_vlbireduce):
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
-    def calculate_the_scintillation_correction(self, numtargets, targetconfigs, tabledir, targetnames, expconfig, gateduvdata):
+    def calculate_the_scintillation_correction(self, numtargets, targetconfigs, tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas):
         beginif = 1
         endif = self.numifs
         scinttablepaths = []
@@ -2720,7 +2731,7 @@ class vlbireduce(support_vlbireduce):
     def split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(self,
             numtargets, targetconfigs, expconfig, targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc,
             directory, experiment, phscalnames, modeldir, inbeamnames,
-            calonly, targetnames, haveungated, ungateduvdata, scinttablepaths):
+            calonly, targetnames, haveungated, ungateduvdata, scinttablepaths, gateduvdata):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Splitting and writing final images"
             for i in range(numtargets):
@@ -2960,7 +2971,7 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
-            directory, experiment, targetnames, beginif, endif, haveungatedi, phscalnames, inbeamnames):
+            directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas):
         #fullauto  = True
         stokesi   = True
         #gaussiantarget = False
@@ -3110,481 +3121,493 @@ class Logger(object):
     def isatty(self):
         return False
 
-################################################################################
-# Option parsing and defaulted global variables
-################################################################################
-try:
-    aipsver = os.environ['PSRVLBAIPSVER']
-except KeyError:
+def main():
+    """
+    main program
+    """
+    ################################################################################
+    # Option parsing and defaulted global variables
+    ################################################################################
     try:
-        aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
+        aipsver = os.environ['PSRVLBAIPSVER']
     except KeyError:
-        aipsver = '31DEC20'
-usage = "usage: %prog [options]"
-parser = OptionParser(usage)
-parser.add_option("-e", "--experiment", dest="experiment", default="",
-                  help="Experiment name")
-parser.add_option("--targetonly", dest="targetonly", default=False,
-                  action="store_true", help="Reduce target only")
-parser.add_option("--calonly", dest="calonly", default=False,
-                  action="store_true", help="Reduce calibrators only")
-parser.add_option("-r", "--runlevel", dest="runlevel", default="1",
-                  help="Runlevel to start[,stop] at")
-parser.add_option("--alwayssaved", dest="alwayssaved", default=False,
-                  action="store_true", help="Always used saved cal tables")
-parser.add_option("--clearcatalog", dest="clearcatalog", default=False,
-                  action="store_true", help="Zap existing catalog data")
-parser.add_option("--zapallcaltables", dest="zapallcaltables", default=False,
-                  action="store_true", help="Zap all SN and CL tables")
-parser.add_option("--noimageoutofbeam", dest="noimageoutofbeam", default=False,
-                  action="store_true", help="Don't split the amp cal source")
-parser.add_option("--startlocaltv", dest="startlocaltv", default=False,
-                  action="store_true", help="Start a local AIPS TV " + \
-                                            "(for X11, VNC etc")
-(options, junk) = parser.parse_args()
-auxdir          = ""
-rootdir         = ""
-targetonly      = options.targetonly
-calonly         = options.calonly
-experiment      = options.experiment
-zapallcaltables = options.zapallcaltables
-imageoutofbeam  = not options.noimageoutofbeam
-alwayssaved     = options.alwayssaved
-startlocaltv    = options.startlocaltv
-runsplit        = options.runlevel.split(',')
-runfromlevel    = int(runsplit[0])
-runtolevel      = 999
-if len(runsplit) > 1:
-    runtolevel = int(runsplit[1])
+        try:
+            aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
+        except KeyError:
+            aipsver = '31DEC20'
+    usage = "usage: %prog [options]"
+    parser = OptionParser(usage)
+    parser.add_option("-e", "--experiment", dest="experiment", default="",
+                      help="Experiment name")
+    parser.add_option("--targetonly", dest="targetonly", default=False,
+                      action="store_true", help="Reduce target only")
+    parser.add_option("--calonly", dest="calonly", default=False,
+                      action="store_true", help="Reduce calibrators only")
+    parser.add_option("-r", "--runlevel", dest="runlevel", default="1",
+                      help="Runlevel to start[,stop] at")
+    parser.add_option("--alwayssaved", dest="alwayssaved", default=False,
+                      action="store_true", help="Always used saved cal tables")
+    parser.add_option("--clearcatalog", dest="clearcatalog", default=False,
+                      action="store_true", help="Zap existing catalog data")
+    parser.add_option("--zapallcaltables", dest="zapallcaltables", default=False,
+                      action="store_true", help="Zap all SN and CL tables")
+    parser.add_option("--noimageoutofbeam", dest="noimageoutofbeam", default=False,
+                      action="store_true", help="Don't split the amp cal source")
+    parser.add_option("--startlocaltv", dest="startlocaltv", default=False,
+                      action="store_true", help="Start a local AIPS TV " + \
+                                                "(for X11, VNC etc")
+    (options, junk) = parser.parse_args()
+    auxdir          = ""
+    rootdir         = ""
+    targetonly      = options.targetonly
+    calonly         = options.calonly
+    experiment      = options.experiment
+    zapallcaltables = options.zapallcaltables
+    imageoutofbeam  = not options.noimageoutofbeam
+    alwayssaved     = options.alwayssaved
+    startlocaltv    = options.startlocaltv
+    runsplit        = options.runlevel.split(',')
+    runfromlevel    = int(runsplit[0])
+    runtolevel      = 999
+    if len(runsplit) > 1:
+        runtolevel = int(runsplit[1])
 
 
-################################################################################
-# Check validity of inputs, load up the config files
-################################################################################
-if experiment == "":
-    parser.error("You must supply an experiment name")
-if runfromlevel > runtolevel:
-    parser.error("Runtolevel (" + str(runtolevel) + ") must be greater " \
-                 "than or equal to runfromlevel (" + str(runfromlevel) + ")")
-try:
-    auxdir = os.environ['PSRVLBAUXDIR']
-except KeyError:
-    print "PSRVLBAUXDIR is not defined - aborting!"
-    sys.exit(1)
-try:
-    codedir = os.environ['PSRVLBICODEDIR']
-except KeyError:
-    print "PSRVLBICODEDIR is not defined - aborting!"
-    sys.exit(1)
-configdir     = auxdir + '/configs/'
-finalmodeldir = auxdir + '/sourcemodels/final/'
-prelimmodeldir= auxdir + '/sourcemodels/preliminary/'
-expconfigfile = configdir + experiment + '.yaml'
-if not os.path.exists(expconfigfile):
-    parser.error("Experiment config file %s does not exist!" % expconfigfile)
-expconfig     = yaml.load(open(expconfigfile))
-rootdir       = expconfig['rootdir']
-try:
-    if expconfig['uselocalmodels']:
-        finalmodeldir = rootdir + '/models/final/'
-        prelimmodeldir = rootdir + '/models/preliminary/'
-except KeyError:
-    pass
-directory     = rootdir + '/' + experiment.lower() + '/'
-tabledir      = directory + "/tables/"
-logdir        = directory + "/logs/"
-clversion     = 1
-snversion     = 1
-klass         = 'UVDATA'
-uvsequence    = 1
-logfile       = directory + "/" + experiment.lower() + ".datacheck.log"
-logmode       = "a"
-AIPS.userno   = expconfig['userno']
-numtargets    = len(expconfig["targets"])
-modeldir      = finalmodeldir
-modeltype     = "final"
+    ################################################################################
+    # Check validity of inputs, load up the config files
+    ################################################################################
+    if experiment == "":
+        parser.error("You must supply an experiment name")
+    if runfromlevel > runtolevel:
+        parser.error("Runtolevel (" + str(runtolevel) + ") must be greater " \
+                     "than or equal to runfromlevel (" + str(runfromlevel) + ")")
+    try:
+        auxdir = os.environ['PSRVLBAUXDIR']
+    except KeyError:
+        print "PSRVLBAUXDIR is not defined - aborting!"
+        sys.exit(1)
+    try:
+        codedir = os.environ['PSRVLBICODEDIR']
+    except KeyError:
+        print "PSRVLBICODEDIR is not defined - aborting!"
+        sys.exit(1)
+    configdir     = auxdir + '/configs/'
+    finalmodeldir = auxdir + '/sourcemodels/final/'
+    prelimmodeldir= auxdir + '/sourcemodels/preliminary/'
+    expconfigfile = configdir + experiment + '.yaml'
+    if not os.path.exists(expconfigfile):
+        parser.error("Experiment config file %s does not exist!" % expconfigfile)
+    expconfig     = yaml.load(open(expconfigfile))
+    rootdir       = expconfig['rootdir']
+    try:
+        if expconfig['uselocalmodels']:
+            finalmodeldir = rootdir + '/models/final/'
+            prelimmodeldir = rootdir + '/models/preliminary/'
+    except KeyError:
+        pass
+    directory     = rootdir + '/' + experiment.lower() + '/'
+    tabledir      = directory + "/tables/"
+    logdir        = directory + "/logs/"
+    clversion     = 1
+    snversion     = 1
+    klass         = 'UVDATA'
+    uvsequence    = 1
+    logfile       = directory + "/" + experiment.lower() + ".datacheck.log"
+    logmode       = "a"
+    AIPS.userno   = expconfig['userno']
+    numtargets    = len(expconfig["targets"])
+    modeldir      = finalmodeldir
+    modeltype     = "final"
 
-if options.clearcatalog:
-    expconfig['clearcatalog'] = True
-if expconfig['useprelimmodels']:
-    modeldir  = prelimmodeldir
-    modeltype = "preliminary"
-targetconfigs = []
-for i in range(numtargets):
-    targetconfigfile = configdir + expconfig["targets"][i] + '.yaml'
-    if not os.path.exists(targetconfigfile):
-        parser.error("Target config file %s does not exist!" % targetconfigfile)
-    targetconfigs.append(yaml.load(open(targetconfigfile)))
-skiplastif = targetconfigs[0]['skiplastif']
-if numtargets > 1:
-    for config in targetconfigs[1:]:
-        if skiplastif != targetconfigs[i]['skiplastif']:
-            print "All targets must have the same value for skiplastif! Aborting"
-            sys.exit()
-if os.path.exists(logfile) and runfromlevel == 1:
-    os.system("rm -f " + logfile)
-    logmode = "w"
-if startlocaltv:
-    tv = AIPSTV("local")
-    tv.start()
-if alwayssaved:
-    interaction.setalwaysuse(True)
-try:
-    dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
-except KeyError:
-    dualphscal_setup = ['-1','0']
+    if options.clearcatalog:
+        expconfig['clearcatalog'] = True
+    if expconfig['useprelimmodels']:
+        modeldir  = prelimmodeldir
+        modeltype = "preliminary"
+    targetconfigs = []
+    for i in range(numtargets):
+        targetconfigfile = configdir + expconfig["targets"][i] + '.yaml'
+        if not os.path.exists(targetconfigfile):
+            parser.error("Target config file %s does not exist!" % targetconfigfile)
+        targetconfigs.append(yaml.load(open(targetconfigfile)))
+    skiplastif = targetconfigs[0]['skiplastif']
+    if numtargets > 1:
+        for config in targetconfigs[1:]:
+            if skiplastif != targetconfigs[i]['skiplastif']:
+                print "All targets must have the same value for skiplastif! Aborting"
+                sys.exit()
+    if os.path.exists(logfile) and runfromlevel == 1:
+        os.system("rm -f " + logfile)
+        logmode = "w"
+    if startlocaltv:
+        tv = AIPSTV("local")
+        tv.start()
+    if alwayssaved:
+        interaction.setalwaysuse(True)
+    try:
+        dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
+    except KeyError:
+        dualphscal_setup = ['-1','0']
 
-try:
-    triphscal_setup = targetconfigs[0]['triphscal'].split(';')
-    dotriphscal = True
-except KeyError:
-    dotriphscal = False
+    try:
+        triphscal_setup = targetconfigs[0]['triphscal'].split(';')
+        dotriphscal = True
+    except KeyError:
+        dotriphscal = False
 
-if float(dualphscal_setup[0]) > 0 and dotriphscal:
-    print("Can't do both dualphscal and triphscal; aborting...")
-    sys.exit()
-
-
-################################################################################
-# get an instance of the vlbireduce class
-################################################################################
-reducevlbi = vlbireduce(runfromlevel, runtolevel)
-
-
-################################################################################
-# Parse the source file and set some more variables
-################################################################################
-try:
-    gateduvfile   = expconfig['gateduvfile']
-    if gateduvfile[0] != '/':
-        gateduvfile = directory + gateduvfile
-    ungateduvfile = expconfig['ungateduvfile']
-    if ungateduvfile[0] != '/':
-        ungateduvfile = directory + ungateduvfile
-    inbeamfiles   = expconfig['inbeamfiles']
-    if type(inbeamfiles) != list:
-        inbeamfiles = [inbeamfiles]
-    for inbeamfile in inbeamfiles:
-        if inbeamfile[0] != '/':
-            inbeamfile = directory + inbeamfile
-    numinbeams    = len(inbeamfiles)
-    targetnames   = expconfig['targets']
-    if type(targetnames) != list:
-        targetnames = [targetnames]
-    inbeamnames   = expconfig['inbeamnames']
-    if type(inbeamnames) != list:
-        inbeamnames = [[inbeamnames]]
-    if type(inbeamnames[0]) != list:
-        inbeamnames = [inbeamnames]
-    phscalnames   = expconfig['phscalnames']
-    if type(phscalnames) != list:
-        phscalnames = [phscalnames]
-    ampcalsrc     = expconfig['ampcalsrc'] # here we should consider to generalize to ampcalsrcs later
-except KeyError:
-# the deprecated source file setup that would still be in use for until old data are published
-    print("some of the expconfig variables are missing, try to find it in source file as an alternative")
-    sourcefile = directory + experiment.lower() + ".source"
-    if not os.path.exists(sourcefile):
-        print("%s does not exist; aborting" % sourcefile)
+    if float(dualphscal_setup[0]) > 0 and dotriphscal:
+        print("Can't do both dualphscal and triphscal; aborting...")
         sys.exit()
-    else:
-        gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
-        targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile)
-# the deprecated part ends here
-haveungated = True
-gateduvdata    = AIPSUVData(experiment.upper() + "_G", klass, 1, uvsequence)
-ungateduvdata  = AIPSUVData(experiment.upper() + "_U", klass, 1, uvsequence)
-alluvdatas     = [gateduvdata, ungateduvdata]
-inbeamuvdatas  = []
-for i in range(numinbeams):
-    inbeamuvdatas.append(AIPSUVData(experiment.upper() + "_I" + str(i+1), klass, 1, uvsequence))
-if ungateduvfile == "":
-    haveungated = False
-    alluvdatas = [gateduvdata]
-if calonly:
-    alluvdatas = []
-for uvdata in inbeamuvdatas:
-    alluvdatas.append(uvdata)
 
-################################################################################
-# Save a record of the time and the arguments of this run, and start the log
-# Echo inputs from yaml files to the log
-################################################################################
-AIPS.log = open(logfile, logmode)
-sys.stdout = Logger(AIPS.log)
-logout = open(directory + 'runlog.txt', 'a')
-logout.write(100*'=' + '\n' + 100*'=' + '\n')
-logout.write(strftime("%a, %d %b %Y %H:%M:%S +0000\n", gmtime()))
-for a in sys.argv:
-    logout.write(a + ' ')
-logout.write('\n\n****** %s.yaml inputs: ******\n' % experiment)
-readfile = open(expconfigfile)
-lines = readfile.readlines()
-readfile.close()
-logout.writelines(lines)
-for targetname in targetnames:
-    logout.write('\n\n****** %s.yaml inputs: ******\n' % targetname)
-    readfile = open(configdir + '/' + targetname + '.yaml')
+
+    ################################################################################
+    # get an instance of the vlbireduce class
+    ################################################################################
+    reducevlbi = vlbireduce(runfromlevel, runtolevel)
+
+
+    ################################################################################
+    # Parse the source file and set some more variables
+    ################################################################################
+    try:
+        gateduvfile   = expconfig['gateduvfile']
+        if gateduvfile[0] != '/':
+            gateduvfile = directory + gateduvfile
+        ungateduvfile = expconfig['ungateduvfile']
+        if ungateduvfile[0] != '/':
+            ungateduvfile = directory + ungateduvfile
+        inbeamfiles   = expconfig['inbeamfiles']
+        if type(inbeamfiles) != list:
+            inbeamfiles = [inbeamfiles]
+        for inbeamfile in inbeamfiles:
+            if inbeamfile[0] != '/':
+                inbeamfile = directory + inbeamfile
+        numinbeams    = len(inbeamfiles)
+        targetnames   = expconfig['targets']
+        if type(targetnames) != list:
+            targetnames = [targetnames]
+        inbeamnames   = expconfig['inbeamnames']
+        if type(inbeamnames) != list:
+            inbeamnames = [[inbeamnames]]
+        if type(inbeamnames[0]) != list:
+            inbeamnames = [inbeamnames]
+        phscalnames   = expconfig['phscalnames']
+        if type(phscalnames) != list:
+            phscalnames = [phscalnames]
+        ampcalsrc     = expconfig['ampcalsrc'] # here we should consider to generalize to ampcalsrcs later
+    except KeyError:
+    # the deprecated source file setup that would still be in use for until old data are published
+        print("some of the expconfig variables are missing, try to find it in source file as an alternative")
+        sourcefile = directory + experiment.lower() + ".source"
+        if not os.path.exists(sourcefile):
+            print("%s does not exist; aborting" % sourcefile)
+            sys.exit()
+        else:
+            gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
+            targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile, experiment, klass, uvsequence)
+    # the deprecated part ends here
+    haveungated = True
+    gateduvdata    = AIPSUVData(experiment.upper() + "_G", klass, 1, uvsequence)
+    ungateduvdata  = AIPSUVData(experiment.upper() + "_U", klass, 1, uvsequence)
+    alluvdatas     = [gateduvdata, ungateduvdata]
+    inbeamuvdatas  = []
+    for i in range(numinbeams):
+        inbeamuvdatas.append(AIPSUVData(experiment.upper() + "_I" + str(i+1), klass, 1, uvsequence))
+    if ungateduvfile == "":
+        haveungated = False
+        alluvdatas = [gateduvdata]
+    if calonly:
+        alluvdatas = []
+    for uvdata in inbeamuvdatas:
+        alluvdatas.append(uvdata)
+
+    ################################################################################
+    # Save a record of the time and the arguments of this run, and start the log
+    # Echo inputs from yaml files to the log
+    ################################################################################
+    AIPS.log = open(logfile, logmode)
+    sys.stdout = Logger(AIPS.log)
+    logout = open(directory + 'runlog.txt', 'a')
+    logout.write(100*'=' + '\n' + 100*'=' + '\n')
+    logout.write(strftime("%a, %d %b %Y %H:%M:%S +0000\n", gmtime()))
+    for a in sys.argv:
+        logout.write(a + ' ')
+    logout.write('\n\n****** %s.yaml inputs: ******\n' % experiment)
+    readfile = open(expconfigfile)
     lines = readfile.readlines()
     readfile.close()
     logout.writelines(lines)
-logout.write('\n\n')
-logout.close()
+    for targetname in targetnames:
+        logout.write('\n\n****** %s.yaml inputs: ******\n' % targetname)
+        readfile = open(configdir + '/' + targetname + '.yaml')
+        lines = readfile.readlines()
+        readfile.close()
+        logout.writelines(lines)
+    logout.write('\n\n')
+    logout.close()
 
-################################################################################
-# Zap the existing cal tables if requested
-################################################################################
-if zapallcaltables and runfromlevel > 1:
-    print "Zapping all SN, BP, and CL tables (except CL 1)!"
-    for uvdata in alluvdatas:
-        tables = uvdata.tables
-        for table in tables:
-            if table[1][-2:] == "SN":
-                print "Zapping SN " + str(table[0]) + " from " + uvdata.name
-                uvdata.table('SN', table[0]).zap()
-            elif table[1][-2:] == "BP":
-                print "Zapping BP " + str(table[0]) + " from " + uvdata.name
-                uvdata.table('BP', table[0]).zap()
-            elif table[1][-2:] == "CL" and table[0] > 1:
-                print "Zapping CL " + str(table[0]) + " from " + uvdata.name
-                uvdata.table('CL', table[0]).zap()
+    ################################################################################
+    # Zap the existing cal tables if requested
+    ################################################################################
+    if zapallcaltables and runfromlevel > 1:
+        print "Zapping all SN, BP, and CL tables (except CL 1)!"
+        for uvdata in alluvdatas:
+            tables = uvdata.tables
+            for table in tables:
+                if table[1][-2:] == "SN":
+                    print "Zapping SN " + str(table[0]) + " from " + uvdata.name
+                    uvdata.table('SN', table[0]).zap()
+                elif table[1][-2:] == "BP":
+                    print "Zapping BP " + str(table[0]) + " from " + uvdata.name
+                    uvdata.table('BP', table[0]).zap()
+                elif table[1][-2:] == "CL" and table[0] > 1:
+                    print "Zapping CL " + str(table[0]) + " from " + uvdata.name
+                    uvdata.table('CL', table[0]).zap()
 
-################################################################################
-# Begin the actual data processing
-################################################################################
+    ################################################################################
+    # Begin the actual data processing
+    ################################################################################
 
-## Load the uv data ############################################################
-reducevlbi.load_uv_data(directory, experiment, expconfig, numinbeams, inbeamfiles, 
-        inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, targetnames, 
-        haveungated, ungateduvfile, gateduvfile)
-## Increase the number of IFs if requested #####################################
-reducevlbi.increase_the_number_of_IFs_if_requested(targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
-        klass, calonly, gateduvdata, haveungated, ungateduvdata)
-## Unflag Pie Town if requested ################################################
-reducevlbi.unflag_Pie_Town_if_requested(expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
-            ungateduvdata, gateduvdata, haveungated)
-## Load the user flags (if any) ################################################
-reducevlbi.load_the_user_flags_if_any(tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
-        inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated)
-## Run the flagging for zero-fringe rate effects ###############################
-reducevlbi.run_the_flagging_for_zero_fringe_rate_effects(targetconfigs, targetonly, inbeamuvdatas,
-        haveungated, ungateduvdata, gateduvdata)
-## Run the autoflagger (if requested) ##########################################
-reducevlbi.run_the_autoflagger_if_requested(expconfig, tabledir, targetonly, numinbeams,
-        inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
-## Duplicate the initial CL table ##############################################
-reducevlbi.duplicate_the_initial_CL_table(targetonly, numinbeams, inbeamuvdatas, gateduvdata,
-            ungateduvdata)
-## Correct positions ###########################################################
-reducevlbi.correct_positions(alluvdatas, targetonly, gateduvdata, haveungated, 
-            ungateduvdata, calonly, inbeamuvdatas, expconfig)
-## Run TECOR ###################################################################
-reducevlbi.run_TECOR(expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
-            calonly, gateduvdata, ungateduvdata, haveungated)
-## Run CLCOR to correct EOPs ###################################################
-reducevlbi.run_CLCOR_to_correct_EOPs(targetonly, numinbeams, inbeamuvdatas, logdir,
-            calonly, gateduvdata, ungateduvdata, haveungated)
-## prepare leakage-related variables ############################################
-reducevlbi.prepare_leakage_related_variables(expconfig)
-## Run CLCOR to correct PANG ###################################################
-reducevlbi.run_CLCOR_to_correct_PANG(targetonly, numinbeams,
+    ## Load the uv data ############################################################
+    reducevlbi.load_uv_data(directory, experiment, expconfig, numinbeams, inbeamfiles, 
+            inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, targetnames, 
+            haveungated, ungateduvfile, gateduvfile)
+    ## Increase the number of IFs if requested #####################################
+    reducevlbi.increase_the_number_of_IFs_if_requested(targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
+            klass, calonly, gateduvdata, haveungated, ungateduvdata, expconfig)
+    ## Unflag Pie Town if requested ################################################
+    reducevlbi.unflag_Pie_Town_if_requested(expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
+                ungateduvdata, gateduvdata, haveungated)
+    ## Load the user flags (if any) ################################################
+    reducevlbi.load_the_user_flags_if_any(tabledir, targetonly, numinbeams, inbeamuvdatas, numtargets, 
+            inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated, targetnames)
+    ## Run the flagging for zero-fringe rate effects ###############################
+    reducevlbi.run_the_flagging_for_zero_fringe_rate_effects(targetconfigs, targetonly, inbeamuvdatas,
+            haveungated, ungateduvdata, gateduvdata, calonly)
+    ## Run the autoflagger (if requested) ##########################################
+    reducevlbi.run_the_autoflagger_if_requested(expconfig, tabledir, targetonly, numinbeams,
             inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
-## Correct for a priori delays if available using CLCOR ########################
-reducevlbi.correct_for_a_priori_delays_if_available_using_CLCOR(tabledir, alluvdatas,
-            targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas)
-## Do the amplitude calibration (either load existing table or do and then edit) and inspect
-reducevlbi.do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(expconfig,
-        targetonly, tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas, logdir, experiment)
-## Correct for primary beam attenuation ########################################
-reducevlbi.correct_for_primary_beam_attenuation(expconfig, directory, experiment,
-            ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
-            targetnames, gateduvdata, ungateduvdata, haveungated)
-## Do PCAL correction and inspect ##############################################
-reducevlbi.do_PCAL_correction_and_inspect(expconfig, targetonly, tabledir,
-            inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams)
-## Run FRING (bandpass calibrator) #############################################
-reducevlbi.run_FRING_with_fringe_finder(targetonly, expconfig, tabledir,
-            modeldir, ampcalsrc, modeltype, inbeamuvdatas)
-## Copy the FRING SN table around and apply it #################################
-reducevlbi.copy_the_FRING_SN_table_around_and_apply_it(expconfig, targetonly,
-            tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata)
-## Run xpoldelaycal ############################################################
-xpolsnfilename = reducevlbi.run_xpoldelaycal(tabledir, targetonly, expconfig, modeldir, inbeamuvdatas)
-## Load and apply xpoldelaycal #################################################
-reducevlbi.load_and_apply_xpoldelaycal(targetonly, numinbeams,
-            inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly)
-## Run leakagecal on the leakage calibrator and save AN file ###################
-leakagefilename = reducevlbi.run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(targetonly,
-        tabledir, modeldir, inbeamuvdatas, expconfig, directory, experiment)
-## Load up the leakage-calibrated AN table #####################################
-reducevlbi.load_up_the_leakage_calibrated_AN_table(targetonly, xpolsnfilename, numinbeams,
-            inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated)
-    # Remember to set dopol=2 on everything hereon!!!!
+    ## Duplicate the initial CL table ##############################################
+    reducevlbi.duplicate_the_initial_CL_table(targetonly, numinbeams, inbeamuvdatas, gateduvdata,
+                ungateduvdata, calonly, haveungated)
+    ## Correct positions ###########################################################
+    reducevlbi.correct_positions(alluvdatas, targetonly, gateduvdata, haveungated, 
+                ungateduvdata, calonly, inbeamuvdatas, expconfig)
+    ## Run TECOR ###################################################################
+    reducevlbi.run_TECOR(expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
+                calonly, gateduvdata, ungateduvdata, haveungated)
+    ## Run CLCOR to correct EOPs ###################################################
+    reducevlbi.run_CLCOR_to_correct_EOPs(targetonly, numinbeams, inbeamuvdatas, logdir,
+                calonly, gateduvdata, ungateduvdata, haveungated)
+    ## prepare leakage-related variables ############################################
+    reducevlbi.prepare_leakage_related_variables(expconfig, ampcalsrc)
+    ## Run CLCOR to correct PANG ###################################################
+    reducevlbi.run_CLCOR_to_correct_PANG(targetonly, numinbeams,
+                inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
+    ## Correct for a priori delays if available using CLCOR ########################
+    reducevlbi.correct_for_a_priori_delays_if_available_using_CLCOR(tabledir, alluvdatas,
+                targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas)
+    ## Do the amplitude calibration (either load existing table or do and then edit) and inspect
+    reducevlbi.do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(expconfig,
+            targetonly, tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas, logdir, experiment)
+    ## Correct for primary beam attenuation ########################################
+    reducevlbi.correct_for_primary_beam_attenuation(expconfig, directory, experiment,
+                ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
+                targetnames, gateduvdata, ungateduvdata, haveungated)
+    ## Do PCAL correction and inspect ##############################################
+    reducevlbi.do_PCAL_correction_and_inspect(expconfig, targetonly, tabledir,
+                inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams)
+    ## Run FRING (bandpass calibrator) #############################################
+    reducevlbi.run_FRING_with_fringe_finder(targetonly, expconfig, tabledir,
+                modeldir, ampcalsrc, modeltype, inbeamuvdatas)
+    ## Copy the FRING SN table around and apply it #################################
+    reducevlbi.copy_the_FRING_SN_table_around_and_apply_it(expconfig, targetonly,
+                tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated)
+    ## Run xpoldelaycal ############################################################
+    xpolsnfilename = reducevlbi.run_xpoldelaycal(tabledir, targetonly, expconfig, modeldir, inbeamuvdatas)
+    ## Load and apply xpoldelaycal #################################################
+    reducevlbi.load_and_apply_xpoldelaycal(targetonly, numinbeams,
+                inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly)
+    ## Run leakagecal on the leakage calibrator and save AN file ###################
+    leakagefilename = reducevlbi.run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(targetonly,
+            tabledir, modeldir, inbeamuvdatas, expconfig, directory, experiment)
+    ## Load up the leakage-calibrated AN table #####################################
+    reducevlbi.load_up_the_leakage_calibrated_AN_table(targetonly, xpolsnfilename, numinbeams,
+                inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated)
+        # Remember to set dopol=2 on everything hereon!!!!
 
-## Run BPASS ###################################################################
-reducevlbi.run_BPASS(targetonly, expconfig, tabledir, modeldir, 
-        ampcalsrc, modeltype, inbeamuvdatas)
-## Load BPASS ##################################################################
-bandpassclversion = reducevlbi.load_BPASS_solutions(expconfig, tabledir, 
-        calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas)
+    ## Run BPASS ###################################################################
+    reducevlbi.run_BPASS(targetonly, expconfig, tabledir, modeldir, 
+            ampcalsrc, modeltype, inbeamuvdatas)
+    ## Load BPASS ##################################################################
+    bandpassclversion = reducevlbi.load_BPASS_solutions(expconfig, tabledir, 
+            calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas, haveungated)
 
-## prepare variables for FRING (phase reference calibrators) ####################
-reducevlbi.prepare_variables_for_calibration_on_phase_calibrators(targetconfigs, phscalnames)
+    ## prepare variables for FRING (phase reference calibrators) ####################
+    reducevlbi.prepare_variables_for_calibration_on_phase_calibrators(targetconfigs, phscalnames)
 
-## Run FRING (phase reference calibrators) #####################################
-dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly,
-        tabledir, modeldir, modeltype, expconfig, experiment, inbeamuvdatas)
-## Copy the phsref FRING SN table around and apply it ##########################
-reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(targetonly,
-        tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
-        directory, experiment, dophscaldump)
-## Run phase CALIB on the phase reference sources ##############################
-reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(tabledir, targetonly, inbeamuvdatas, expconfig, modeltype)
-## Load all the phase CALIB solutions #########################################
-reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(phscalnames, 
-        targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, tabledir, expconfig)
-## Run amp CALIB on the phase reference sources ################################
-reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(targetconfigs,
-        tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype)
-## Load all the amp CALIB solutions ###########################################
-reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(
-        phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
-        tabledir, expconfig)
-## prepare some variables for operations on inbeam calibrators ###########################    
-reducevlbi.prepare_variables_for_inbeamselfcal(inbeamuvdatas, targetconfigs, numtargets, inbeamnames)
-## Generate a raw (no phase selfcal) inbeam dataset if requested ##############
-reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(expconfig,
-            targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas)
-## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
-[tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
-        modeldir, modeltype, targetonly, calonly, targetnames, numtargets)
-## Load all the inbeam CALIB solutions ########################################
-reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
-        tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
-## Do a separate IF phase selfcal on the inbeams if requested #################
-[tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-        targetonly, calonly, targetnames, numtargets)
-## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
-reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
-        tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, calonly, haveungated, tocalnames, tocalindices, expconfig, targetconfigs, 
-        inbeamnames, targetnames)
-## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
-reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
-        tabledir, targetconfigs, inbeamuvdatas)
-## Load all the inbeam CALIB solutions ########################################################################
-reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
-        gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
-## Do a combined IF amp + phase selfcal on the inbeams if requested ###########################################
-[tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
-        targetnames, numtargets)
-## Load all the inbeam CALIB solutions ########################################################################
-reducevlbi.load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(tocalnames, 
-        tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
-## Do a separate IF amp + phase selfcal on the inbeams if requested ###########################################
-[tocalnames, tocalindices] = reducevlbi.do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
-        targetnames, numtargets)
-## Load all the inbeam CALIB solutions ########################################################################
-reducevlbi.load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(tocalnames, tocalindices, 
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
-## Do a secondary phase selfcal on the inbeam(s) if requested #################################################
-[tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-        targetonly, calonly, targetnames, numtargets)
-## Load all the inbeam CALIB solutions ########################################################################
-reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(tocalnames, tocalindices, 
-        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames)
-## Calculate the scintillation correction #####################################################################
-[scinttablepaths, beginif, endif] = reducevlbi.calculate_the_scintillation_correction(numtargets, targetconfigs,
-            tabledir, targetnames, expconfig, gateduvdata)
-    # Scintillation correction is applied later at the stage of the final split !!! 
+    ## Run FRING (phase reference calibrators) #####################################
+    dophscaldump = reducevlbi.run_FRING_with_phase_reference_calibrators(targetonly,
+            tabledir, modeldir, modeltype, expconfig, experiment, inbeamuvdatas)
+    ## Copy the phsref FRING SN table around and apply it ##########################
+    reducevlbi.copy_the_phsref_FRING_SN_table_around_and_apply_it(targetonly,
+            tabledir, expconfig, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
+            directory, experiment, dophscaldump)
+    ## Run phase CALIB on the phase reference sources ##############################
+    reducevlbi.run_phase_CALIB_on_the_phase_reference_sources(tabledir, targetonly, inbeamuvdatas, expconfig, modeltype, modeldir)
+    ## Load all the phase CALIB solutions #########################################
+    reducevlbi.load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(phscalnames, 
+            targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata, tabledir, expconfig)
+    ## Run amp CALIB on the phase reference sources ################################
+    reducevlbi.run_amp_CALIB_on_the_phase_reference_sources(targetconfigs,
+            tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype, phscalnames)
+    ## Load all the amp CALIB solutions ###########################################
+    reducevlbi.load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(
+            phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
+            tabledir, expconfig)
+    ## prepare some variables for operations on inbeam calibrators ###########################    
+    reducevlbi.prepare_variables_for_inbeamselfcal(inbeamuvdatas, targetconfigs, numtargets, inbeamnames, targetnames)
+    ## Generate a raw (no phase selfcal) inbeam dataset if requested ##############
+    reducevlbi.generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(expconfig,
+                targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas)
+    ## Do a combined IF (and pol) phase selfcal on the inbeams if requested #################
+    [tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
+            modeldir, modeltype, targetonly, calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved)
+    ## Load all the inbeam CALIB solutions ########################################
+    reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
+            tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
+            ungateduvdata, dualphscal_setup, tabledir)
+    ## Do a separate IF phase selfcal on the inbeams if requested #################
+    [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
+    ## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
+    reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
+            tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, calonly, haveungated, tocalnames, tocalindices, expconfig, targetconfigs, 
+            inbeamnames, targetnames)
+    ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
+    reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
+            tabledir, targetconfigs, inbeamuvdatas)
+    ## Load all the inbeam CALIB solutions ########################################################################
+    reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
+            gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir)
+    ## Do a combined IF amp + phase selfcal on the inbeams if requested ###########################################
+    [tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+            targetnames, numtargets, directory, tabledir, alwayssaved)
+    ## Load all the inbeam CALIB solutions ########################################################################
+    reducevlbi.load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(tocalnames, 
+            tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated,
+            ungateduvdata, dualphscal_setup, tabledir)
+    ## Do a separate IF amp + phase selfcal on the inbeams if requested ###########################################
+    [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+            targetnames, numtargets, directory, tabledir, alwayssaved)
+    ## Load all the inbeam CALIB solutions ########################################################################
+    reducevlbi.load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(tocalnames, tocalindices, 
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir)
+    ## Do a secondary phase selfcal on the inbeam(s) if requested #################################################
+    [tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
+            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved)
+    ## Load all the inbeam CALIB solutions ########################################################################
+    reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(tocalnames, tocalindices, 
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            dualphscal_setup, tabledir)
+    ## Calculate the scintillation correction #####################################################################
+    [scinttablepaths, beginif, endif] = reducevlbi.calculate_the_scintillation_correction(numtargets, targetconfigs,
+                tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas)
+        # Scintillation correction is applied later at the stage of the final split !!! 
 
-## Prepare variables for final split ##########################################################################
-reducevlbi.prepare_variables_for_final_split(numtargets, inbeamnames, targetconfigs, expconfig, phscalnames, targetnames,
-            directory, experiment)
-## Split, image and write all three #############################################################################
-reducevlbi.split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(numtargets, targetconfigs, expconfig, 
-        targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc, directory, experiment, phscalnames, 
-        modeldir, inbeamnames, calonly, targetnames, haveungated, ungateduvdata, scinttablepaths)
-## Image targets using Difmap and fit for position ###############################################################
-reducevlbi.image_targets_using_DIFMAP_and_fit_for_position(calonly, numtargets, targetconfigs, expconfig,
-            directory, experiment, targetnames, beginif, endif, haveungated,
-            phscalnames, inbeamnames)
-## Pass inbeamsn back to phscal ##################################################################################
-"""
-expconfig     = yaml.load(open(expconfigfile))
-expdir        = expconfig['rootdir'] + '/' + experiment + '/'
-numtargets    = len(expconfig['targets'])
-targetconfigs = []
-for i in range(numtargets):
-    targetconfigfile = configdir + expconfig["targets"][i] + '.yaml'
-    if not os.path.exists(targetconfigfile):
-        parser.error("Target config file %s does not exist!" % targetconfigfile)
-    targetconfigs.append(yaml.load(open(targetconfigfile)))
+    ## Prepare variables for final split ##########################################################################
+    reducevlbi.prepare_variables_for_final_split(numtargets, inbeamnames, targetconfigs, expconfig, phscalnames, targetnames,
+                directory, experiment)
+    ## Split, image and write all three #############################################################################
+    reducevlbi.split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(numtargets, targetconfigs, expconfig, 
+            targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc, directory, experiment, phscalnames, 
+            modeldir, inbeamnames, calonly, targetnames, haveungated, ungateduvdata, scinttablepaths, gateduvdata)
+    ## Image targets using Difmap and fit for position ###############################################################
+    reducevlbi.image_targets_using_DIFMAP_and_fit_for_position(calonly, numtargets, targetconfigs, expconfig,
+                directory, experiment, targetnames, beginif, endif, haveungated,
+                phscalnames, inbeamnames, inbeamuvdatas)
+    ## Pass inbeamsn back to phscal ##################################################################################
+    """
+    expconfig     = yaml.load(open(expconfigfile))
+    expdir        = expconfig['rootdir'] + '/' + experiment + '/'
+    numtargets    = len(expconfig['targets'])
+    targetconfigs = []
+    for i in range(numtargets):
+        targetconfigfile = configdir + expconfig["targets"][i] + '.yaml'
+        if not os.path.exists(targetconfigfile):
+            parser.error("Target config file %s does not exist!" % targetconfigfile)
+        targetconfigs.append(yaml.load(open(targetconfigfile)))
 
-for i in range(numtargets):
-    targetname = expconfig["targets"][i]
-    targetconfig = targetconfigs[i]
-    sourcefile = expdir + experiment + '.source'
-    sourcefilelines = open(sourcefile).readlines()
-    phsrefname = ""
-    modeltypestr = 'final'
-    for j in range(len(sourcefilelines)):
-        if targetname in sourcefilelines[j]:
-            phsrefname = sourcefilelines[j+1].split(':')[-1].strip()
-    if phsrefname == "":
-        print "Couldn't find the phase reference source for " + targetname
-        sys.exit()
-    if expconfig['useprelimmodels']:
-        modeltypestr = 'preliminary'
-    aips8phsrefname = phsrefname
-    aips12phsrefname = phsrefname
-    if len(phsrefname) > 8:
-        aips8phsrefname = phsrefname[:8]
-    if len(phsrefname) > 12:
-        aips12phsrefname = phsrefname[:12]
-    phsrefdatafile = expdir + experiment + '_' + phsrefname + '_pipeline_uv.fits'
-    phsrefimagefile = auxdir + 'sourcemodels/' + modeltypestr + '/' + phsrefname + '.clean.fits'
-    shiftedfile = expdir + experiment + '_' + phsrefname + '_ibshiftdiv_uv.fits'
-    jmfitfile = expdir + experiment + '_' + phsrefname + '_ibshiftdiv.jmfit'
-    phsrefdata = AIPSUVData(aips8phsrefname, "TEMP", 1, 1)
-    phsrefimage = AIPSImage(aips12phsrefname, "TMPCLN", 1, 1)
-    splatdata = AIPSUVData(aips8phsrefname, "SPLAT", 1, 1)
-    normdata = AIPSUVData(aips8phsrefname, "NORM", 1, 1)
-    shiftedimage = AIPSImage(aips12phsrefname, "ICL001", 1, 1)
-    shiftedbeam = AIPSImage(aips12phsrefname, "IBM001", 1, 1)
-    if phsrefdata.exists():
-        phsrefdata.zap()
-    if splatdata.exists():
-        splatdata.zap()
-    if phsrefimage.exists():
-        phsrefimage.zap()
-    if normdata.exists():
-        normdata.zap()
-    if shiftedimage.exists():
-        shiftedimage.zap()
-    if shiftedbeam.exists():
-        shiftedbeam.zap()
-    vlbatasks.fitld_uvfits(phsrefdatafile, phsrefdata, "")
-    vlbatasks.fitld_image(phsrefimagefile, phsrefimage)
-    if "," in targetconfig['primaryinbeam']:
-        caltable = expdir + 'tables/CONCAT0.icalib.p1.sn'
-    else:
-        caltable = expdir + 'tables/' + targetconfig['primaryinbeam'] + '.icalib.p1.sn'
-    if not os.path.exists(caltable):
-        print caltable + ' does not exist'
-        sys.exit()
-    vlbatasks.loadtable(phsrefdata, caltable, 1)
-    vlbatasks.splat(phsrefdata, 1, [0], splatdata, 1, 0)
-    vlbatasks.normaliseUVData(splatdata, phsrefimage, normdata)
-    vlbatasks.writedata(normdata, shiftedfile, True)
-    vlbatasks.widefieldimage(normdata, aips12phsrefname, 256, 0.75, True, 0.050,
-                   0, 0, 0, 100, 20)
-    vlbatasks.nonpulsarjmfit("", jmfitfile, aips12phsrefname, -1, -1, True,
-                             False,shiftedimage,48)
-"""
-## Make some nice diagnostic plots #############################################
-reducevlbi.make_diagnostic_plots(directory, codedir)
+    for i in range(numtargets):
+        targetname = expconfig["targets"][i]
+        targetconfig = targetconfigs[i]
+        sourcefile = expdir + experiment + '.source'
+        sourcefilelines = open(sourcefile).readlines()
+        phsrefname = ""
+        modeltypestr = 'final'
+        for j in range(len(sourcefilelines)):
+            if targetname in sourcefilelines[j]:
+                phsrefname = sourcefilelines[j+1].split(':')[-1].strip()
+        if phsrefname == "":
+            print "Couldn't find the phase reference source for " + targetname
+            sys.exit()
+        if expconfig['useprelimmodels']:
+            modeltypestr = 'preliminary'
+        aips8phsrefname = phsrefname
+        aips12phsrefname = phsrefname
+        if len(phsrefname) > 8:
+            aips8phsrefname = phsrefname[:8]
+        if len(phsrefname) > 12:
+            aips12phsrefname = phsrefname[:12]
+        phsrefdatafile = expdir + experiment + '_' + phsrefname + '_pipeline_uv.fits'
+        phsrefimagefile = auxdir + 'sourcemodels/' + modeltypestr + '/' + phsrefname + '.clean.fits'
+        shiftedfile = expdir + experiment + '_' + phsrefname + '_ibshiftdiv_uv.fits'
+        jmfitfile = expdir + experiment + '_' + phsrefname + '_ibshiftdiv.jmfit'
+        phsrefdata = AIPSUVData(aips8phsrefname, "TEMP", 1, 1)
+        phsrefimage = AIPSImage(aips12phsrefname, "TMPCLN", 1, 1)
+        splatdata = AIPSUVData(aips8phsrefname, "SPLAT", 1, 1)
+        normdata = AIPSUVData(aips8phsrefname, "NORM", 1, 1)
+        shiftedimage = AIPSImage(aips12phsrefname, "ICL001", 1, 1)
+        shiftedbeam = AIPSImage(aips12phsrefname, "IBM001", 1, 1)
+        if phsrefdata.exists():
+            phsrefdata.zap()
+        if splatdata.exists():
+            splatdata.zap()
+        if phsrefimage.exists():
+            phsrefimage.zap()
+        if normdata.exists():
+            normdata.zap()
+        if shiftedimage.exists():
+            shiftedimage.zap()
+        if shiftedbeam.exists():
+            shiftedbeam.zap()
+        vlbatasks.fitld_uvfits(phsrefdatafile, phsrefdata, "")
+        vlbatasks.fitld_image(phsrefimagefile, phsrefimage)
+        if "," in targetconfig['primaryinbeam']:
+            caltable = expdir + 'tables/CONCAT0.icalib.p1.sn'
+        else:
+            caltable = expdir + 'tables/' + targetconfig['primaryinbeam'] + '.icalib.p1.sn'
+        if not os.path.exists(caltable):
+            print caltable + ' does not exist'
+            sys.exit()
+        vlbatasks.loadtable(phsrefdata, caltable, 1)
+        vlbatasks.splat(phsrefdata, 1, [0], splatdata, 1, 0)
+        vlbatasks.normaliseUVData(splatdata, phsrefimage, normdata)
+        vlbatasks.writedata(normdata, shiftedfile, True)
+        vlbatasks.widefieldimage(normdata, aips12phsrefname, 256, 0.75, True, 0.050,
+                       0, 0, 0, 100, 20)
+        vlbatasks.nonpulsarjmfit("", jmfitfile, aips12phsrefname, -1, -1, True,
+                                 False,shiftedimage,48)
+    """
+    ## Make some nice diagnostic plots #############################################
+    reducevlbi.make_diagnostic_plots(directory, codedir)
+
+if __name__ == "__main__":
+    main()
