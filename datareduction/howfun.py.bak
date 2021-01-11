@@ -97,7 +97,7 @@ def separations_deg1(RA, Dec, RAs, Decs):
         for i in range(length):
             sep = separation_deg(RA, Dec, RAs[i], Decs[i])
             seps = np.append(seps, sep)
-            print(("\x1B[1A\x1B[Kprogress:{0}%".format(round((count + 1) * 100 / length)) + " \r"))
+            print("\x1B[1A\x1B[Kprogress:{0}%".format(round((count + 1) * 100 / length)) + " \r")
             count += 1
         return seps
 def separation_deg(RA1, Dec1, RA2, Dec2): # all in deg format
@@ -355,7 +355,7 @@ def uncertainties_from_2Dsample(table, howmanysigma=1, step=1): #ascii-format ta
         if err < err_volume:
             err_volume = err
             k = i
-        print(("\x1B[1A\x1B[Kprogress:{0}%".format(round((i + 1) * 100 / (L-SV-1))) + " \r"))
+        print("\x1B[1A\x1B[Kprogress:{0}%".format(round((i + 1) * 100 / (L-SV-1))) + " \r")
     starts = np.array([t[k,0]])
     ends = np.array([t[k+SV,0]])
     for j in range(1,np.size(t,1)):
@@ -382,7 +382,7 @@ def nD_sample2estimates(howmanysigma=1, *arrays):
     CL = math.erf(howmanysigma/2**0.5)
     N = len(arrays)
     if N == 0:
-        print("There is no sample; aborting...")
+        print "There is no sample; aborting..."
         sys.exit()
     if N == 1:
         return sample2estimate(arrays[0], CL)
@@ -415,8 +415,8 @@ def nD_sample2estimates(howmanysigma=1, *arrays):
         for i in range(N):
             start_ratios = np.append(start_ratios, min(ratios_stack[:,i]))
             end_ratios = np.append(end_ratios, max(ratios_stack[:,i]))
-        print(start_ratios, end_ratios)
-        print(start_ratios, end_ratios)
+        print start_ratios, end_ratios
+        print start_ratios, end_ratios
         j += 1
     return nD_ratios(arrays, start_ratios, end_ratios, CL, 400)
 
@@ -450,7 +450,7 @@ def nD_ratios(arrays, start_ratios, end_ratios, CL, trials=5):
             ratios_optimal = ratios
             values_optimal = values
             errors_optimal = errors
-        print(("\x1B[1A\x1B[Kprogress:{0}%".format(round((count + 1) * 100 / trials)) + " \r"))
+        print("\x1B[1A\x1B[Kprogress:{0}%".format(round((count + 1) * 100 / trials)) + " \r")
         count += 1
     return V_compare, ratios_optimal, values_optimal, errors_optimal
 

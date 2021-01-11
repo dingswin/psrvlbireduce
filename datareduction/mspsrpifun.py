@@ -1576,7 +1576,7 @@ class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
             #mask = [x in common_ids for x in GaiaIDs]
             AGNs = t[mask]
             AGNs_astrometric = Table([AGNs['source_id'], AGNs['ra'], AGNs['dec'], AGNs['parallax'], AGNs['parallax_error'], AGNs['pmra'], AGNs['pmra_error'], 
-                AGNs['pmdec'], AGNs['pmdec_error']], names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error'])
+                AGNs['pmdec'], AGNs['pmdec_error'], AGNs['phot_g_mean_mag'], AGNs['bp_rp']], names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error', 'phot_g_mean_mag', 'bp_rp'])
             print(AGNs_astrometric)
             AGNs_astrometric.write(output_table, format='ascii', overwrite=True)
             print('%d/%d has been finished.' % (count, number_files))
@@ -1585,8 +1585,8 @@ class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
         s.AGNs_astrometric_outputs = glob.glob(r'%s/prepare_edr3_agn_astrometric/ID_astrometric*' % s.path)
         s.AGNs_astrometric_outputs.sort()
         print(s.AGNs_astrometric_outputs)
-        s.ID_pos = Table(names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error'],
-            dtype=['int64', 'float64', 'float64', 'float64', 'float64', 'float64','float64', 'float64', 'float64'])
+        s.ID_pos = Table(names=['source_id', 'ra', 'dec', 'parallax', 'parallax_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error', 'phot_g_mean_mag', 'bp_rp'],
+            dtype=['int64', 'float64', 'float64', 'float64', 'float64', 'float64','float64', 'float64', 'float64', 'float64', 'float64'])
         count = 0
         number_files = len(s.AGNs_astrometric_outputs)
         for output in s.AGNs_astrometric_outputs:
@@ -1649,12 +1649,13 @@ class single_out_quasars_with__cone_searched_Gaia_sources__and__AgnCrossId:
         return s.background_AGNs
         
 
+
 class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
     """
     workflow is the default one-stop function
     """
     path = "/fred/oz002/hding/AQLX-1/PREBursters_catalog/"
-    global_mean_parallax_zero_point = -0.03
+    global_mean_parallax_zero_point = -0.03 #Gaia DR2
     def __init__(s, srcname, magnitude_match_offset=0.02, use_high_precision_subset=False, color_match_offset=1):
         """
         use_high_precision_subset satisfies "table['parallax_error'<1]" (mas)
@@ -1969,6 +1970,29 @@ class catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point(object):
         [av_parallax, std_parallax] = howfun.weighted_avg_and_std(parallaxes, errs_parallax)
         [average_parallax, integral_err] = howfun.weightX(parallaxes, errs_parallax)
         return average_parallax, integral_err, std_parallax
+
+class catalog_of_Gaia_EDR3_counterparts_for_quasars_to_zero_parallax_point(catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point):
+    def __init__(s, srcname, magnitude_match_offset=0.02, use_high_precision_subset=False, color_match_offset=1):
+        super(catalog_of_Gaia_EDR3_counterparts_for_quasars_to_zero_parallax_point, s).__init__(srcname, magnitude_match_offset) #python2 way to use super
+        s.srcname,   s.MMO,                  s.use_high_precision_subset, s.CMO = \
+            srcname, magnitude_match_offset, use_high_precision_subset,   color_match_offset
+    def workflow_EDR3(s):
+        import copy
+        s.T = s.read_catalog_of_Gaia_EDR3_counterparts_for_AGNs(s.srcname)
+        s.T0 = copy.deepcopy(s.T)
+        s.T = s.delete_rows_where_the_required_parameter_is_absent(s.T, 'parallax')
+        s.T1 = copy.deepcopy(s.T)
+        s.T = s.filter_out_sources_with_detected_proper_motions(s.T, 3, s.use_high_precision_subset)
+        s.T2 = copy.deepcopy(s.T)
+
+    def read_catalog_of_Gaia_EDR3_counterparts_for_AGNs(s, srcname, radius_in_deg=5):
+        r = radius_in_deg
+        catalogfile = s.path + '/background_Gaia_AGNs_for_' + srcname.replace(' ', '_') + '_within_' + str(r) + 'deg.ascii'
+        if not os.path.exists(catalogfile):
+            print("%s does not exist; aborting" % catalogfile)
+            sys.exit()
+        catalogtable = Table.read(catalogfile, format='ascii')
+        return catalogtable
 
 class plot_positions_of_like_magnitude_background_AGNs(catalog_of_Gaia_counterparts_for_AGNs_to_zero_parallax_point):
     def __init__(s, srcname, magnitude_match_offset=0.02):

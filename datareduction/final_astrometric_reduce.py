@@ -117,7 +117,8 @@ class support_vlbireduce(object):
     def inbeamselfcal(self, doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata,
                       expconfig, targetconfigs, modeldir, modeltype, targetonly,
                       calonly, beginif, endif, doampcal, dosecondary, sumifs,
-                      clversion, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, leakagedopol=0):
+                      clversion, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, 
+                      leakagedopol=0):
         """
         usage:run CALIB (self-calibration) on in-beam calibrators
         Note: need to be very cautious when removing the input variables of this function 
@@ -242,8 +243,8 @@ class support_vlbireduce(object):
                                      endif-subtractif, combineifs, leakagedopol)
                 inbeam_uv_data.table('NX', 1).zap()
                 if targetfilenum >= 0:
-                    inbeam_image_file = modeldir + inbeamsrc + ".clean.fits"
-                    rawuvoutputfile = directory + inbeamsrc + ".formodeling.uv.fits"
+                    inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
+                    rawuvoutputfile = directory + inbeamsrc + self.cmband + ".formodeling.uv.fits"
                     if not os.path.exists(inbeam_image_file):
                         print "Can't find " + modeltype + " inbeam model  " + inbeam_image_file
                         if modeltype == "preliminary":
@@ -277,7 +278,7 @@ class support_vlbireduce(object):
                             normdata = AIPSUVData(shortname, 'NORMUV', 1, i)
                             if normdata.exists():
                                 normdata.zap()
-                            inbeam_image_file = "%s%s.IF%d.clean.fits" % (modeldir, inbeamsrc, i)
+                            inbeam_image_file = "%s%s.IF%d%s.clean.fits" % (modeldir, inbeamsrc, i, self.cmband)
                             if not os.path.exists(inbeam_image_file):
                                 print "Can't find inbeam model file (multi-IF %d) %s" % (i, inbeam_image_file)
                                 sys.exit()
@@ -496,7 +497,7 @@ class support_vlbireduce(object):
             normdata = AIPSUVData(shortname, 'NORMUV', 1, i)
             if normdata.exists():
                 normdata.zap()
-            IF_image_file = "%s%s.IF%d.clean.fits" % (modeldir, srcname, i)
+            IF_image_file = "%s%s.IF%d%s.clean.fits" % (modeldir, srcname, i, self.cmband)
             if not os.path.exists(IF_image_file):
                 print "Can't find inbeam model file (multi-IF %d) %s" % (i, IF_image_file)
                 sys.exit()
@@ -1617,7 +1618,7 @@ class vlbireduce(support_vlbireduce):
                 print "Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     phscalmodeldata = None
-                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    phscalmodelfile = modeldir + phscal + self.cmband + '.clean.fits'
                     if not config['phscalseparateifmodel']:
                         if os.path.exists(phscalmodelfile):
                             aipscalname = phscal
@@ -1800,7 +1801,7 @@ class vlbireduce(support_vlbireduce):
                         phscal_uv_data.zap()
                 phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
                 rawuvoutputfile = directory + experiment.upper() + '_' + \
-                                           phscal + ".formodeling.uv.fits"
+                                           phscal + self.cmband + ".formodeling.uv.fits"
                 doband = False
                 domulti = False
                 if expconfig['ampcalscan'] > 0:
@@ -1845,7 +1846,7 @@ class vlbireduce(support_vlbireduce):
                                          doband, beginif, endif, combineifs, self.leakagedopol)
                     phscal_uv_data.table('NX', 1).zap()
                     phscalmodeldata = None
-                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    phscalmodelfile = modeldir + phscal + self.cmband + '.clean.fits'
                     try:
                         phsrefuvrange = config['phsrefuvrange']
                     except KeyError:
@@ -2022,7 +2023,7 @@ class vlbireduce(support_vlbireduce):
                                          doband, beginif, endif, combineifs, self.leakagedopol)
                     phscal_uv_data.table('NX', 1).zap()
                     phscalmodeldata = None
-                    phscalmodelfile = modeldir + phscal + '.clean.fits'
+                    phscalmodelfile = modeldir + phscal + self.cmband + '.clean.fits'
                     try:
                         phsrefuvrange = config['phsrefuvrange']
                     except KeyError:
@@ -2263,7 +2264,7 @@ class vlbireduce(support_vlbireduce):
                         if len(inbeamsrc) > 12:
                             aipssrcname = inbeamsrc[:12]
                         rawuvoutputfile =  directory + experiment.lower() + '_' + \
-                                           inbeamsrc + ".formodeling.uv.fits"
+                                           inbeamsrc + self.cmband + ".formodeling.uv.fits"
                         splitdata = AIPSUVData(aipssrcname, 'NOIB', 1, 1)
                         if splitdata.exists():
                             splitdata.zap()
@@ -2785,7 +2786,7 @@ class vlbireduce(support_vlbireduce):
                                 else:
                                     vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
                                         splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                                    phscal_image_file = modeldir + aipssrcname + ".clean.fits"
+                                    phscal_image_file = modeldir + aipssrcname + self.cmband + ".clean.fits"
                                     if not os.path.exists(phscal_image_file):
                                         print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
                                         print "But " + phscal_image_file + " was not found."
@@ -2832,7 +2833,7 @@ class vlbireduce(support_vlbireduce):
                             if config['separateifmodel'] and inbeamsrc in config['primaryinbeam']:
                                 ifdivideddatas = []
                                 for j in range(beginif,endif+1):
-                                    inbeam_image_file = modeldir + inbeamsrc + ".IF" + str(j) + ".clean.fits"
+                                    inbeam_image_file = modeldir + inbeamsrc + ".IF" + str(j) + self.cmband + ".clean.fits"
                                     if not os.path.exists(inbeam_image_file):
                                         print "Need a frequency-dependent model for " + inbeamsrc + " since --divideinbeammodel=True and separateifmodel=True"
                                         print "But " + inbeam_image_file + " was not found."
@@ -2870,7 +2871,7 @@ class vlbireduce(support_vlbireduce):
                                     divideddata.zap()
                                 vlbatasks.dbcon(ifdivideddatas, divideddata)
                             else:
-                                inbeam_image_file = modeldir + inbeamsrc + ".clean.fits"
+                                inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
                                 if not os.path.exists(inbeam_image_file):
                                     print "Need a model for " + inbeamsrc + " since --divideinbeammodel=True"
                                     print "But " + inbeam_image_file + " was not found."
@@ -3306,6 +3307,12 @@ def main():
             gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
             targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile, experiment, klass, uvsequence)
     # the deprecated part ends here
+    reducevlbi.cmband = ""
+    try:
+        reducevlbi.cmband = "." + str(expconfig['cmband']).strip() + "cm"
+    except KeyError:
+        pass
+    
     haveungated = True
     gateduvdata    = AIPSUVData(experiment.upper() + "_G", klass, 1, uvsequence)
     ungateduvdata  = AIPSUVData(experiment.upper() + "_U", klass, 1, uvsequence)

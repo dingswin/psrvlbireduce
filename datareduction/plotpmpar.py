@@ -104,6 +104,8 @@ parser.add_option("-b", "--bootstrapruns", dest="bootstrapruns",default=-1,
                   help="Plot the contents of this bootstrap file; if bootstrapruns==-1, no bootstrapplot is made")
 parser.add_option("-r", "--rangeofepoch", dest="rangeofepoch", default=[0,-1],
                   help="set a epoch range to plot, whereas the fitting would still go through all the input epochs")
+#parser.add_option("-t", "--addtext", dest="addtext", default=False,
+#                  action="store_true", help="provide MJD notation")
 (options, junk) = parser.parse_args()
 pmparexec       = options.pmparexec
 filename        = options.filename

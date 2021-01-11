@@ -76,7 +76,7 @@ if not jmfitfile[0] == '/':
 ################################################################################
 # Run JMFIT
 ################################################################################
-print "JMFIT'ing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
+print "JMFITing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
 wrong_imagedata = AIPSUVData('JUNK', 'IMG', 1, 1)
 if wrong_imagedata.exists():
     wrong_imagedata.zap()
