@@ -28,10 +28,15 @@ def table_str(string_in_table):
 
 def dms_str2deg(string): #-- convert dd:mm:ss.ssss to dd.dddd
     a = string.split(':')
+    sign1 = 1
+    if a[0].strip().startswith('-'):
+        sign1 = -1
     b = []
     for item in a:
         b.append(float(item))
     if b[0] < 0:
+        sign = -1
+    elif b[0] == 0 and sign1 == -1:
         sign = -1
     else:
         sign = 1
