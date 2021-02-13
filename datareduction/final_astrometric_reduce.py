@@ -1617,9 +1617,13 @@ class vlbireduce(support_vlbireduce):
                    not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
                 print "Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
+                    try:
+                        phscalseparateifmodel = config['phscalseparateifmodel']
+                    except KeyError:
+                        phscalseparateifmodel = False
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + self.cmband + '.clean.fits'
-                    if not config['phscalseparateifmodel']:
+                    if not phscalseparateifmodel:
                         if os.path.exists(phscalmodelfile):
                             aipscalname = phscal
                             if len(phscal) > 12:
@@ -1695,7 +1699,7 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = False
                     print "Delay and rate windows: ", delaywin, ratewin
                     print "UV range: ", phsrefuvrange
-                    if config['phscalseparateifmodel']:
+                    if phscalseparateifmodel:
                         tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0],\
                             modeldir, self.clversion)
                         #phscalmodeldata = None
@@ -1830,6 +1834,10 @@ class vlbireduce(support_vlbireduce):
                    not interaction.yesno("Do you wish to use saved SN table for phsref phase CALIB?")):
                 print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
+                    try:
+                        phscalseparateifmodel = config['phscalseparateifmodel']
+                    except KeyError:
+                        phscalseparateifmodel = False
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
                         if phscal_uv_data.exists():
@@ -1873,7 +1881,7 @@ class vlbireduce(support_vlbireduce):
                         flagwheremodelbelow = expconfig['phsrefminmodelflux'] #Jy
                     except KeyError:
                         flagwheremodelbelow = -1
-                    if config['phscalseparateifmodel']:
+                    if phscalseparateifmodel:
                         phscal_uv_data = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig,\
                             inbeamuvdatas[0], modeldir, self.clversion)
                         vlbatasks.singlesource_calib(phscal_uv_data, None,
@@ -2066,7 +2074,11 @@ class vlbireduce(support_vlbireduce):
                         phsrefcalibapnclip = tmpphsrefcalibapnclip
                     except KeyError:
                         pass
-                    if config['phscalseparateifmodel']:
+                    try:
+                        phscalseparateifmodel = config['phscalseparateifmodel']
+                    except KeyError:
+                        phscalseparateifmodel = False
+                    if phscalseparateifmodel:
                         phscal_uv_data = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig,\
                             inbeamuvdatas[0], modeldir, self.clversion)
                         vlbatasks.singlesource_calib(phscal_uv_data, None,
@@ -2780,7 +2792,11 @@ class vlbireduce(support_vlbireduce):
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                 vlbatasks.writedata(splitdata, self.phscaluvfiles[i], True)
                             else:
-                                if config['phscalseparateifmodel']:
+                                try:
+                                    phscalseparateifmodel = config['phscalseparateifmodel']
+                                except KeyError:
+                                    phscalseparateifmodel = False
+                                if phscalseparateifmodel:
                                     divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
                                         inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
                                 else:

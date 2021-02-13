@@ -188,34 +188,12 @@ def plot_calibrator_plan(targetname, cals, RA_t, Dec_t, RAs, Decs, savefig=False
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.scatter(RAs_h, Decs_deg)
-    #for i, comment in enumerate(comments):
-    #    ax.annotate(comment, (diffRAs[i], diffDecs[i]), color='cyan', )
-    #ax.annotate('Ser X-1 (DSe)', (diffRAs[0], diffDecs[0]), color='cyan', xytext=(3.3,-0.1))
-    #ax.annotate('DSw', (diffRAs[1], diffDecs[1]), color='cyan', xytext=(-1.5,-0.5))
-    #ax.annotate('DN', (diffRAs[2], diffDecs[2]), color='cyan', xytext=(0.4,2))
-    #ax.text(5.0,-0.1,'Ser X-1 (DSe)', size=15, color='cyan')
-    #ax.text(-1.5,-0.5,'DSw', size=15, color='cyan')
-    #ax.text(0.8,2.2,'DN', size=15, color='cyan')
-    #ax.plot(0, 0, 'g^', markersize=2)
     ax.set_ylabel('Declination (deg)')
-    #ax.set_ylim(-4,4)
-    #ax.set_yticklabels(y_ticks, fontsize='x-large')
-    #plt.yticks([-2,0,2], fontsize='xx-large')
     ax.set_xlabel('Right Ascension (h)')
-    #ax.set_xlim(-9,8)
-    #ax.set_xticklabels(x_ticks, fontsize='x-large')
-    #plt.xticks(np.arange(-8,8,2), fontsize='xx-large')
     plt.gca().invert_xaxis()
     aspect_ratio = 1./15/math.cos(Dec_t_deg/180*math.pi)
     ax.set_aspect(aspect_ratio)
-    #plt.savefig('%s/Gaia_sources_within_%darcsec_radius_around_%s.eps' % (s.path, radius, srcname.replace(' ', '')), transparent=True)
-    #plt.clf()
-    
-    #plt.scatter(RAs_h, Decs_deg)
     ax.plot(RA_t_h, Dec_t_deg, 'rs')
-    #plt.xlabel('Right Ascension (h)')
-    #plt.gca().invert_xaxis()
-    #plt.ylabel('Declination (deg)')
     ax.annotate(targetname, (RA_t_h, Dec_t_deg))
     for i, cal in enumerate(cals):
         ax.annotate(cal, (RAs_h[i], Decs_deg[i]))
@@ -226,7 +204,6 @@ def plot_calibrator_plan(targetname, cals, RA_t, Dec_t, RAs, Decs, savefig=False
     else:
         plt.show()
     plt.clf()
-
 
 def nonpulsar_statsfile2position(statsfile):
     lines = open(statsfile).readlines()
