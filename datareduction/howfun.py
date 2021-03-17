@@ -244,6 +244,8 @@ def deg2dms(array):
         for number in array:
             dms = deg_float2dms(number)
             dmss = np.append(dmss, dms)
+        if len(dmss) == 1:
+            dmss = dmss[0]
     return dmss
 def deg_float2dms(degree): #-- degree to dd:mm:ss.sssssss
     sign = np.sign(degree)
@@ -334,7 +336,7 @@ def sample2median_range(array1, confidencelevel):
         SV = int(CL*len(array))
     elif CL>=10:
         SV = CL
-    index_start = (len(array)-SV)/2-1
+    index_start = int((len(array)-SV)/2-1)
     index_end = index_start + SV
     return array[index_start], array[index_end]
 
