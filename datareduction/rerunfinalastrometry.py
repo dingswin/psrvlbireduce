@@ -7,6 +7,15 @@
 import os,sys,glob,yaml,howfun,datetime
 from optparse import OptionParser
 
+def exp2expdir(string):
+    expconfigfile = configdir + string + '.yaml'
+    print expconfigfile
+    if not os.path.exists(expconfigfile):
+        parser.error("Experiment config file %s does not exist!" % expconfigfile)
+    expconfig     = yaml.load(open(expconfigfile))
+    expdir        = expconfig['rootdir'] + '/' + experiment + '/'
+    return expdir
+
 auxdir    = os.environ['PSRVLBAUXDIR']
 codedir   = os.environ['PSRVLBICODEDIR']
 configdir = auxdir + '/configs/'
@@ -31,14 +40,6 @@ prepareonly     = options.prepareonly
 runlevel        = options.runlevel
 targetdir = auxdir + '/processing/' + targetname
 
-def exp2expdir(string):
-    expconfigfile = configdir + string + '.yaml'
-    print expconfigfile
-    if not os.path.exists(expconfigfile):
-        parser.error("Experiment config file %s does not exist!" % expconfigfile)
-    expconfig     = yaml.load(open(expconfigfile))
-    expdir        = expconfig['rootdir'] + '/' + experiment + '/'
-    return expdir
 
 if ((experiment=='') and (targetname=='')) or ((experiment!='') and (targetname!='')):
     print usage
