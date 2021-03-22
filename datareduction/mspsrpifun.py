@@ -671,10 +671,10 @@ def targetbeams(targetname): #also get SNprIBCs, using prIBC statsfile,
 
 def modeltype(targetname):
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
-    sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
-    sourcefiles.sort()
-    sourcefile = sourcefiles[0]
-    expno = sourcefile.split('/')[-1].split('.')[0].strip().lower()
+    vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
+    vexfiles.sort()
+    vexfile = vexfiles[0]
+    expno = vexfile.split('/')[-1].split('.')[0].strip().lower()
     expconfigfile = configdir + '/' +  expno + '.yaml'
     if not os.path.exists(expconfigfile):
         print("%s does not exist; aborting\n" % expconfigfile)
