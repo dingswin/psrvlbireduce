@@ -184,7 +184,7 @@ print "\nrunning bootstrap and making stacked RA/Dec-time (PM removed) plots...\
 # get the measurements first (without pm and ref position)
 count = 0
 #bootstrapruns = 2000
-pulsitions = target + '.pmpar.in.bootstrap'
+pulsitions = '.' + target + '.pmpar.in.bootstrap'
 if not target=='':
     plotfile = 'bootstrap_nopm_%s_%druns.%s' % (target, bootstrapruns, plottype)
 else:

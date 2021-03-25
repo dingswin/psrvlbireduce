@@ -199,7 +199,10 @@ def plot_calibrator_plan(targetname, cals, RA_t, Dec_t, RAs, Decs, savefig=False
         ax.annotate(cal, (RAs_h[i], Decs_deg[i]))
     if savefig:
         [junk1, junk2, targetdir, junk3, junk4] = prepare_path_source(targetname)
-        figname2save = targetdir + '/pmparesults/' + targetname + '_calibrator_plan.eps'
+        directory2save = targetdir + '/pmparesults/'
+        if not os.path.exists(directory2save):
+            os.makedirs(directory2save)
+        figname2save = directory2save + targetname + '_calibrator_plan.eps'
         plt.savefig(figname2save)
     else:
         plt.show()
@@ -3189,8 +3192,31 @@ class generatepmparin:
                     #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
                     [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq, paraA_rchsq
-
+    def parse_prior_for_bootstrap_pmpar(s, prior, bootstrapruns):
+        variable, value = prior.split('=')
+        if '+-' in value:
+            value, error = value.split('+-')
+        else:
+            error = 0
+        values = np.random.normal(float(value), float(error), bootstrapruns)
+        str_values = map(str, values)
+        prior_randoms = [variable + '=' + str_value for str_value in str_values]
+        return prior_randoms
+    def parse_priors_for_bootstrap_pmpar(s, priors, bootstrapruns):
+        """
+        example of priors: 'mu_a=3.1+-0.2 mu_d=-1.2+-0.1' or 'mu_a=3.1 mu_d=-1.2'
+        the output is a 2D string array
+        """
+        prior_strings = []
+        for prior in priors.split(' '):
+            prior_randoms = s.parse_prior_for_bootstrap_pmpar(prior, bootstrapruns)
+            prior_strings.append(prior_randoms)
+        return prior_strings
+        
     def bootstrap_pmpar(s, pmparinfile, bootstrapruns, priors='', overwrite_table=False):
+        """
+        prior string can be 'mu_a=3.1 mu_d=-2.3' or 'mu_a=3.1+-0.2 mu_d=-2.3+-0.3'
+        """
         from astropy.table import vstack
         bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
         if os.path.exists(bootstrapped_relative_positions_table):
@@ -3205,6 +3231,7 @@ class generatepmparin:
             sys.exit()
         #pmparout_bootstrap = pmparesultsdir + '/.' + targetname + '.pmpar.out.bootstrap'
         positions = []
+        prior_strings = s.parse_priors_for_bootstrap_pmpar(priors, bootstrapruns)
         lines = open(pmparinfile).readlines()
         for line in lines:
             if 'epoch' in line:
@@ -3224,7 +3251,8 @@ class generatepmparin:
                 continue
             fileWrite = open(pulsitions, 'w')
             fileWrite.write(epochline)
-            fileWrite.write(priors)
+            for prior_string in prior_strings:
+                fileWrite.write(prior_string[count] + '\n')
             #fileWrite.write("mu_a = -3.82\nmu_d = -16.09\n")
             for i in random_indices:
                 fileWrite.write(positions[i])

@@ -798,6 +798,7 @@ class vlbireduce(support_vlbireduce):
             inbeamnames, calonly, ungateduvdata, gateduvdata, haveungated, targetnames):
         """
         flagging can be appointed to specific inbeamcal or target, but not for phscal; for phscal, just use additionaledit.flag
+        the splitted uvfits file for phscal would also flag the additionaledit.inbeamname.flag
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Loading user flags"
