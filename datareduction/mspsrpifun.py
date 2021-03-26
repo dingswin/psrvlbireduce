@@ -3215,7 +3215,7 @@ class generatepmparin:
         
     def bootstrap_pmpar(s, pmparinfile, bootstrapruns, priors='', overwrite_table=False):
         """
-        prior string can be 'mu_a=3.1 mu_d=-2.3' or 'mu_a=3.1+-0.2 mu_d=-2.3+-0.3'
+        priors can be 'mu_a=3.1 mu_d=-2.3' or 'mu_a=3.1+-0.2 mu_d=-2.3+-0.3' or 'mu_a=3.1 mu_d=-2.3+-0.3' or just 'mu_a=2.3+-0.1'
         """
         from astropy.table import vstack
         bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
@@ -3231,7 +3231,8 @@ class generatepmparin:
             sys.exit()
         #pmparout_bootstrap = pmparesultsdir + '/.' + targetname + '.pmpar.out.bootstrap'
         positions = []
-        prior_strings = s.parse_priors_for_bootstrap_pmpar(priors, bootstrapruns)
+        if priors != '':
+            prior_strings = s.parse_priors_for_bootstrap_pmpar(priors, bootstrapruns)
         lines = open(pmparinfile).readlines()
         for line in lines:
             if 'epoch' in line:
@@ -3251,8 +3252,9 @@ class generatepmparin:
                 continue
             fileWrite = open(pulsitions, 'w')
             fileWrite.write(epochline)
-            for prior_string in prior_strings:
-                fileWrite.write(prior_string[count] + '\n')
+            if priors != '':
+                for prior_string in prior_strings:
+                    fileWrite.write(prior_string[count] + '\n')
             #fileWrite.write("mu_a = -3.82\nmu_d = -16.09\n")
             for i in random_indices:
                 fileWrite.write(positions[i])

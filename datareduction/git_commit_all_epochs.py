@@ -36,4 +36,4 @@ print(targetdir)
 for expno in expnos:
     os.chdir(targetdir + '/' + expno)
     os.system('git add .')
-    os.system("git commit -m %s" % comment)
+    os.system("git commit -m '%s'" % comment)
