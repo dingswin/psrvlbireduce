@@ -721,11 +721,14 @@ class equatorial2galactic_coordinates:
             s.RA = dms2deg(s.RA)
         if type(s.Dec) != float and type(s.Dec) != np.float64:
             s.Dec = dms2deg(s.Dec)
-    def equatorial_position2galactic_position(s):
+    def equatorial_position2galactic_position(s, RA_in_h=True):
         """
         output: l and b, both in deg
         """
-        a = 15*s.RA - s.a0 #in deg
+        if RA_in_h:
+            a = 15*s.RA - s.a0 #in deg
+        else:
+            a = s.RA -s.a0
         a *= math.pi/180 #in rad
         d, d0 = math.pi/180*s.Dec, math.pi/180*s.d0 #in rad
         ## calculate b

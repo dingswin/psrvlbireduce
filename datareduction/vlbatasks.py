@@ -5212,6 +5212,9 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
 def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
                      mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', dogaussian=False, 
                      beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
+    """
+    Note that for VLBI search (with no previous VLBI detection), uvaverstr should be set to <=30 to avoid smearing effect.
+    """
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     if pixsize/2.0 < finepix:

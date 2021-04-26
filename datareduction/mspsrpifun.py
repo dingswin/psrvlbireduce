@@ -840,11 +840,14 @@ class expno_sysErr:
             sys.exit()
         sumfile = sumfiles[0]
         TelAv_csc_Els = np.array([])
+        targetname = s.targetname
+        if not s.targetname[-1].isdigit():
+            targetname = s.targetname[:-1]
         lines = open(sumfile).readlines()
         for line in lines:
-            if s.targetname in line:
+            if targetname in line:
                 #if ':' in line.split(s.targetname)[0] and howfun.no_alphabet(line.split(s.targetname)[-1]):
-                if ':' in line.split(s.targetname)[0]:
+                if ':' in line.split(targetname)[0]:
                     try:
                         elevations = line.split('-')[-1].strip().split('    ')
                         elevations = map(float, elevations)
@@ -3044,12 +3047,15 @@ class generatepmparin:
         #s.epoch = epoch
         [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname)
         s.pmparesultsdir = s.targetdir + '/pmparesults/'
-    def find_statsfiles(s):
+    def find_statsfiles(s, check_inbeam=''):
         targetdir = s.targetdir
         if not os.path.exists(targetdir):
             print("%s doesn't exist; aborting\n" % targetdir)
             sys.exit()
-        s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+        if check_inbeam == '':
+            s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+        else:
+            s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
         s.statsfiles.sort()
     def statsfile2expno_and_decyear(s, statsfile):
         b = plot_position_scatter(s.targetname, s.exceptions)
@@ -3080,11 +3086,17 @@ class generatepmparin:
         median_decyear = howfun.sample2median(decyears)
         median = Time(median_decyear, format='decimalyear')
         return round(median.mjd)
-    def write_out_preliminary_pmpar_in(s):
-        s.find_statsfiles()
+    def write_out_preliminary_pmpar_in(s, check_inbeam=''):
+        """
+        for example, check_inbeam='IBC01433' means looking at bd1*IBC01433_preselfcal*stats and make the corresponding IBC01433.pmpar.in
+        """
+        s.find_statsfiles(check_inbeam)
         if not os.path.exists(s.pmparesultsdir):
             os.system('mkdir %s' % s.pmparesultsdir)
-        pulsitions = s.pmparesultsdir + '/' + s.targetname + '.pmpar.in.preliminary'
+        if check_inbeam == '':
+            pulsitions = s.pmparesultsdir + '/' + s.targetname + '.pmpar.in.preliminary'
+        else:
+            pulsitions = s.pmparesultsdir + '/' + check_inbeam + '.pmpar.in.preliminary'
         s.RAs = np.array([])
         s.Decs = np.array([])
         s.error0RAs = np.array([])
@@ -3437,7 +3449,7 @@ class generatepmparin:
         ax3.axvline(x=s.median_high_end_mu_d, c='blue', linestyle='-.', linewidth=0.5)
         #whole setup
         gs.tight_layout(fig) #rect=[0, 0.1, 1, 1])
-        plt.savefig('%s/three_histograms.eps' % s.pmparesultsdir)
+        plt.savefig('%s/three_histograms.pdf' % s.pmparesultsdir)
         print("\nplots have been made.\n")
         #save plot parameters if required
         if save_plot_parameters:
