@@ -37,7 +37,10 @@ def expno2sources(expno):
         foldername = targetname
     return targetname, foldername, phscalname, prIBCname
 
-def prepare_path_source(targetname):
+def prepare_path_source(targetname, inverse_referencing=False):
+    """
+    it might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC
+    """
     auxdir    = os.environ['PSRVLBAUXDIR']
     configdir = auxdir + '/configs/'
     expconfigfile = configdir + '/' + targetname + '.yaml'
@@ -47,7 +50,10 @@ def prepare_path_source(targetname):
         return False
         sys.exit()
     expconfig = yaml.load(open(expconfigfile))
-    prIBCname = expconfig['primaryinbeam']
+    if not inverse_referencing:
+        prIBCname = expconfig['primaryinbeam']
+    else:
+        prIBCname = expconfig['primarytarget']    
     phscalname = target2cals(targetname)[0]
     print phscalname, prIBCname
     return auxdir, configdir, targetdir, phscalname, prIBCname
@@ -202,7 +208,7 @@ def plot_calibrator_plan(targetname, cals, RA_t, Dec_t, RAs, Decs, savefig=False
         directory2save = targetdir + '/pmparesults/'
         if not os.path.exists(directory2save):
             os.makedirs(directory2save)
-        figname2save = directory2save + targetname + '_calibrator_plan.eps'
+        figname2save = directory2save + targetname + '_calibrator_plan.pdf'
         plt.savefig(figname2save)
     else:
         plt.show()
@@ -3039,23 +3045,27 @@ class generatepmparin:
     Reference epoch:
     It will be automatically determined as the median of the epochs, and rounded to an integer.
     """
-    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1):
+    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, inverse_referencing=False):
         s.targetname = targetname
         s.exceptions = exceptions
         s.dualphscal = dualphscal
         s.dualphscalratio = dualphscalratio
+        s.inverse_referencing = inverse_referencing
         #s.epoch = epoch
-        [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname)
+        [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname, s.inverse_referencing)
         s.pmparesultsdir = s.targetdir + '/pmparesults/'
     def find_statsfiles(s, check_inbeam=''):
         targetdir = s.targetdir
         if not os.path.exists(targetdir):
             print("%s doesn't exist; aborting\n" % targetdir)
             sys.exit()
-        if check_inbeam == '':
-            s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+        if not s.inverse_referencing:
+            if check_inbeam == '':
+                s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+            else:
+                s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
         else:
-            s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
+            s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
         s.statsfiles.sort()
     def statsfile2expno_and_decyear(s, statsfile):
         b = plot_position_scatter(s.targetname, s.exceptions)

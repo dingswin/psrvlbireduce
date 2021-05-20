@@ -26,9 +26,9 @@ if len(gatedfitsfiles) == 0:
     gatedfitsfiles = glob.glob(r'./*_binbd*idifits')    
 gatedfitsfiles.sort()
 if binno != -1:
-    gatedfitsfiles = glob.glob(r'./*_gated*BIN%d*idifits' % binno)
+    gatedfitsfiles = glob.glob(r'./*gated*BIN%d*idifits' % binno)
     if len(gatedfitsfiles) != 1:
-        gatedfitsfiles = glob.glob(r'./*_gated*BIN0%d*idifits' % binno)
+        gatedfitsfiles = glob.glob(r'./*gated*BIN0%d*idifits' % binno)
 ungatedfitsfiles = glob.glob(r'./*_BIN0_*idifits')
 if len(ungatedfitsfiles) != 1:
     print "There are other than 1 ungatedfitsfile; aborting\n"

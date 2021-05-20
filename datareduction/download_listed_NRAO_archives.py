@@ -5,7 +5,7 @@ copy the archive info to a downloads.txt at the webpage step to select 'Retrieve
 then you have to copy and paste webpage link into the downloads.txt after a '#' symbol, and copy user and password in the same line separated with '#',
 then run download*py downloads.txt
 An example can be found at /fred/oz002/hding/mspsrpi/processing/J1818-1607/bd232b/downloads.txt for locked data;
-another example at /fred/oz002/hding/mspsrpi/processing/J1853+1303/downloads.txt.
+another example at /fred/oz002/hding/mspsrpi/processing/J1853+1303/downloads.txt for data beyond proprietary period.
 """
 usage = "download_listed_NRAO_archives.py downloads.txt\n"
 if len(sys.argv) != 2:
