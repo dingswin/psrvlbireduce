@@ -3249,6 +3249,7 @@ def main():
     targetconfigs = []
     for i in range(numtargets):
         targetconfigfile = configdir + expconfig["targets"][i] + '.yaml'
+        #targetconfigfile = configdir + expconfig['rootdir'].split('/')[-1] + '.yaml'
         if not os.path.exists(targetconfigfile):
             parser.error("Target config file %s does not exist!" % targetconfigfile)
         targetconfigs.append(yaml.load(open(targetconfigfile)))

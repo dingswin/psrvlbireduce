@@ -15,6 +15,26 @@ def exp2expdir(string):
     expconfig     = yaml.load(open(expconfigfile))
     expdir        = expconfig['rootdir'] + '/' + experiment + '/'
     return expdir
+def prepare_given_exp(experiment):
+    expdir = exp2expdir(experiment)
+    tablefolder = expdir + '/tables/'
+    if prepare:
+        os.chdir(expdir)
+        print "\nrun prepare_astrometric_epoch.py...\n"
+        os.system("prepare_astrometric_epoch.py %s.vex" % (experiment))
+def run_pipeline_given_exp(experiment):
+    expdir = exp2expdir(experiment)
+    tablefolder = expdir + '/tables/'
+    print "deleting sn, bp and ps tables...\n"
+    try:
+        os.system('rm %s/{*sn,*bp,*ps}' % (tablefolder))
+    except OSError:
+        print "Some of the tables are already removed\n"
+    #solutions to keep being used need to save to *.sn.save or *.bp.save. 
+    solutions_to_use = glob.glob(r'%s/*.save' % (tablefolder))
+    for solution in solutions_to_use:
+        os.system('cp %s %s' % (solution, solution.replace('.save', '')))
+    os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
 
 auxdir    = os.environ['PSRVLBAUXDIR']
 codedir   = os.environ['PSRVLBICODEDIR']
@@ -45,22 +65,10 @@ if ((experiment=='') and (targetname=='')) or ((experiment!='') and (targetname!
     print usage
     sys.exit()
 if experiment!='' and targetname=='':
-    expdir = exp2expdir(experiment)
-    if prepare:
-        os.chdir(expdir)
-        print "\nrun prepare_astrometric_epoch.py...\n"
-        os.system("prepare_astrometric_epoch.py %s.vex" % (experiment))
+    prepare_given_exp(experiment)
     if prepareonly:
         sys.exit()
-    if runlevel==1:
-        print "deleting sn, bp and ps tables...\n"
-        try:
-            os.system('rm %s/tables/{*sn,*bp,*ps}' % (expdir))
-        except OSError:
-            print "Some of the tables are already removed\n"
-        os.system('final_astrometric_reduce.py -e %s --clearcatalog' % (experiment))
-    else:
-        os.system('final_astrometric_reduce.py -e %s -r %s' % (experiment, runlevel))
+    run_pipeline_given_exp(experiment)
     sys.exit()
 
 # if experiment=='' and targetname!=''
@@ -75,10 +83,14 @@ print "%s\nRunning script at %s (UTC)\n%s\n" % (70*'=',current_time,70*'=')
 
 vexfiles = glob.glob(r'%s/*/*.vex' % (targetdir)) 
 vexfiles.sort() 
-print 'vexfiles=' 
-print vexfiles
+print('vexfiles=\n %s' % vexfiles) 
 for vexfile in vexfiles:
     experiment = vexfile.split('/')[-2].strip()
+    prepare_given_exp(experiment)
+    if prepareonly:
+        continue
+    run_pipeline_given_exp(experiment)
+    """
     expdir     = exp2expdir(experiment)
     tablefolder = expdir + '/tables/'
     if prepare:
@@ -89,14 +101,18 @@ for vexfile in vexfiles:
         continue
     print "rerun final_astrometric_reduce.py for %s" % (experiment)
     #os.chdir(codedir)
-    if runlevel==1:
-        print "\ndeleting sn, bp and ps tables for %s...\n" % (experiment)
-        try:
-            os.system('rm %s/{*sn,*bp,*ps}' % (tablefolder))
-        except OSError:
-            print "Some of the tables are already removed\n"
-        os.system('final_astrometric_reduce.py -e %s --clearcatalog' % (experiment))
-    else:
-        os.system('final_astrometric_reduce.py -e %s -r %s' % (experiment, runlevel))
+    
+    print "\ndeleting sn, bp and ps tables for %s...\n" % (experiment)
+    try:
+        os.system('rm %s/{*sn,*bp,*ps}' % (tablefolder))
+    except OSError:
+        print "Some of the tables are already removed\n"
+    #solutions to keep being used need to save to *.sn.save or *.bp.save. 
+    solutions_to_use = glob.glob(r'%s/*.save' % (tablefolder))
+    for solution in solutions_to_use:
+        os.system('cp %s %s' % (solution, solution.replace('.save', '')))
+        
+    os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
+    """
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 print "\nSuccessfully rerun through all epochs for %s at %s (UTC)\n" % (targetname,current_time)
