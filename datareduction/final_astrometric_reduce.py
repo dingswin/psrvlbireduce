@@ -537,6 +537,10 @@ class support_vlbireduce(object):
         if not os.path.exists(expconfigfile):
             print('%s does not exist; aborting' % expconfigfile)
         expconfig = yaml.load(open(expconfigfile))
+        return expconfig2cals(expconfig, expno)
+    
+    def expconfig2cals(self, expconfig, expno=''):
+        targetdir = expconfig['rootdir']
         cals = []
         try: 
             phscalnames = expconfig['phscalnames']
@@ -594,7 +598,7 @@ class support_vlbireduce(object):
         """
         phsrefnames = []
         for targetname in targetnames:
-            [phscalname, junk] = self.target2cals(targetname)
+            [phscalname, junk] = self.expconfig2cals(expconfig)
             phsrefnames.append(phscalname)
         sncount = 0
         numinbeams = len(inbeamuvdatas)
