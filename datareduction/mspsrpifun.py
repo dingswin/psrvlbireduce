@@ -25,16 +25,21 @@ def expno2sources(expno):
     configfile = configdir + '/' + targetname + '.yaml'
     config = yaml.load(open(configfile))
     prIBCname = config['primaryinbeam']
+    targetdir = expconfig['rootdir']
+    foldername = targetdir.split('/')[-1]
+    if foldername == '':
+        foldername = targetdir.split('/')[-2]
     try:
         othertargetname = config['othertargetname']
     except KeyError:
         othertargetname = ''
     if othertargetname != '':
-        foldername = othertargetname
-        phscalname = target2cals(foldername, expno)[0]
+        phscalname = target2cals(othertargetname, expno)[0]
     else:
-        phscalname = target2cals(targetname, expno)[0]
-        foldername = targetname
+        if not expconfig['dodefaultnames']:
+            phscalname = target2cals(targetname, expno)[0]
+        else:
+            phscalname = target2cals(foldername, expno)[0]
     return targetname, foldername, phscalname, prIBCname
 
 def prepare_path_source(targetname, inverse_referencing=False):
@@ -44,6 +49,11 @@ def prepare_path_source(targetname, inverse_referencing=False):
     auxdir    = os.environ['PSRVLBAUXDIR']
     configdir = auxdir + '/configs/'
     expconfigfile = configdir + '/' + targetname + '.yaml'
+    if not os.path.exists(expconfigfile):
+        expconfigfile = configdir + '/PULSAR.yaml'
+        if not os.path.exists(expconfigfile):
+            print('target yaml file does not exist; aborting')
+            sys.exit()
     targetdir = auxdir + '/processing/' + targetname
     if not os.path.exists(targetdir):
         print("%s doesn't exist; return False\n" % targetdir)
@@ -467,13 +477,14 @@ class plot_position_scatter:
             print vexfile + " does not exist - aborting!"
             sys.exit()
         targetname = expno2sources(expno)[0]
-        startime_search_key = 'source=' + targetname            
+        startime_search_key1 = 'source=' + targetname
+        startime_search_key2 = 'source=TARGETPT'
         ## read obs_time from vex file
         vexlines = open(vexfile).readlines()
         for line in vexlines:
             if 'MJD' in line:
                 MJD = int(line.split(':')[-1])
-            if startime_search_key in line:
+            if startime_search_key1 in line or startime_search_key2 in line:
                 startime=line.split(';')[0]
                 break
         # translate the obs_time to decimalyear format
@@ -790,6 +801,7 @@ class expno_sysErr:
         s.expdir = targetdir + '/' + expno
         s.paraA_rchsq = paraA_rchsq
         s.dualphscal = dualphscal
+        s.dodefaultnames = s.read_dodefaultnames_given_expno(s.expno)
     def sysErr(s):
         [beamRA, beamDec] = s.beam_in_RA_Dec()
         delta_sys1 = s.delta_sys()    
@@ -816,9 +828,18 @@ class expno_sysErr:
     def beam_in_RA_Dec(s):
         [beamPA, beamSA, beamLA, junk1] = s.targetbeam()
         [beamRA, beamDec] = howfun.deprojectbeam2xy(beamLA,beamSA,beamPA) #full-width deprojection on RA/Dec from beam
-        return beamRA, beamDec 
+        return beamRA, beamDec
+    def read_dodefaultnames_given_expno(s, expno):
+        auxdir    = os.environ['PSRVLBAUXDIR']
+        configdir = auxdir + '/configs/'
+        expconfigfile = configdir + '/' + expno + '.yaml'
+        expconfig = yaml.load(open(expconfigfile))
+        return expconfig['dodefaultnames']
     def targetbeam(s): #also get SNprIBCs, using prIBC statsfile,
-        prIBCstatsfiles = glob.glob(r'%s/*%s.difmap.jmfit.stokesi.stats' % (s.expdir, s.prIBCname))
+        if not s.dodefaultnames:
+            prIBCstatsfiles = glob.glob(r'%s/*%s.difmap.jmfit.stokesi.stats' % (s.expdir, s.prIBCname))
+        else:
+            prIBCstatsfiles = glob.glob(r'%s/*_inbeam0_0_divided.difmap.jmfit.stokesi.stats' % s.expdir)
         print prIBCstatsfiles
         if len(prIBCstatsfiles) != 1:
             if s.prIBCname == s.phsrefname:
@@ -850,10 +871,14 @@ class expno_sysErr:
         if not s.targetname[-1].isdigit():
             targetname = s.targetname[:-1]
         lines = open(sumfile).readlines()
+        if s.dodefaultnames:
+            keyword = 'TARGETPT'
+        else:
+            keyword = targetname
         for line in lines:
-            if targetname in line:
+            if keyword in line:
                 #if ':' in line.split(s.targetname)[0] and howfun.no_alphabet(line.split(s.targetname)[-1]):
-                if ':' in line.split(targetname)[0]:
+                if ':' in line.split(keyword)[0]:
                     try:
                         elevations = line.split('-')[-1].strip().split('    ')
                         elevations = map(float, elevations)

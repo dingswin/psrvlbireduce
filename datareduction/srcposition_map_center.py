@@ -18,12 +18,15 @@ def src_RA_Dec(targetname, srcname): #use different (for target/other calibrator
     [modeltype1, AIPS.userno] = mspsrpifun.modeltype(targetname)
     print mspsrpifun.modeltype(targetname)
     [auxdir, configdir, targetdir, phscalname, prIBCname] = mspsrpifun.prepare_path_source(targetname)
+    aa = mspsrpifun.measure_the_angular_broadened_size_of_the_target(targetname)
+    targetname_AIPS = mspsrpifun.expno2sources(aa.expnos[0])[0]
     srcmodel = auxdir + '/sourcemodels/' + modeltype1 + '/' + srcname + '.clean.fits'
     print srcmodel
     if srcname != targetname:
         modeldata = AIPSImage(srcname, "CLEAN", 1, 1)
     else:
-        modeldata = AIPSUVData(targetname, "GFINL", 1, 1) #gated final
+
+        modeldata = AIPSUVData(targetname_AIPS, "GFINL", 1, 1) #gated final
     print modeldata
     if not modeldata.exists() and not os.path.exists(srcmodel):
         print("neither srcmodel nor loaded counterpart in AIPS is found; aborting\n")
