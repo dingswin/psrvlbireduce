@@ -414,8 +414,8 @@ class plot_position_scatter:
         return phscal_RAs, phscal_Decs
     def plot_prIBC_preselfcal_scatter(s, annotatesize=10, colorbarstep=0.1):
         import matplotlib.pyplot as plt
-        expnos = statsfiles2expnos(s.prIBCstatsfiles)
         [RAs, Decs] = s.get_prIBC_preselfcal_positions()
+        expnos = statsfiles2expnos(s.prIBCstatsfiles)
         [refRA_prIBC, refDec_prIBC] = srcposition(s.targetname, s.prIBCname)
         [diffRAs, diffDecs] = diffposition(RAs, refRA_prIBC, Decs, refDec_prIBC)
         decyears = s.statsfiles2decyears(s.prIBCstatsfiles)
@@ -440,14 +440,14 @@ class plot_position_scatter:
         plt.plot(diff_avgRA, diff_avgDec, 'rx', zorder=2)
         
         rect = plt.Rectangle((diff_avgRA-std_RA_mas, diff_avgDec-std_Dec_mas), 
-                       std_RA_mas*2, std_Dec_mas*2, facecolor="0.91", alpha=0.1, zorder=0)
+                       std_RA_mas*2, std_Dec_mas*2, facecolor="0.91", alpha=0.5, zorder=0)
         ax1.add_patch(rect)
         
         ## rfc2018 position of J1819-2036 for comparison
         [RA_rfc2018, Dec_rfc2018] = ['18:19:36.895534', '-20:36:31.57089']
         [diffRA_rfc2018, diffDec_rfc2018] = diffposition(RA_rfc2018, refRA_prIBC, Dec_rfc2018, refDec_prIBC)
-        plt.plot(diffRA_rfc2018, diffDec_rfc2018, 'r*', zorder=1)
-        plt.savefig("%s/pmparesults/prIBC_preselfcal_scatter.eps" % s.targetdir)
+        #plt.plot(diffRA_rfc2018, diffDec_rfc2018, 'r*', zorder=1)
+        plt.savefig("%s/pmparesults/prIBC_preselfcal_scatter.pdf" % s.targetdir)
         plt.clf()
         print("Plot made, where the mean position is %s %s." % (avg_RA_dms, avg_Dec_dms))
 
@@ -586,18 +586,16 @@ def bootstrapRADECerr(targetname, HowManySigma):
         if 'RA' in line:
             errRA = line.split('+-')[-1].split('(mas)')[0].strip()
             errRAs = np.append(errRAs, float(errRA))
+            #print(errRAs)
         if 'Dec' in line:
             errDec = line.split('+-')[-1].split('(mas)')[0].strip()
             errDecs = np.append(errDecs, float(errDec))
-    if HowManySigma == 1:
-        errRA = errRAs[0]
-        errDec = errDecs[0]
-    elif HowManySigma == 2:
-        errRA = errRAs[1]
-        errDec = errDecs[1]
-    else:
+            #print(errDecs)
+    if not HowManySigma in [1,2]:
         print('the second parameter should be either 1 or 2 (sigma); aborting')
         sys.exit()
+    errRA = errRAs[3-HowManySigma]
+    errDec = errDecs[3-HowManySigma]
     err = np.array([errRA, errDec])
     return err
 def abspsrposition(targetname, HowManySigma):
@@ -619,18 +617,19 @@ def abspsrposition(targetname, HowManySigma):
     prIBC_RADEC = [prIBCstats[0][0], prIBCstats[1][0]]
     prIBC_RADECstd = np.array([prIBCstats[0][1], prIBCstats[1][1]])
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
-    [psrRA, psrDec, epoch, junk1, junk2, junk3, junk4, junk5, junk6, junk7, junk8] = readpulsition(targetname)
+    [psrRA, psrDec, epoch, junk1, junk2, junk3, junk4, junk5, junk6, junk7, junk8, junk9] = readpulsition(targetname)
     psrRADEC0 = [psrRA, psrDec]
     rfcinfos = rfcposition(phscalname)
     phscal_absRADEC = [rfcinfos[0], rfcinfos[2]]
-    errRAphscal = float(rfcinfos[1])
-    errDECphscal = float(rfcinfos[3])
+    errRAphscal = float(rfcinfos[1]) #in mas
+    errDECphscal = float(rfcinfos[3]) #in mas
     ## 1) using prIBC shift ####################
     prIBCrefRADEC = srcposition(targetname, prIBCname)
-    psrRADEC1 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(prIBC_RADEC) - howfun.dms2deg(prIBCrefRADEC)
+    print(psrRADEC0, prIBC_RADEC, prIBCrefRADEC)
+    psrRADEC1 = psrRADEC0 + howfun.dms2deg(prIBC_RADEC) - howfun.dms2deg(prIBCrefRADEC)
     ## 2) using phscal shift ###################
     phscal_refRADEC = srcposition(targetname, phscalname)
-    psrRADEC2 = howfun.dms2deg(psrRADEC0) + howfun.dms2deg(phscal_refRADEC) - howfun.dms2deg(phscalRADEC)
+    psrRADEC2 = psrRADEC0 + howfun.dms2deg(phscal_refRADEC) - howfun.dms2deg(phscalRADEC)
     ## 3) update absolute position for phscal #####
     psrRADEC2 = psrRADEC2 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
     psrRADEC2 = howfun.deg2dms(psrRADEC2)
@@ -639,16 +638,17 @@ def abspsrposition(targetname, HowManySigma):
     ## error estimation #####################################################
     err_psr2prIBC = bootstrapRADECerr(targetname, HowManySigma)
     err_abs_phscal = np.array([errRAphscal, errDECphscal])
-    err1 = (err_psr2prIBC**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5
-    err2 = (err_psr2prIBC**2 + err_abs_phscal**2 + phscalRADECstd**2)**0.5
+    err1 = (err_psr2prIBC**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5 #in mas
+    print(err_psr2prIBC, err_abs_phscal, prIBC_RADECstd)
+    err2 = (err_psr2prIBC**2 + err_abs_phscal**2 + phscalRADECstd**2)**0.5 #in mas
     return psrRADEC1, err1, psrRADEC2, err2, epoch
 def exportabspsrposition(targetname, HowManySigma):
     [psrRADEC1, err1, psrRADEC2, err2, epoch] = abspsrposition(targetname, HowManySigma)
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     err1[0] = howfun.mas2ms(err1[0], str(psrRADEC1[1]))
     err2[0] = howfun.mas2ms(err2[0], str(psrRADEC2[1]))
-    err1 = err1/1000
-    err2 = err2/1000
+    err1 = err1/1000 #in s
+    err2 = err2/1000 #in arcsecond
     outfile = targetdir + '/' + targetname + '.abs.position'
     writefile = open(outfile, 'w')
     writefile.write("epoch = %s\n" % epoch)
@@ -923,7 +923,7 @@ def parse_rfctxt(phscal, rfctxt):
             Dec = sign + position[1].strip()
             RA = RA.replace(' ', ':')
             Dec = Dec.replace(' ', ':')
-    return RA, word1[3], Dec, word1[4]
+    return RA, word1[3], Dec, word1[4] #uncertainties in mas
 def rfcposition(phscal):
     auxdir = os.environ['PSRVLBAUXDIR']
     downloaddir = auxdir + '/downloads/'
@@ -933,7 +933,8 @@ def rfcposition(phscal):
     versions = [year+'d', year+'c', year+'b', year+'a', lastyear+'d', lastyear+'c', lastyear+'b']
     for version in versions:
         filename = 'rfc_' + version + '_cat.txt'
-        ftpfile = 'http://astrogeo.org/vlbi/solutions/rfc_' + version + '/' + filename
+        #ftpfile = 'http://astrogeo.org/vlbi/solutions/rfc_' + version + '/' + filename
+        ftpfile = 'http://astrogeo.org/sol/rfc/rfc_' + version + '/' + filename #updated in May 2021
         downloadfile = downloaddir + filename
         if not os.path.exists(downloadfile):
             os.system('wget -P %s %s' % (downloaddir, ftpfile))
@@ -3400,6 +3401,10 @@ class generatepmparin:
             fileWrite.write("PI_symm = %f +- %f (mas) # symmetric uncertainty interval around median\n" % (s.median_PI, s.error_PI_symm))
             fileWrite.write("mu_a_symm = %f +- %f (mas/yr)\n" % (s.median_mu_a, s.error_mu_a_symm))
             fileWrite.write("mu_d_symm = %f +- %f (mas/yr)\n" % (s.median_mu_d, s.error_mu_d_symm))
+            s.error_Dec_symm *= 3600*1000 #in mas
+            s.error_RA_symm *= 3600*1000 * 15 * np.cos(s.median_Dec/180*np.pi) #in mas
+            fileWrite.write("RA_symm = %s +- %f (mas)\n" % (howfun.deg2dms(s.median_RA), s.error_RA_symm))
+            fileWrite.write("Dec_symm = %s +- %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.error_Dec_symm))
             if os.path.exists(bootstrapped_relative_positions_table):
                 fileWrite.write("median_RA = %s + %f - %f (mas) # central 68 percent around median\n" % (howfun.deg2dms(s.median_RA), s.median_high_end_rRA, abs(s.median_low_end_rRA)))
                 fileWrite.write("median_Dec = %s + %f - %f (mas)\n" % (howfun.deg2dms(s.median_Dec), s.median_high_end_rDec, abs(s.median_low_end_rDec)))
