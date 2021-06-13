@@ -576,6 +576,37 @@ def readpmparout(pmparout):
                 exec("error_%s = %s" % (estimate, error))
                 exec("%s = float(%s)" % (estimate, estimate))
     return RA, Dec, epoch, pi, mu_a, mu_d, error_pi, error_mu_a, error_mu_d, l, b, rchsq
+def read_bayesian_position_and_error(targetname):
+    """
+    read from the output of the astrometryfit code written by Adam
+    """
+    [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+    bayesian_results = targetdir + '/bayesian_results/' + targetname + '.bayesian.results'
+    if not os.path.exists(bayesian_results):
+        print('%s does not exist; aborting' % bayesian_results)
+        sys.exit()
+    lines = open(bayesian_results).readlines()
+    for line in lines:
+        if ' RA:' in line:
+            contents = line.split(' RA:')[-1].strip().split('(+')
+            RA = float(contents[0].strip())
+            RA_err_two_sides = contents[1].split(')')[0].split('/ -')
+            RA_err_up = float(RA_err_two_sides[0].strip())
+            RA_err_down = float(RA_err_two_sides[1].strip())
+            RA_err = max(RA_err_up, RA_err_down)
+        if ' DEC:' in line:
+            contents = line.split(' DEC:')[-1].strip().split('(+')
+            DEC = float(contents[0].strip())
+            DEC_err_two_sides = contents[1].split(')')[0].split('/ -')
+            DEC_err_up = float(DEC_err_two_sides[0].strip())
+            DEC_err_down = float(DEC_err_two_sides[1].strip())
+            DEC_err = max(DEC_err_up, DEC_err_down)
+    err = np.array([RA_err*np.cos(DEC), DEC_err]) #in rad
+    err *= 180./np.pi*3600*1000 #in mas
+    position = np.array([RA/15., DEC])
+    position *= 180./np.pi #in hr and deg
+    return position, err
+
 def bootstrapRADECerr(targetname, HowManySigma):
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     BSresults = targetdir + '/pmparesults/' + targetname + '.bootstrap.estimates.out'
@@ -619,6 +650,9 @@ def abspsrposition(targetname, HowManySigma):
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     [psrRA, psrDec, epoch, junk1, junk2, junk3, junk4, junk5, junk6, junk7, junk8, junk9] = readpulsition(targetname)
     psrRADEC0 = [psrRA, psrDec]
+    bayesian_results = targetdir + '/bayesian_results/' + targetname + '.bayesian.results'
+    if os.path.exists(bayesian_results):
+        [psrRADEC0, err_psr2prIBC] = read_bayesian_position_and_error(targetname)
     rfcinfos = rfcposition(phscalname)
     phscal_absRADEC = [rfcinfos[0], rfcinfos[2]]
     errRAphscal = float(rfcinfos[1]) #in mas
@@ -636,7 +670,8 @@ def abspsrposition(targetname, HowManySigma):
     psrRADEC1 = psrRADEC1 + howfun.dms2deg(phscal_absRADEC) - howfun.dms2deg(phscal_refRADEC)
     psrRADEC1 = howfun.deg2dms(psrRADEC1)
     ## error estimation #####################################################
-    err_psr2prIBC = bootstrapRADECerr(targetname, HowManySigma)
+    if not os.path.exists(bayesian_results):
+        err_psr2prIBC = bootstrapRADECerr(targetname, HowManySigma)
     err_abs_phscal = np.array([errRAphscal, errDECphscal])
     err1 = (err_psr2prIBC**2 + err_abs_phscal**2 + prIBC_RADECstd**2)**0.5 #in mas
     print(err_psr2prIBC, err_abs_phscal, prIBC_RADECstd)

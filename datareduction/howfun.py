@@ -322,9 +322,9 @@ def sample2median(array1):
     array = sorted(array1)
     length = len(array)
     if length % 2 == 0:
-        median = 0.5*(array[length/2-1] + array[length/2])
+        median = 0.5*(array[length//2-1] + array[length//2])
     else:
-        median = array[(length-1)/2]
+        median = array[(length-1)//2]
     return median
 def sample2median_range(array1, confidencelevel):
     array = sorted(array1)
