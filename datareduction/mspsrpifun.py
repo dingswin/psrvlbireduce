@@ -16,7 +16,16 @@ from scipy.stats import norm
 np.set_printoptions(suppress=True)
 
 ## group 1a ################################################################################
-def expno2sources(expno):
+def expno2sources(expno, inverse_referencing=False):
+    """
+    Note
+    ----
+    It might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC.
+
+    Return parameters
+    -----------------
+    targetname, foldername, phscalname, prIBCname
+    """
     auxdir    = os.environ['PSRVLBAUXDIR']
     configdir = auxdir + '/configs/'
     expconfigfile = configdir + '/' + expno + '.yaml'
@@ -24,7 +33,10 @@ def expno2sources(expno):
     targetname = expconfig['targets'][0]
     configfile = configdir + '/' + targetname + '.yaml'
     config = yaml.load(open(configfile))
-    prIBCname = config['primaryinbeam']
+    if not inverse_referencing:
+        prIBCname = config['primaryinbeam']
+    else:
+        prIBCname = config['primarytarget']    
     targetdir = expconfig['rootdir']
     foldername = targetdir.split('/')[-1]
     if foldername == '':
@@ -44,14 +56,23 @@ def expno2sources(expno):
 
 def prepare_path_source(targetname, inverse_referencing=False):
     """
-    it might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC
+    Note
+    ----
+    It might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC.
+
+    Input parameters
+    ----------------
+
+    Return parameters
+    -----------------
+    auxdir, configdir, targetdir, phscalname, prIBCname
     """
     auxdir    = os.environ['PSRVLBAUXDIR']
     configdir = auxdir + '/configs/'
-    expconfigfile = configdir + '/' + targetname + '.yaml'
-    if not os.path.exists(expconfigfile):
-        expconfigfile = configdir + '/PULSAR.yaml'
-        if not os.path.exists(expconfigfile):
+    configfile = configdir + '/' + targetname + '.yaml'
+    if not os.path.exists(configfile):
+        configfile = configdir + '/PULSAR.yaml'
+        if not os.path.exists(configfile):
             print('target yaml file does not exist; aborting')
             sys.exit()
     targetdir = auxdir + '/processing/' + targetname
@@ -59,11 +80,11 @@ def prepare_path_source(targetname, inverse_referencing=False):
         print("%s doesn't exist; return False\n" % targetdir)
         return False
         sys.exit()
-    expconfig = yaml.load(open(expconfigfile))
+    config = yaml.load(open(configfile))
     if not inverse_referencing:
-        prIBCname = expconfig['primaryinbeam']
+        prIBCname = config['primaryinbeam']
     else:
-        prIBCname = expconfig['primarytarget']    
+        prIBCname = config['primarytarget']    
     phscalname = target2cals(targetname)[0]
     print phscalname, prIBCname
     return auxdir, configdir, targetdir, phscalname, prIBCname
@@ -828,8 +849,9 @@ def sysErr(targetname, src1, src2):
 class expno_sysErr:
     paraA = 0.001
     paraB = 0.6
-    def __init__(s, expno, dualphscal='', paraA_rchsq=1e-4):
-        [s.targetname, s.foldername, s.phsrefname, s.prIBCname] = expno2sources(expno)
+    def __init__(s, expno, dualphscal='', paraA_rchsq=1e-4, inverse_referencing=False):
+        s.inverse_referencing = inverse_referencing
+        [s.targetname, s.foldername, s.phsrefname, s.prIBCname] = expno2sources(expno, s.inverse_referencing)
         s.expno = expno
         auxdir    = os.environ['PSRVLBAUXDIR']
         targetdir = auxdir + '/processing/' + s.foldername
@@ -871,6 +893,11 @@ class expno_sysErr:
         expconfig = yaml.load(open(expconfigfile))
         return expconfig['dodefaultnames']
     def targetbeam(s): #also get SNprIBCs, using prIBC statsfile,
+        """
+        Note
+        ----
+        1. statsfile for divided IBC fitsfile is not used, as the image S/N normally increases after dividing the model.
+        """
         if not s.dodefaultnames:
             prIBCstatsfiles = glob.glob(r'%s/*%s.difmap.jmfit.stokesi.stats' % (s.expdir, s.prIBCname))
         else:
@@ -3095,6 +3122,8 @@ class generatepmparin:
     4) in the end, you can make plots with the bootstrap instograms
     5) test potential outlying of a specific epoch, using the 'plot_to_justify_potential_outlier_using_bootstrapping_given_expno' function group
     6) make corner plots of the three or five astrometric parameters using the 'covariance_2d_plots_with_chainconsumer' function
+    7) to make pmparin in the case of inverse referencing with respect to more than one IBCs, one needs to change 'primartytarget' (prIBC)
+       through all IBCs; each time run and create a pmparin (either pmpar.in or pmpar.in.preliminary)
 
     Usage instructions:
     The functions are largely organized in the order of running: write_out_preliminary/final --> bootstrap_pmpar --> boostrapped_sample2estimates
@@ -3164,10 +3193,13 @@ class generatepmparin:
         s.find_statsfiles(check_inbeam)
         if not os.path.exists(s.pmparesultsdir):
             os.system('mkdir %s' % s.pmparesultsdir)
+        inverse_referenced_to = ''
+        if s.inverse_referencing:
+            inverse_referenced_to = '.to.' + s.prIBCname
         if check_inbeam == '':
-            pulsitions = s.pmparesultsdir + '/' + s.targetname + '.pmpar.in.preliminary'
+            pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
         else:
-            pulsitions = s.pmparesultsdir + '/' + check_inbeam + '.pmpar.in.preliminary'
+            pulsitions = s.pmparesultsdir + '/' + check_inbeam + inverse_referenced_to + '.pmpar.in.preliminary'
         s.RAs = np.array([])
         s.Decs = np.array([])
         s.error0RAs = np.array([])
@@ -3176,6 +3208,10 @@ class generatepmparin:
         s.decyears = np.array([])
         s.epoch = s.statsfiles2median_decyear2epoch(s.statsfiles)
         fileWrite = open(pulsitions, 'w')
+        if s.inverse_referencing:
+            fileWrite.write("### positions for %s inverse-referencing to %s\n" % (s.prIBCname, s.targetname))
+        else:
+            fileWrite.write("### positions for %s\n" % s.targetname)
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + s.targetname + "\n")
         fileWrite.write("#ref = " + s.targetname + "\n")
@@ -3195,13 +3231,32 @@ class generatepmparin:
         fileWrite.close()
         s.nepoch = len(s.RAs)
 
-    def write_out_pmparin_incl_sysErr(s, pmparesultsdir, targetname, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA_rchsq):
+    def write_out_pmparin_incl_sysErr(s, pmparesultsdir, targetname, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA_rchsq, **kwargs):
+        """
+        Input parameters
+        ----------------
+        kwargs : 
+            1. inverse_referencing : bool (default : False)
+                This is not actually necessary since self.inverse_referencing can be called.
+                But the introduction of this kwarg allow extracting this function from the class.
+        """
+        try:
+            inverse_referencing = kwargs['inverse_referencing']
+        except KeyError:
+            inverse_referencing = False
         errorRAs   = np.array([])
         errorDecs  = np.array([])
         if pulsition_suffix != '':
             pulsition_suffix = '.' + pulsition_suffix
-        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in' + pulsition_suffix
+        inverse_referenced_to = ''
+        if inverse_referencing:
+            inverse_referenced_to = '.to.' + s.prIBCname
+        pulsitions = pmparesultsdir + '/' + targetname + inverse_referenced_to + '.pmpar.in' + pulsition_suffix
         fileWrite = open(pulsitions, 'w')
+        if s.inverse_referencing:
+            fileWrite.write("### positions for %s inverse-referencing to %s\n" % (s.prIBCname, s.targetname))
+        else:
+            fileWrite.write("### positions for %s\n" % s.targetname)
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + targetname + "\n")
         fileWrite.write("#ref = " + targetname + "\n")
@@ -3209,7 +3264,7 @@ class generatepmparin:
         fileWrite.write("#pi = 0\n")
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
         for i in range(nepoch):
-            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq)
+            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing)
             [sysErrRA_mas, sysErrDec_mas, sysErrRA_ms] = sysError.sysErr()
             sysErrRA_s = sysErrRA_ms/1000
             sysErrDec_as = sysErrDec_mas/1000
@@ -3257,12 +3312,17 @@ class generatepmparin:
         D0 = 1/PI0
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq
     def write_out_final_pmpar_in(s, paraA_rchsq=1e-3, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
+        """
+        Note
+        ----
+        1. inverse_referencing is directly feeded into self.write_out_pmparin_incl_sysErr() as a kwarg.
+        """
         s.write_out_preliminary_pmpar_in()
         if not s.dualphscal:
-            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, 1e-3)
+            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, 1e-3, inverse_referencing=s.inverse_referencing)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         if s.dualphscal:
-            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'use.A1', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq)
+            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'use.A1', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing)
             #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
             while False: #iteratively getting paraA_rchsq is turned off
@@ -3271,7 +3331,7 @@ class generatepmparin:
                     sys.exit()
                 while rchsq > 1:
                     paraA_rchsq += paraA_rchsq_step
-                    [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '.unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq)
+                    [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '.unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing)
                     #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
                     [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq, paraA_rchsq

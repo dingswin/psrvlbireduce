@@ -2750,6 +2750,12 @@ class vlbireduce(support_vlbireduce):
             numtargets, targetconfigs, expconfig, targetonly, imageoutofbeam, inbeamuvdatas, bandpassclversion, ampcalsrc,
             directory, experiment, phscalnames, modeldir, inbeamnames,
             calonly, targetnames, haveungated, ungateduvdata, scinttablepaths, gateduvdata):
+        """
+        Note
+        ----
+        1. An extra model-divided fits file will be made for IBCs added to 'dividesources' of the target yaml file; a statsfile
+            will be acquired for that extra fitsfile using vlbatasks.jmfit()
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print "Runlevel " + str(self.runlevel) + ": Splitting and writing final images"
             for i in range(numtargets):
