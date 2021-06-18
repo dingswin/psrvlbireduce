@@ -26,8 +26,11 @@ def run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots=False):
     """
     Note
     ----
-    Use final*py instead of  rerunfinalastrometry.py from a high runlevel if you want to keep the solution tables.
-    However, a keep_talbes_runlevel_threshold is set (currently 32) to avoid unwanted deletions of solution tables.
+    1. Use final*py instead of  rerunfinalastrometry.py from a high runlevel if you want to keep the solution tables.
+        However, a keep_talbes_runlevel_threshold is set (currently 32) to avoid unwanted deletions of solution tables.
+    2. Since the tables will be deleted for runfromlevel < keep_tables_runlevel_threshold, one either set a small 
+        runfromlevel where no tables have been made, or from >= keep_tables_runlevel_threshold. Otherwise, there will be
+        complaint.
 
     Input parameters
     ----------------
@@ -76,7 +79,9 @@ parser.add_option("-p", "--prepare", dest="prepare", default=False,
 parser.add_option("-o", "--prepareonly", dest="prepareonly", default=False,
                   action="store_true",help="run prepare_astrometric_epoch.py only")
 parser.add_option("-r", "--runlevel", dest="runlevel", default=1,
-                  help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2")
+                  help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2. Since the tables will be deleted for
+                  runfromlevel < keep_tables_runlevel_threshold, one either set a small runfromlevel where no tables have
+                  been made, or from >= keep_tables_runlevel_threshold. Otherwise, there will be complaint.")
 parser.add_option("-k", "--skipdiagnosticplots", dest="skipdiagnosticplots", default=False,
                   action="store_true", help="Do not make diagnostic plots")
 (options, junk) = parser.parse_args()

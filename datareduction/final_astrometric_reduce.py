@@ -3,10 +3,12 @@
 ## final_astrometric_reduce.py: A ParselTongue script for phase referencing VLBA 
 ## data and getting positions of pulsars and inbeam calibrators
 ## Adam Deller, 08 Jan 2013
+## Hao Ding re-organized the code into object-baesd form and added new features
+##     (e.g. the dual-phscal function) since Nov 2018.
 ################################################################################
 
 ################################################################################
-# AIPS imports
+## AIPS imports
 ################################################################################
 from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
@@ -15,7 +17,7 @@ from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from AIPSTV import AIPSTV
 
 ################################################################################
-# General python imports
+## General python imports
 ################################################################################
 import sys, os, string, math, warnings, subprocess, yaml, glob
 import interaction, vlbatasks
@@ -24,20 +26,28 @@ from optparse import OptionParser
 warnings.defaultaction = "always"
 
 ################################################################################
-# vlbireduce class
+## vlbireduce class
 ################################################################################
 class support_vlbireduce(object):
     """
-    1. Purpose: This is a module serving as the core of the psrvlbireduce project. It is based upon Adam's well 
+    Purpose
+    -------
+    This is a module serving as the core of the psrvlbireduce project. It is based upon Adam's well 
     tested and versatile code. The introduction of this module would make main code short and flexible. 
     The vision is to not only focus on VLBI data reduction for PSRPI/MSPSRPI projects, but also for 
     other compact radio sources observed in various observing setups.
-    2. Structure: The module is functionally split into two classes. The 'vlbireduce' class is the one to be 
+    
+    Structure
+    ---------
+    The module is functionally split into two classes. The 'vlbireduce' class is the one to be 
     called, which includes all the calibration steps. The 'support_vlbireduce' class provides the data-preparation 
     and supporting (repetively used) functions.
-    3. Note: Don't use the same function name in the two classes! The class shall only be called once!
+    
+    Note
+    ----
+    Don't use the same function name in the two classes! The class shall only be called once!
     """
-    ## initiate the variables that iterates during the run.
+    ## initiate the variables that iterates during the run #################
     runlevel = 1
     clversion = 1
     snversion = 1
@@ -120,10 +130,22 @@ class support_vlbireduce(object):
                       clversion, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, 
                       leakagedopol=0):
         """
-        usage:run CALIB (self-calibration) on in-beam calibrators
-        Note: need to be very cautious when removing the input variables of this function 
+        Functionality
+        -------------
+        1. Run CALIB (self-calibration) on in-beam calibrators.
+        2. Output sntables and delete others generated in the process of this function. 
+        
+        Note
+        ----
+        1. Need to be very cautious when removing the input variables of this function 
             because replace them with self.XX won't work out. As an example, self.doneinbeams
             and self.secondaryinbeams share the same input (doneinbeams).
+        2. This function does not change snversion or clversion.
+
+        Return parameters
+        -----------------
+        tocalnames : list of str
+        tocalindices : list of int
         """
         normed = []
         tocaluvdata = []
@@ -2201,8 +2223,14 @@ class vlbireduce(support_vlbireduce):
 
     def prepare_variables_for_inbeamselfcal(self, inbeamuvdatas, targetconfigs, numtargets, inbeamnames, targetnames):
         """
-        prepare some variables for operations on inbeam calibrators
-        note: must be run before any inbeamselfcal step
+        Functionality
+        -------------
+        prepare some variables for operations on inbeam calibrators.
+        
+        Note
+        ----
+        1. must be run before any inbeamselfcal step.
+        2. inverse referencing is made possible here.
         """
         self.doneinbeams = []
         self.inbeamfilenums = []
@@ -2261,8 +2289,8 @@ class vlbireduce(support_vlbireduce):
                             self.doneinbeams.append(primaryinbeam.strip())
                             self.inbeamfilenums.append(j)
                     if primaryinbeam.strip() == targetnames[i]:
-                        if not targetnames[i] in self.doneinbeams:
-                            self.doneinbeams.append(targetnames[i])
+                        if not targetnames[i] in self.doneinbeams: ## here is for inverse-referencing!
+                            self.doneinbeams.append(targetnames[i]) 
                             self.inbeamfilenums.append(-1)
         for primaryinbeam in primaryinbeams:
             if not primaryinbeam.strip() in self.doneinbeams:
@@ -2342,7 +2370,7 @@ class vlbireduce(support_vlbireduce):
                                        targetconfigs, targetonly, calonly, False, False, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        dualphscal_setup, tabledir)
-            #sncount is used to point at SN table in post-phscal stage
+            ## sncount is used to point at SN table in post-phscal stage
         else:
             print "Skipping application of inbeam phase-only selfcal (combined IFs)"
             if self.maxinbeamcalibp1mins > 0:
@@ -2395,7 +2423,7 @@ class vlbireduce(support_vlbireduce):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
             
             inbeamselfcalp1sntable = tabledir + targetconfigs[-1]['primaryinbeam'].split(',')[0].strip() + '.icalib.p1.sn'
-            #it is quite unlikely we need to do dual-phscal calibration on a multi-target observation
+            ## it is quite unlikely we need to do dual-phscal calibration on a multi-target observation
             for i in range(20):
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+i)
                 ## reverse the last applyinbeamcalib only on target data
@@ -3213,7 +3241,7 @@ def main():
 
 
     ################################################################################
-    # Check validity of inputs, load up the config files
+    ## Check validity of inputs, load up the config files
     ################################################################################
     if experiment == "":
         parser.error("You must supply an experiment name")
@@ -3247,8 +3275,8 @@ def main():
     directory     = rootdir + '/' + experiment.lower() + '/'
     tabledir      = directory + "/tables/"
     logdir        = directory + "/logs/"
-    clversion     = 1
-    snversion     = 1
+    #clversion     = 1
+    #snversion     = 1
     klass         = 'UVDATA'
     uvsequence    = 1
     logfile       = directory + "/" + experiment.lower() + ".datacheck.log"
@@ -3301,13 +3329,13 @@ def main():
 
 
     ################################################################################
-    # get an instance of the vlbireduce class
+    ## get an instance of the vlbireduce class
     ################################################################################
     reducevlbi = vlbireduce(runfromlevel, runtolevel)
 
 
     ################################################################################
-    # Parse the source file and set some more variables
+    ## Parse the source file and set some more variables
     ################################################################################
     try:
         gateduvfile   = expconfig['gateduvfile']
@@ -3334,9 +3362,9 @@ def main():
         phscalnames   = expconfig['phscalnames']
         if type(phscalnames) != list:
             phscalnames = [phscalnames]
-        ampcalsrc     = expconfig['ampcalsrc'] # here we should consider to generalize to ampcalsrcs later
+        ampcalsrc     = expconfig['ampcalsrc'] ## here we should consider to generalize to ampcalsrcs later
     except KeyError:
-    # the deprecated source file setup that would still be in use for until old data are published
+    ## the deprecated source file setup that would still be in use for until old data are published
         print("some of the expconfig variables are missing, try to find it in source file as an alternative")
         sourcefile = directory + experiment.lower() + ".source"
         if not os.path.exists(sourcefile):
@@ -3345,7 +3373,7 @@ def main():
         else:
             gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
             targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile, experiment, klass, uvsequence)
-    # the deprecated part ends here
+    ## the deprecated part ends here
     reducevlbi.cmband = ""
     try:
         reducevlbi.cmband = "." + str(expconfig['cmband']).strip() + "cm"
@@ -3368,8 +3396,8 @@ def main():
         alluvdatas.append(uvdata)
 
     ################################################################################
-    # Save a record of the time and the arguments of this run, and start the log
-    # Echo inputs from yaml files to the log
+    ## Save a record of the time and the arguments of this run, and start the log
+    ## Echo inputs from yaml files to the log
     ################################################################################
     AIPS.log = open(logfile, logmode)
     sys.stdout = Logger(AIPS.log)
@@ -3393,7 +3421,7 @@ def main():
     logout.close()
 
     ################################################################################
-    # Zap the existing cal tables if requested
+    ## Zap the existing cal tables if requested
     ################################################################################
     if zapallcaltables and runfromlevel > 1:
         print "Zapping all SN, BP, and CL tables (except CL 1)!"
@@ -3411,7 +3439,7 @@ def main():
                     uvdata.table('CL', table[0]).zap()
 
     ################################################################################
-    # Begin the actual data processing
+    ## Begin the actual data processing
     ################################################################################
 
     ## Load the uv data ############################################################
