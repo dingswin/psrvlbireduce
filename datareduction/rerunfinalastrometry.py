@@ -22,19 +22,44 @@ def prepare_given_exp(experiment):
         os.chdir(expdir)
         print "\nrun prepare_astrometric_epoch.py...\n"
         os.system("prepare_astrometric_epoch.py %s.vex" % (experiment))
-def run_pipeline_given_exp(experiment):
+def run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots=False):
+    """
+    Note
+    ----
+    Use final*py instead of  rerunfinalastrometry.py from a high runlevel if you want to keep the solution tables.
+    However, a keep_talbes_runlevel_threshold is set (currently 32) to avoid unwanted deletions of solution tables.
+
+    Input parameters
+    ----------------
+    experiment : str
+        Experiment number.
+    runlevel : str
+        Containing 'runfromlevel' or 'runfromlevel,runtolevel' info.
+        e.g. '2', or '2,5'.
+    skipdiagnosticplots : bool (default : False)
+        If True, skip making diagnostic plots.
+    """
     expdir = exp2expdir(experiment)
     tablefolder = expdir + '/tables/'
-    print "deleting sn, bp and ps tables...\n"
+    keep_tables_runlevel_threshold = 32
     try:
-        os.system('rm %s/{*sn,*bp,*ps}' % (tablefolder))
-    except OSError:
-        print "Some of the tables are already removed\n"
+        runfromlevel = int(runlevel)
+    except ValueError:
+        runfromlevel = int(runlevel.split(',')[0])
+    if runfromlevel < keep_tables_runlevel_threshold:
+        print "deleting sn, bp and ps tables...\n"
+        try:
+            os.system('rm %s/{*sn,*bp,*ps}' % (tablefolder))
+        except OSError:
+            print "Some of the tables are already removed\n"
     #solutions to keep being used need to save to *.sn.save or *.bp.save. 
     solutions_to_use = glob.glob(r'%s/*.save' % (tablefolder))
     for solution in solutions_to_use:
         os.system('cp %s %s' % (solution, solution.replace('.save', '')))
-    os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
+    if skipdiagnosticplots:
+        os.system('final_astrometric_reduce.py -e %s -r %s -k --alwayssaved' % (experiment, runlevel))
+    else:
+        os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
 
 auxdir    = os.environ['PSRVLBAUXDIR']
 codedir   = os.environ['PSRVLBICODEDIR']
@@ -52,12 +77,15 @@ parser.add_option("-o", "--prepareonly", dest="prepareonly", default=False,
                   action="store_true",help="run prepare_astrometric_epoch.py only")
 parser.add_option("-r", "--runlevel", dest="runlevel", default=1,
                   help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2")
+parser.add_option("-k", "--skipdiagnosticplots", dest="skipdiagnosticplots", default=False,
+                  action="store_true", help="Do not make diagnostic plots")
 (options, junk) = parser.parse_args()
 targetname      = options.target
 experiment      = options.experiment
 prepare         = options.prepare
 prepareonly     = options.prepareonly
 runlevel        = options.runlevel
+skipdiagnosticplots = options.skipdiagnosticplots
 targetdir = auxdir + '/processing/' + targetname
 
 
@@ -68,7 +96,7 @@ if experiment!='' and targetname=='':
     prepare_given_exp(experiment)
     if prepareonly:
         sys.exit()
-    run_pipeline_given_exp(experiment)
+    run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots)
     sys.exit()
 
 # if experiment=='' and targetname!=''
@@ -89,7 +117,7 @@ for vexfile in vexfiles:
     prepare_given_exp(experiment)
     if prepareonly:
         continue
-    run_pipeline_given_exp(experiment)
+    run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots)
     """
     expdir     = exp2expdir(experiment)
     tablefolder = expdir + '/tables/'

@@ -2914,16 +2914,41 @@ class simulate_fake_pulsars_for_abcfitting_check(pulsars_based_GdotG_kD):
 
 class find_virtual_calibrator_position_with_colinear_calibrators:
     """
-    in calibrator_search_mode, either srcname is in the form of 'HH:MM:SS.SSS,dd:mm:ss.ss'
+    Note
+    ----
+    1. In calibrator_search_mode, either srcname is in the form of 'HH:MM:SS.SSS,dd:mm:ss.ss'.
+    2. When self.inverse_referencing==True, target and phscal2 are switched.
+    
+    Input parameters
+    ----------------
+    kwargs :
+        1. inverse_referencing : bool (default : False)
+            When inverse_referencing==True, target and phscal2 are switched.
+    
+    Return parameters
+    -----------------
+    return sep_V2T : float (in arcmin)
+        Angular separation between the target and the virtual calibrator.
+    inbeamsn_ratio : float
+        The ratio by which the phase solutions are multiplied.
     """
-    def __init__(s, targetname, phscal1name, phscal2name): ## phscal2 is the "inbeamcal"
-        s.targetname = targetname
-        s.phscal1name = phscal1name
-        s.phscal2name = phscal2name
-        #print s.targetname, s.phscal1name
+    def __init__(s, targetname, phscal1name, phscal2name, **kwargs): ## phscal2 is the "inbeamcal"
         s.calibrator_search_mode = False
-        if prepare_path_source(s.targetname) == False:
+        if prepare_path_source(targetname) == False:
             s.calibrator_search_mode = True
+        try:
+            s.inverse_referencing = kwargs['inverse_referencing']
+        except KeyError:
+            s.inverse_referencing = False
+        s.psrname = targetname
+        s.phscal1name = phscal1name
+        if s.inverse_referencing:
+            s.targetname = phscal2name
+            s.phscal2name = targetname
+        else:
+            s.targetname = targetname
+            s.phscal2name = phscal2name
+        #print s.targetname, s.phscal1name
         s.prepare_positions()
         s.quantify_the_plane1_paramters_defined_by_two_phscals_and_000point()
         s.get_the_plane2_perpendicular_to_plane1_and_pass_target_and_000point()
@@ -2932,7 +2957,7 @@ class find_virtual_calibrator_position_with_colinear_calibrators:
     def prepare_positions(s):
         for source in ['target', 'phscal1', 'phscal2']:
             if not s.calibrator_search_mode:
-                exec('[s.RA_%s, s.Dec_%s] = srcposition(s.targetname, s.%sname)' % (source, source, source))
+                exec('[s.RA_%s, s.Dec_%s] = srcposition(s.psrname, s.%sname)' % (source, source, source))
             else:
                 exec('s.RA_%s = s.%sname.split(",")[0].strip()' % (source, source))
                 exec('s.Dec_%s = s.%sname.split(",")[1].strip()' % (source, source))

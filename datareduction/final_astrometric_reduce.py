@@ -595,6 +595,11 @@ class support_vlbireduce(object):
                          targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
         """
         apply CALIB (self-calibration) solutions from in-beam calibrators
+
+        Return parameters
+        -----------------
+        sncount : int
+           Number of inbeam calibrators to on which respective solutions are applied. 
         """
         phsrefnames = []
         for targetname in targetnames:
@@ -2379,6 +2384,9 @@ class vlbireduce(support_vlbireduce):
     def do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(self, dualphscal_setup, 
             directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, calonly, haveungated, tocalnames, tocalindices, 
             expconfig, targetconfigs, inbeamnames, targetnames):
+        """
+        Correct the inbeamcalibp1 solutions, then apply to the target only.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
            int(dualphscal_setup[0].strip()) > 0:
             print("Adopt dual-phscal mode now...")
@@ -2387,7 +2395,7 @@ class vlbireduce(support_vlbireduce):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
             
             inbeamselfcalp1sntable = tabledir + targetconfigs[-1]['primaryinbeam'].split(',')[0].strip() + '.icalib.p1.sn'
-            #it's quite unlikely we need to do dual-phscal calibration on a multi-target observation
+            #it is quite unlikely we need to do dual-phscal calibration on a multi-target observation
             for i in range(20):
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+i)
                 ## reverse the last applyinbeamcalib only on target data
@@ -3184,6 +3192,8 @@ def main():
     parser.add_option("--startlocaltv", dest="startlocaltv", default=False,
                       action="store_true", help="Start a local AIPS TV " + \
                                                 "(for X11, VNC etc")
+    parser.add_option("-k", "--skipdiagnosticplots", dest="skipdiagnosticplots", default=False,
+                      action="store_true", help="Do not make diagnostic plots")
     (options, junk) = parser.parse_args()
     auxdir          = ""
     rootdir         = ""
@@ -3195,6 +3205,7 @@ def main():
     alwayssaved     = options.alwayssaved
     startlocaltv    = options.startlocaltv
     runsplit        = options.runlevel.split(',')
+    skipdiagnosticplots = options.skipdiagnosticplots
     runfromlevel    = int(runsplit[0])
     runtolevel      = 999
     if len(runsplit) > 1:
@@ -3509,7 +3520,7 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
             modeldir, modeltype, targetonly, calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved)
-    ## Load all the inbeam CALIB solutions ########################################
+    ## Load the inbeam CALIB p1 solutions ########################################
     reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
             ungateduvdata, dualphscal_setup, tabledir)
@@ -3524,7 +3535,7 @@ def main():
     ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
             tabledir, targetconfigs, inbeamuvdatas)
-    ## Load all the inbeam CALIB solutions ########################################################################
+    ## Load the inbeam CALIB pn solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
             gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
             dualphscal_setup, tabledir)
@@ -3642,7 +3653,8 @@ def main():
                                  False,shiftedimage,48)
     """
     ## Make some nice diagnostic plots #############################################
-    reducevlbi.make_diagnostic_plots(directory, codedir)
+    if not skipdiagnosticplots:
+        reducevlbi.make_diagnostic_plots(directory, codedir)
 
 if __name__ == "__main__":
     main()

@@ -6192,7 +6192,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                 phase_shifts = []
                 while not phase_shifts in ['s', 'n']:
                     s.plot_diagnostic_phi_versus_time_for_each_antenna1(eachAnt, i)
-                    phase_shifts = raw_input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*180 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
+                    phase_shifts = raw_input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*360 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
                     try: 
                         N1 = int(phase_shifts.split(',')[0].strip())
                         N2 = int(phase_shifts.split(',')[1].strip())
