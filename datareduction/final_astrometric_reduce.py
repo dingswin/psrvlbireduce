@@ -1,12 +1,47 @@
 #!/usr/bin/env ParselTongue
-################################################################################
-## final_astrometric_reduce.py: A ParselTongue script for phase referencing VLBA 
-## data and getting positions of pulsars and inbeam calibrators
-## Adam Deller, 08 Jan 2013
-## Hao Ding re-organized the code into object-baesd form and added new features
-##     (e.g. the dual-phscal function) since Nov 2018.
-################################################################################
+"""
+Functionality
+-------------
+A ParselTongue script for phase referencing VLBA data and getting positions 
+of pulsars and inbeam calibrators.
 
+Code structure
+--------------
+final_astrometric_reduce.py :
+    major data reduction pipeline provoking functions in vlbatasks.py.
+vlbatasks.py :
+    repetitively used basic ParselTongue scripts.
+
+Versions
+--------
+initial version :
+    finished at 08 Jan 2013 by Adam Deller, fully functional for the data
+    reduction of the PSRPI project.
+new versions : 
+    have been maintained by Hao Ding since Nov. 2018. The changes include         
+    re-organization of the code into object-baesd form and added new features
+    (e.g. the dual-phscal function) since Nov 2018.
+
+Commenting Conventions
+----------------------
+Apart from the docstrings provided below the class/function titles, rich comments
+are offered to help users understand and develop upon this code. All comments
+will be gradually replaced by three major formats.
+1. same-line comments :
+    comments given right after a line of code, starting with '## '.
+2. multi-line comments :
+    comments given in two lines singling out a paragraph of code to be commented
+    on. The top line of such comments begins with '## >>> ', while the bottom one
+    stays as '## <<< ' to mark the end of the paragraph. If the singled-out
+    paragraph is long, the comments in the top line will be repeated in the bottom
+    comment. The indentation shall stay the same as the paragraph to be commented on.
+3. segment comments :
+    the longer part of code is divided according its function into several segments.
+    Such segments start with the following comments.
+    #######################################
+    ## SEGMENT COMMENTS
+    #######################################
+"""
 ################################################################################
 ## AIPS imports
 ################################################################################
@@ -141,11 +176,36 @@ class support_vlbireduce(object):
             because replace them with self.XX won't work out. As an example, self.doneinbeams
             and self.secondaryinbeams share the same input (doneinbeams).
         2. This function does not change snversion or clversion.
+        
+        Input parameters
+        ----------------
+        doneinbeams : list of str
+            Includes inbeam calibrator (can be the pulsar in the case of inverse referencing)
+            for each target to do self-calibration.
+        inbeamfilenums : list of int
+            used to control which uvdata to do self-calibration, essential for inverse referencing.
+        clversion : int
+            clversion of uvdata (see local parameters) to run CALIB. Since uvdata can be for inbeam or
+            for target (when applying inverse referencing), clversion need to be aligned to avoid
+            complaints.
+        
+        Local parameters
+        ----------------
+        parenttarget : int
+            the index for the target.
+        uvdata : str
+            physical uvdata to run self-calibration.
+        simplecal : bool 
+            If True, then either config['separateifmodel']==True, or 
+            ((not dosecondary) and len(config['primaryinbeam'].split(',')) > 1)==True.
+            Plainly put, if True, either a separate-IF model is used, or the concatenation of
+            multiple divided inbeamuvdatas is used to do self-calibration.
 
         Return parameters
         -----------------
         tocalnames : list of str
         tocalindices : list of int
+            indice of targets to do inbeam self-calibration (incl. inverse referencing).
         """
         normed = []
         tocaluvdata = []
@@ -164,8 +224,11 @@ class support_vlbireduce(object):
 
         if not targetonly:
             simplecal = True
-            print doneinbeams
-            for (inbeamsrc, targetfilenum) in zip(doneinbeams, inbeamfilenums):
+            print(doneinbeams)
+            ## >>> for inverse referencing, inbeamsrc is the pulsar!
+            for (inbeamsrc, targetfilenum) in zip(doneinbeams, inbeamfilenums): 
+            ## <<<
+                ## >>> get parenttarget, the index for the target
                 parenttarget = -1
                 for i in range(numtargets):
                      if parenttarget >= 0: break
@@ -177,21 +240,22 @@ class support_vlbireduce(object):
                          parenttarget = i
                          break
                 if parenttarget < 0:
-                    print "Couldn't find a parent target for " + inbeamsrc + \
-                          " - this should never happen, aborting!"
+                    print("Couldn't find a parent target for " + inbeamsrc + \
+                          " - this should never happen, aborting!")
                     sys.exit()
+                ## <<<
                 config = targetconfigs[parenttarget]
-                print "Parenttarget is", parenttarget
-                print "Sumifs is", sumifs
-                print "Doampcal is", doampcal
-                print "Desecondary is", dosecondary
+                print("Parenttarget is", parenttarget)
+                print("Sumifs is", sumifs)
+                print("Doampcal is", doampcal)
+                print("Desecondary is", dosecondary)
                 solmins = -1
                 if doampcal:
                     if not sumifs:
                         try:
                             solmins = config['inbeamcalibapnmins']
                         except KeyError:
-                            print "No key for inbeamcalibapnmins, will skip inbeamapn calib for this source"
+                            print("No key for inbeamcalibapnmins, will skip inbeamapn calib for this source")
                     else:
                         try:
                             solmins = config['inbeamcalibap1mins']
@@ -199,7 +263,7 @@ class support_vlbireduce(object):
                 else:
                     if dosecondary:
                         if not sumifs:
-                            print "Can't do separate IFs secondary!"
+                            print("Can't do separate IFs secondary!")
                             sys.exit()
                         try:
                             solmins = config['inbeamcalibsp1mins']
@@ -212,7 +276,7 @@ class support_vlbireduce(object):
                                 solmins = config['inbeamcalibpnmins']
                             except KeyError: pass
                 if solmins < 0:
-                    print "Skipping " + inbeamsrc
+                    print("Skipping " + inbeamsrc)
                     if sumifs:
                         if doampcal:
                             sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
@@ -225,7 +289,7 @@ class support_vlbireduce(object):
                             pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
                     else:
                         if dosecondary:
-                            print "Can't do separate IFs secondary!"
+                            print("Can't do separate IFs secondary!")
                             sys.exit()
                         if doampcal:
                             sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
@@ -233,7 +297,7 @@ class support_vlbireduce(object):
                         else:
                             sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
                             pspath  = tabledir + inbeamsrc + '.icalib.pn.ps'
-                    print "Removing", sntablepath, " and ", pspath
+                    print("Removing", sntablepath, " and ", pspath)
                     os.system("rm -f " + sntablepath)
                     os.system("rm -f " + pspath)
                     continue
@@ -250,38 +314,42 @@ class support_vlbireduce(object):
                     inbeam_uv_data = AIPSUVData(shortname, 'CALIB', 1, j)
                     if inbeam_uv_data.exists():
                         inbeam_uv_data.zap()
-                if targetfilenum >= 0:
+                ## >>> here is the second ingredient for inverse referencing to happen
+                if targetfilenum >= 0: ## see prepare_variables_for_inbeamselfcal()
                     uvdata = inbeamuvdatas[targetfilenum]
                 else:
                     uvdata = gateduvdata
+                ## <<<
                 domulti = False
                 combineifs = False
                 haveampcal = False
                 if expconfig['ampcalscan'] > 0:
                     haveampcal = True
-                # split out inbeam_uv_data=inbeamsrc.CALIB.1 from inbeamuvdata
-                vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc,
+                ## >>> split out inbeam_uv_data=inbeamsrc.CALIB.1 from uvdata
+                vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc, ## split to inbeam_uv_data
                                      1, domulti, haveampcal, beginif, 
                                      endif-subtractif, combineifs, leakagedopol)
+                ## <<<
                 inbeam_uv_data.table('NX', 1).zap()
                 if targetfilenum >= 0:
                     inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
                     rawuvoutputfile = directory + inbeamsrc + self.cmband + ".formodeling.uv.fits"
                     if not os.path.exists(inbeam_image_file):
-                        print "Can't find " + modeltype + " inbeam model  " + inbeam_image_file
+                        print("Can't find " + modeltype + " inbeam model  " + inbeam_image_file)
                         if modeltype == "preliminary":
-                            print "I will write out a data file for this inbeam to " + rawuvoutputfile
-                            print "Please image it with your favourite tool"
-                            print "(clean only if using difmap, no modelfitting)"
-                            print "When complete, copy the image fits file to " + inbeam_image_file
+                            print("I will write out a data file for this inbeam to " + rawuvoutputfile)
+                            print("Please image it with your favourite tool")
+                            print("(clean only if using difmap, no modelfitting)")
+                            print("When complete, copy the image fits file to " + inbeam_image_file)
                             vlbatasks.writedata(inbeam_uv_data, rawuvoutputfile, True)
                         else:
-                            print "Aborting!!"
+                            print("Aborting!!")
                         sys.exit(1)
                     inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, 1)
                     if inbeam_image_data.exists():
                         inbeam_image_data.zap()
                     vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
+                    ## >>> use the concatenation of more than one divided inbeamuvdatas for calibration
                     if not dosecondary and len(config['primaryinbeam'].split(',')) > 1:
                         simplecal = False
                         normdata = AIPSUVData(shortname, 'NORMUV', 1, 1)
@@ -294,6 +362,7 @@ class support_vlbireduce(object):
                             tocalimagedata.append(None)
                             tocalnames.append('CONCAT' + str(parenttarget))
                             tocalconfigs.append(config)
+                    ## <<<
                     elif config['separateifmodel']:
                         simplecal = False
                         for i in range(beginif,endif+1-subtractif):
@@ -321,11 +390,14 @@ class support_vlbireduce(object):
                         tocalimagedata.append(inbeam_image_data)
                         tocalnames.append(inbeamsrc)
                         tocalconfigs.append(config)
+                ## >>> targetfilenum<0  --> inverse referencing
                 else:
                     tocaluvdata.append(inbeam_uv_data)
-                    tocalimagedata.append(None)
+                    tocalimagedata.append(None) ## no image data used for pulsar
                     tocalnames.append(inbeamsrc)
                     tocalconfigs.append(config)
+                ## <<<
+            ## >>> use the concatenation of more than one divided inbeamuvdatas for calibration
             if not simplecal:
                 for i in range(numtargets):
                     solmins = -1
@@ -377,8 +449,15 @@ class support_vlbireduce(object):
                         #tocalnames.append('CONCAT' + str(i))
                         for n in normed[i]:
                             n.zap()
+            ## <<< use the concatenation of more than one divided inbeamuvdatas for calibration
+            
+            ######################################################
+            ## the actual self-calibration starts here
+            ######################################################
             for (inbeamsrc,config,inbeam_uv_data,inbeam_image_data) in \
                  zip(tocalnames,tocalconfigs,tocaluvdata,tocalimagedata):
+                ## >>> some of the local parameters have been defined previously;
+                ## >>> this redundancy increase robustness against future extensions.
                 dostokesi   = True
                 try:
                     inbeamuvrange = config['inbeamuvrange']
@@ -452,11 +531,12 @@ class support_vlbireduce(object):
                             dostokesi = config['inbeamcalibpnstokesi']
                         except KeyError:
                             dostokesi = False
-                print "Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr)
+                print("Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr))
                 try:
-                    flagwheremodelbelow = expconfig['inbeamminmodelflux'] #Jy
+                    flagwheremodelbelow = expconfig['inbeamminmodelflux'] ## Jy
                 except KeyError:
                     flagwheremodelbelow = -1
+                ## <<< 
                 if not alwayssaved or not os.path.exists(sntablepath):
                     vlbatasks.singlesource_calib(inbeam_uv_data, inbeam_image_data,
                                                  1, expconfig['refant'], doampcal, 
@@ -2231,6 +2311,7 @@ class vlbireduce(support_vlbireduce):
         ----
         1. must be run before any inbeamselfcal step.
         2. inverse referencing is made possible here.
+        3. self.doneinbeams include inbeam calibrator for each target to do self-calibration.
         """
         self.doneinbeams = []
         self.inbeamfilenums = []
@@ -2288,10 +2369,12 @@ class vlbireduce(support_vlbireduce):
                         if not primaryinbeam.strip() in self.doneinbeams:
                             self.doneinbeams.append(primaryinbeam.strip())
                             self.inbeamfilenums.append(j)
+                    ## here is the first ingredient of inverse referencing
                     if primaryinbeam.strip() == targetnames[i]:
-                        if not targetnames[i] in self.doneinbeams: ## here is for inverse-referencing!
+                        if not targetnames[i] in self.doneinbeams: 
                             self.doneinbeams.append(targetnames[i]) 
-                            self.inbeamfilenums.append(-1)
+                            self.inbeamfilenums.append(-1) ## < 0 --> inverse referencing, see inbeamselfcal()
+                    ##################
         for primaryinbeam in primaryinbeams:
             if not primaryinbeam.strip() in self.doneinbeams:
                 print "Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!"
