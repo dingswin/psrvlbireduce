@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ###########################################################################
-###-- remove sn,bp,ps tables in "tables" folders and rerun final*.py for a set of observations
+###-- remove sn,bp,ps tables in "tables" folders and rerun vlbi_astrometry.py for a set of observations
 ###-- tailored for MSPSRPI
 ###-- if -e bd223a, just rerun bd223a, if -s J1012+5307, rerun all epochs regarding the target 
 ############################################################################
@@ -26,7 +26,7 @@ def run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots=False):
     """
     Note
     ----
-    1. Use final*py instead of  rerunfinalastrometry.py from a high runlevel if you want to keep the solution tables.
+    1. Use vlbi_astrometry.py instead of  rerunvlbi_astrometry.py from a high runlevel if you want to keep the solution tables.
         However, a keep_talbes_runlevel_threshold is set (currently 32) to avoid unwanted deletions of solution tables.
     2. Since the tables will be deleted for runfromlevel < keep_tables_runlevel_threshold, one either set a small 
         runfromlevel where no tables have been made, or from >= keep_tables_runlevel_threshold. Otherwise, there will be
@@ -60,9 +60,9 @@ def run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots=False):
     for solution in solutions_to_use:
         os.system('cp %s %s' % (solution, solution.replace('.save', '')))
     if skipdiagnosticplots:
-        os.system('final_astrometric_reduce.py -e %s -r %s -k --alwayssaved' % (experiment, runlevel))
+        os.system('vlbi_astrometry.py -e %s -r %s -k --alwayssaved' % (experiment, runlevel))
     else:
-        os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
+        os.system('vlbi_astrometry.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
 
 auxdir    = os.environ['PSRVLBAUXDIR']
 codedir   = os.environ['PSRVLBICODEDIR']
@@ -71,11 +71,11 @@ configdir = auxdir + '/configs/'
 usage = "usage: %prog []\n-e --experiment\n-t --target\n-p --prepare\n-o --prepareonly\n-r --runlevel\n-h or --help for more"
 parser = OptionParser(usage)
 parser.add_option("-e", "--experiment", dest="experiment", default="",
-                  help="Experiment name to rerun the final_astrometric.py")
+                  help="Experiment name to rerun the vlbi_astrometry.py")
 parser.add_option("-t", "--target", dest="target", default="",
-                  help="target to rerun the final_astrometric_reduce.py")
+                  help="target to rerun the vlbi_astrometry.py")
 parser.add_option("-p", "--prepare", dest="prepare", default=False,
-                  action="store_true",help="run prepare_astrometric_epoch.py alongside final_astrometric_reduce.py")
+                  action="store_true",help="run prepare_astrometric_epoch.py alongside vlbi_astrometry.py")
 parser.add_option("-o", "--prepareonly", dest="prepareonly", default=False,
                   action="store_true",help="run prepare_astrometric_epoch.py only")
 parser.add_option("-r", "--runlevel", dest="runlevel", default=1,
@@ -110,7 +110,7 @@ if not os.path.exists(targetdir):
     print("%s folder doesn't exist; aborting\n" % (targetdir))
     sys.exit()
 
-sys.stdout = howfun.Logger(targetdir + "/rerun_finalastrometricreduce_runlog.txt")
+sys.stdout = howfun.Logger(targetdir + "/rerun_vlbi_astrometry_runlog.txt")
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 print "%s\nRunning script at %s (UTC)\n%s\n" % (70*'=',current_time,70*'=')
 
@@ -132,7 +132,7 @@ for vexfile in vexfiles:
         os.system("prepare_astrometric_epoch.py %s.vex" % (experiment))
     if prepareonly:
         continue
-    print "rerun final_astrometric_reduce.py for %s" % (experiment)
+    print "rerun vlbi_astrometry.py for %s" % (experiment)
     #os.chdir(codedir)
     
     print "\ndeleting sn, bp and ps tables for %s...\n" % (experiment)
@@ -145,7 +145,7 @@ for vexfile in vexfiles:
     for solution in solutions_to_use:
         os.system('cp %s %s' % (solution, solution.replace('.save', '')))
         
-    os.system('final_astrometric_reduce.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
+    os.system('vlbi_astrometry.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
     """
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 print "\nSuccessfully rerun through all epochs for %s at %s (UTC)\n" % (targetname,current_time)
