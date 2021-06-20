@@ -2493,7 +2493,7 @@ class vlbireduce(support_vlbireduce):
         return tocalnames, tocalindices
 
     def do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(self, dualphscal_setup, 
-            directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, calonly, haveungated, tocalnames, tocalindices, 
+            directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, 
             expconfig, targetconfigs, inbeamnames, targetnames, numtargets):
         """
         Correct the inbeamcalibp1 solutions, then apply to the target only.
@@ -2518,16 +2518,30 @@ class vlbireduce(support_vlbireduce):
                     targetungateduvdata = ungateduvdata
                 else:
                     uvdata = gateduvdata
-                    targetgateduvdata = targetungateduvdata = inbeamuvdatas[filenum] ## just to simplify code formalism below
+                    targetgateduvdata = targetungateduvdata = inbeamuvdatas[0] ## just to simplify code formalism below\
+                    ## primaryinbeam uvdata has to be the first of inbeamuvdatas!
                 ## <<<
                 
                 ## >>> reverse the last applyinbeamcalib only on target data (inbeam data while inverse referencing)
+                #for i in range(20):
+                #    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i)
+                #    if not calonly:
+                #        vlbatasks.deletetable(targetgateduvdata, 'CL', self.clversion+1+i) 
+                #        if haveungated:
+                #            vlbatasks.deletetable(targetungateduvdata, 'CL', self.clversion+1+i)
+                ## <<<
+
+                ## >>> reverse the last applyinbeamcalib only on all data (in case there was inverse referencing)
                 for i in range(20):
-                    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i)
+                    for j in range(len(inbeamuvdatas)):
+                        vlbatasks.deletetable(inbeamuvdatas[j], 'SN', self.snversion+i)
+                        vlbatasks.deletetable(inbeamuvdatas[j], 'CL', self.clversion+1+i) 
                     if not calonly:
-                        vlbatasks.deletetable(targetgateduvdata, 'CL', self.clversion+1+i) 
+                        vlbatasks.deletetable(gateduvdata, 'SN', self.snversion+i)
+                        vlbatasks.deletetable(gateduvdata, 'CL', self.clversion+1+i) 
                         if haveungated:
-                            vlbatasks.deletetable(targetungateduvdata, 'CL', self.clversion+1+i)
+                            vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+i)
+                            vlbatasks.deletetable(ungateduvdata, 'CL', self.clversion+1+i)
                 ## <<<
                 vlbatasks.loadtable(uvdata, inbeamselfcalp1sntable, self.snversion)
                 dualphscalp1 = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(uvdata)
@@ -2549,7 +2563,7 @@ class vlbireduce(support_vlbireduce):
                     ## >>> apply the corrected p1.sn only to the target
                     #junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                     junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                           targetconfigs, True, calonly, False, False, True,
+                                           targetconfigs, targetonly, calonly, False, False, True,
                                            self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                            dualphscal_setup, tabledir)
                     ## <<< 
@@ -3659,7 +3673,7 @@ def main():
             targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
     ## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
-            tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, calonly, haveungated, tocalnames, tocalindices, expconfig, targetconfigs, 
+            tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, expconfig, targetconfigs, 
             inbeamnames, targetnames, numtargets)
     ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
