@@ -79,8 +79,8 @@ parser.add_option("-p", "--prepare", dest="prepare", default=False,
 parser.add_option("-o", "--prepareonly", dest="prepareonly", default=False,
                   action="store_true",help="run prepare_astrometric_epoch.py only")
 parser.add_option("-r", "--runlevel", dest="runlevel", default=1,
-                  help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2. Since the tables will be deleted for
-                  runfromlevel < keep_tables_runlevel_threshold, one either set a small runfromlevel where no tables have
+                  help="runlevel at which to start (and stop), e.g. -r 1,2 or -r 2. Since the tables will be deleted for\
+                  runfromlevel < keep_tables_runlevel_threshold, one either set a small runfromlevel where no tables have\
                   been made, or from >= keep_tables_runlevel_threshold. Otherwise, there will be complaint.")
 parser.add_option("-k", "--skipdiagnosticplots", dest="skipdiagnosticplots", default=False,
                   action="store_true", help="Do not make diagnostic plots")
