@@ -27,8 +27,8 @@ new versions :
     re-organization of the code into object-baesd form and added new features
     (e.g. the dual-phscal function) since Nov 2018.
 
-Commenting Conventions
-----------------------
+Commenting syntax
+-----------------
 Apart from the docstrings provided below the class/function titles, rich comments
 are offered to help users understand and develop upon this code. All comments
 will be gradually replaced by three major formats.
@@ -40,6 +40,8 @@ will be gradually replaced by three major formats.
     stays as '## <<< ' to mark the end of the paragraph. If the singled-out
     paragraph is long, the comments in the top line will be repeated in the bottom
     comment. The indentation shall stay the same as the paragraph to be commented on.
+    Furthermore, the '## >>>' needs to completed with '## <<<'. '## >>>>' is expected
+    to be completed with '## <<<<'.
 3. segment comments :
     the longer part of code is divided according its function into several segments.
     Such segments start with the following comments.
@@ -455,7 +457,7 @@ def main():
     ## Do dual-phscal calibration if requested: 1). correct INBEAM.icalib.p1.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
             tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, expconfig, targetconfigs, 
-            inbeamnames, targetnames, numtargets)
+            inbeamnames, targetnames)
     ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
             tabledir, targetconfigs, inbeamuvdatas)

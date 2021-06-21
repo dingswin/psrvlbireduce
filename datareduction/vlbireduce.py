@@ -1705,7 +1705,7 @@ class vlbireduce(support_vlbireduce):
 
     def do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(self, dualphscal_setup, 
             directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, 
-            expconfig, targetconfigs, inbeamnames, targetnames, numtargets):
+            expconfig, targetconfigs, inbeamnames, targetnames):
         """
         Correct the inbeamcalibp1 solutions, then apply to the target only.
         """
@@ -1716,12 +1716,71 @@ class vlbireduce(support_vlbireduce):
             if not os.path.exists(inbeamselfcal_phase_time_folder):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
             
-            for j in range(numtargets):
+            for (tocalname, tocalindex) in zip(tocalnames, tocalindices):
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
-                inbeamselfcalp1sntable = tabledir + targetconfigs[j]['primaryinbeam'].split(',')[0].strip() + '.icalib.p1.sn'
+                inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.p1.sn'
                 ## <<<
                 
-                ## >>> to allow inverse referencing to work
+                ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
+                filenum = self.inbeamfilenums[tocalindex]
+                if filenum >= 0:
+                    uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
+                else:
+                    uvdata = gateduvdata
+                
+                for i in range(20):
+                    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i) ## supposed to be clear beforehand
+
+                vlbatasks.loadtable(uvdata, inbeamselfcalp1sntable, self.snversion)
+                dualphscalp1 = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(uvdata)
+                dualphscalp1.compile_into_table()
+                #originalinbeamselfcalp1sntable = dualphscal.copy_inbeamselfcal_sntable(inbeamselfcalp1sntable) 
+                
+                final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_inbeam_selfcal.final'
+                if not os.path.exists(final_inbeamselfcal_phase_edit):
+                    print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it to .corrected_phases_inbeam_selfcal.final and rerun the pipeline.")
+                    dualphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder)
+                    sys.exit()
+                else:
+                    phase_correction_factor = float(dualphscal_setup[1].strip())
+                    dualphscalp1.load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(final_inbeamselfcal_phase_edit,
+                                                                                                phase_correction_factor)
+                    dualphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.dualphscal.sn')
+                    dualphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, dualphscaloutputsn)
+                vlbatasks.deletetable(uvdata, 'SN', self.snversion) ## clean up after producing dualphscaloutputsn
+                ## <<<<
+                    
+            ## >>> apply the corrected p1.sn only to the target.\
+            ## the original clversion+1 CL table will be deleted and replaced in applyinbeamcalib() !!
+            junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                                   targetconfigs, True, calonly, False, False, True,
+                                   self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
+                                   dualphscal_setup, tabledir, self.inbeamfilenums)
+            ## <<< 
+                    
+        self.runlevel += 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do\
+        ## not trust this printTableAndRunlevel result if you are requesting iverse referencing!
+    
+    def _______do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(self, dualphscal_setup, 
+            directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, 
+            expconfig, targetconfigs, inbeamnames, targetnames):
+        """
+        Correct the inbeamcalibp1 solutions, then apply to the target only.
+        """
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
+           int(dualphscal_setup[0].strip()) > 0:
+            print("Adopt dual-phscal mode now...")
+            inbeamselfcal_phase_time_folder = directory+'/inbeamselfcal_phase_time_evolution'
+            if not os.path.exists(inbeamselfcal_phase_time_folder):
+                os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
+            
+            for (tocalname, j) in zip(tocalnames, tocalindices):
+                ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
+                inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.p1.sn'
+                ## <<<
+                
+                ## >>>> to allow inverse referencing to work
                 filenum = self.inbeamfilenums[j]
                 if filenum >= 0:
                     uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
@@ -1729,20 +1788,24 @@ class vlbireduce(support_vlbireduce):
                     targetungateduvdata = ungateduvdata
                 else:
                     uvdata = gateduvdata
-                    targetgateduvdata = targetungateduvdata = inbeamuvdatas[0] ## just to simplify code formalism below\
-                    ## primaryinbeam uvdata has to be the first of inbeamuvdatas!
-                ## <<<
+                    ## >>> just to simplify code formalism further below
+                    targetgateduvdata = targetungateduvdata = inbeamuvdatas[0]
+                    ## <<< 1. primaryinbeam uvdata has to be the first of inbeamuvdatas!
+                    ## <<< 2. note that for inverse-referencing, dual-phscal, targetonly applyinbeamcalib would still\
+                    ## <<< 2. apply to all inbeamcals for a target group!
+                ## <<<<
                 
                 ## >>> reverse the last applyinbeamcalib only on target data (inbeam data while inverse referencing)
-                #for i in range(20):
-                #    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i)
-                #    if not calonly:
-                #        vlbatasks.deletetable(targetgateduvdata, 'CL', self.clversion+1+i) 
-                #        if haveungated:
-                #            vlbatasks.deletetable(targetungateduvdata, 'CL', self.clversion+1+i)
+                for i in range(20):
+                    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i)
+                    if not calonly:
+                        vlbatasks.deletetable(targetgateduvdata, 'CL', self.clversion+1+i) ## because now self.targetcl==1 
+                        if haveungated:
+                            vlbatasks.deletetable(targetungateduvdata, 'CL', self.clversion+1+i)
                 ## <<<
 
-                ## >>> reverse the last applyinbeamcalib only on all data (in case there was inverse referencing)
+                ## >>> reverse the last applyinbeamcalib on all data (in case there was inverse referencing)
+                """
                 for i in range(20):
                     for j in range(len(inbeamuvdatas)):
                         vlbatasks.deletetable(inbeamuvdatas[j], 'SN', self.snversion+i)
@@ -1753,6 +1816,7 @@ class vlbireduce(support_vlbireduce):
                         if haveungated:
                             vlbatasks.deletetable(ungateduvdata, 'SN', self.snversion+i)
                             vlbatasks.deletetable(ungateduvdata, 'CL', self.clversion+1+i)
+                """
                 ## <<<
                 vlbatasks.loadtable(uvdata, inbeamselfcalp1sntable, self.snversion)
                 dualphscalp1 = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(uvdata)
@@ -1774,11 +1838,12 @@ class vlbireduce(support_vlbireduce):
                     ## >>> apply the corrected p1.sn only to the target
                     #junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                     junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                           targetconfigs, targetonly, calonly, False, False, True,
+                                           targetconfigs, True, calonly, False, False, True,
                                            self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                            dualphscal_setup, tabledir, self.inbeamfilenums)
                     ## <<< 
-                    vlbatasks.deletetable(uvdata, 'SN', self.snversion)
+                    
+                    #vlbatasks.deletetable(uvdata, 'SN', self.snversion)
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, uvdata)
 

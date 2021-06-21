@@ -644,12 +644,6 @@ class support_vlbireduce(object):
                     if expno in sourcefile1:
                         sourcefile = sourcefile1        
         return cals
-#def find_alternative_targetname(targetname):
-#    expconfigfile = configdir + experiment + '.yaml'
-#    if not os.path.exists(expconfigfile):
-#        parser.error("Experiment config file %s does not exist!" % expconfigfile)
-#    expconfig     = yaml.load(open(expconfigfile))
-#    rootdir       = expconfig['rootdir']
     
     def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                          expconfig, targetconfigs, targetonly, calonly, doampcal,
