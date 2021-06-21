@@ -460,7 +460,7 @@ def main():
             inbeamnames, targetnames)
     ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
-            tabledir, targetconfigs, inbeamuvdatas)
+            tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices)
     ## Load the inbeam CALIB pn solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
             gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
