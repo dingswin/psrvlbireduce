@@ -16,10 +16,10 @@ from AIPSTV import AIPSTV
 ################################################################################
 import sys, os, string, math, warnings, subprocess, yaml, glob
 import interaction, vlbatasks
+from support_vlbireduce import support_vlbireduce
 from time import gmtime, strftime
 from optparse import OptionParser
 warnings.defaultaction = "always"
-from support_vlbireduce import support_vlbireduce
 
 class vlbireduce(support_vlbireduce):
     """
@@ -1663,7 +1663,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, targetonly, calonly, False, False, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       dualphscal_setup, tabledir)
+                                       dualphscal_setup, tabledir, self.inbeamfilenums)
             ## sncount is used to point at SN table in post-phscal stage
         else:
             print "Skipping application of inbeam phase-only selfcal (combined IFs)"
@@ -1776,7 +1776,7 @@ class vlbireduce(support_vlbireduce):
                     junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                            targetconfigs, targetonly, calonly, False, False, True,
                                            self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                           dualphscal_setup, tabledir)
+                                           dualphscal_setup, tabledir, self.inbeamfilenums)
                     ## <<< 
                     vlbatasks.deletetable(uvdata, 'SN', self.snversion)
         self.runlevel += 1
@@ -1809,7 +1809,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, False, False,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       dualphscal_setup, tabledir)
+                                       dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
             print "Skipping application of inbeam phase-only selfcal (separate IFs)"
             if self.maxinbeamcalibpnmins > 0:
@@ -1859,7 +1859,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       dualphscal_setup, tabledir)
+                                       dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
             print "Skipping application of inbeam amp+phase selfcal (combined IFs)"
             if self.maxinbeamcalibap1mins > 0:
@@ -1912,7 +1912,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, False,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       dualphscal_setup, tabledir)
+                                       dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
             print "Skipping application of inbeam amp+phase selfcal (separate IFs)"
             if self.maxinbeamcalibapnmins > 0:
@@ -1963,7 +1963,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, True, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       dualphscal_setup, tabledir)
+                                       dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
             print "Skipping application of secondary inbeam phase-only selfcal (combined IFs)"
             if self.maxinbeamcalibsp1mins > 0:

@@ -651,13 +651,30 @@ class support_vlbireduce(object):
 #    expconfig     = yaml.load(open(expconfigfile))
 #    rootdir       = expconfig['rootdir']
     
-    def __applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
+    def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                          expconfig, targetconfigs, targetonly, calonly, doampcal,
                          dosecondary, sumifs, clversion, snversion, inbeamnames, 
                          targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir,
-                         doneinbeams, inbeamfilenums):
+                         inbeamfilenums):
         """
-        apply CALIB (self-calibration) solutions from in-beam calibrators
+        Functionality
+        -------------
+        Apply CALIB (self-calibration) solutions from in-beam calibrators.
+        
+        New features
+        ------------
+        1. Applying inbeamcalib solution to phsref is a new feature, which allows estimation
+            of uncertainties of the inbeam absolute position.
+        2. Can recognize and apply existent dual-phscal solutions.
+        3. Allow targetonly==True for inverse referencing. That is to say, 
+            targetonly means only applying the inbeam solutions to the inbeam-calibrator 'target'
+            while inverse-referencing is requested. This feature is necessitated by the 
+            PSR J1939+2134 work, where dual-phscal and inverse referencing are both requested.
+            In such a case, dualphscal solutions are applied to all inbeamcals (which is not
+            perfect).
+            Note that for dual-phscal inverse referencing to more than one inbeam calibrators, 
+            one needs to change yaml files to switch an inbeamcal to be the 'target', as it is
+            very rare.
 
         Return parameters
         -----------------
@@ -668,20 +685,13 @@ class support_vlbireduce(object):
         for targetname in targetnames:
             [phscalname, junk] = self.expconfig2cals(expconfig)
             phsrefnames.append(phscalname)
-        sncount = 0
         numinbeams = len(inbeamuvdatas)
         #for i in range(numtargets):
-        for i in range(20):
-            if not targetonly:
-                for j in range(numinbeams):
-                    vlbatasks.deletetable(inbeamuvdatas[j], 'SN', snversion+sncount)
-            if not calonly:
-                vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-                if haveungated:
-                    vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-            sncount += 1
         sncount = 0
-        for inbeamsrc in tocalnames:
+        ###########################################################################################
+        ## delete old tables and load new table(s)
+        ###########################################################################################
+        for (inbeamsrc, targetfilenum) in zip(tocalnames, inbeamfilenums): ## already work for inverse-referencing
             if sumifs:
                 if doampcal:
                     calibstring = 'ap1'
@@ -701,7 +711,7 @@ class support_vlbireduce(object):
                     calibstring = 'pn'
                     if int(dualphscal_setup[0])>0:
                         calibstring += '.dualphscal'
-            print inbeamsrc
+            print(inbeamsrc)
             if "CONCAT" in inbeamsrc:
                 calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
             else:
@@ -710,68 +720,137 @@ class support_vlbireduce(object):
             if not os.path.exists(calibtablepath):
                 calibtablepath = calibtablepath.replace('.dualphscal', '')
 
-            print "Applying table " + calibtablepath
+            print("Applying table " + calibtablepath)
             if targetonly and (not os.path.exists(calibtablepath)):
-                print "For target-only, the SN file must exist already - aborting!"
-                print calibtablepath
+                print("For target-only, the SN file must exist already - aborting!")
+                print(calibtablepath)
                 sys.exit(1)
+            
+            if targetfilenum >= 0:
+                if not targetonly:
+                    for i in range(numinbeams):
+                        for j in range(20):
+                            vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+j)
+                        vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath, snversion+sncount)
+                if not calonly:
+                    for j in range(20):
+                        vlbatasks.deletetable(gateduvdata, 'SN', snversion+j)
+                    vlbatasks.loadtable(gateduvdata, calibtablepath, snversion+sncount)
+                    if haveungated:
+                        for j in range(20):
+                            vlbatasks.deletetable(ungateduvdata, 'SN', snversion+j)
+                        vlbatasks.loadtable(ungateduvdata, calibtablepath, snversion+sncount)
+            else: ## inverse referencing
+                if not targetonly:
+                    for j in range(20):
+                        vlbatasks.deletetable(gateduvdata, 'SN', snversion+j)
+                    vlbatasks.loadtable(gateduvdata, calibtablepath, snversion+sncount)
+                    if haveungated:
+                        for j in range(20):
+                            vlbatasks.deletetable(ungateduvdata, 'SN', snversion+j)
+                        vlbatasks.loadtable(ungateduvdata, calibtablepath, snversion+sncount)
+                if not calonly:
+                    for i in range(numinbeams): ## load table and apply to all inbeamcals
+                        for j in range(20):
+                            vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+j)
+                        vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath, snversion+sncount)
+            sncount += 1
+        ######################################################################################
+        ## merge the new tables (for diffferent target group)
+        ######################################################################################
+        print("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1))
+        if any(targetfilenum >= 0 for targetfilenum in inbeamfilenums):
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
-                                        snversion+sncount)
+                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, expconfig['refant'])
             if not calonly:
-                vlbatasks.loadtable(gateduvdata, calibtablepath,
-                                    snversion+sncount)
+                vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
                 if haveungated:
-                    vlbatasks.loadtable(ungateduvdata, calibtablepath,
-                                        snversion+sncount)
-            sncount += 1
-        if not targetonly:
-            for i in range(numinbeams):
-                #vlbatasks.deletetable(inbeamuvdatas[i], 'SN', snversion+sncount)
-                vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, 
-                                        expconfig['refant'])
-        if not calonly:
-            #vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
-            #print "Deleted SN table version " + str(snversion+sncount)
-            print("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1))
-            vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
-            if haveungated:
-                #vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
-                vlbatasks.mergesntables(ungateduvdata, snversion, sncount, expconfig['refant'])
-        if not targetonly:
-            for i in range(numinbeams):
-                for j in range(10):
-                    vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+j+1)
+                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount, expconfig['refant'])
+        elif any(targetfilenum < 0 for targetfilenum in inbeamfilenums):
+            if not targetonly:
+                vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
+                if haveungated:
+                    vlbatasks.mergesntables(ungateduvdata, snversion, sncount, expconfig['refant'])
+            if not calonly:
+                for i in range(numinbeams):
+                    vlbatasks.mergesntables(inbeamuvdatas[i], snversion, sncount, expconfig['refant'])
+        else:
+            print('You have one target group in the inverse referencing setup, while another in the \
+                normal referencing setup. It is beyond the capability of this package. Aborting now.')
+            sys.exit(1)
+        ######################################################################################
+        ## apply table(s)
+        ######################################################################################
+        if any(targetfilenum >= 0 for targetfilenum in inbeamfilenums):
+            if not targetonly:
+                for i in range(numinbeams):
+                    for j in range(10):
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+j+1)
+                    sourcelist = []
+                    for j in tocalindices:
+                        if i < len(inbeamnames[j]):
+                            sourcelist.append(inbeamnames[j][i]) 
+                    print("Applying inbeamsn for ", sourcelist, " to file ", i)
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
+                                           clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
                 sourcelist = []
-                for j in tocalindices:
-                    if i < len(inbeamnames[j]):
-                        sourcelist.append(inbeamnames[j][i]) 
-                print "Applying inbeamsn for ", sourcelist, " to file ", i
-                vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
-                                       clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
-            sourcelist = []
-            for i in tocalindices: 
-                sourcelist.append(phsrefnames[i]) 
-            vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
-                                   clversion, expconfig['refant'], sourcelist, 'CALP')
-        if not calonly:
-            sourcelist = []
-            for i in tocalindices:
-                sourcelist.append(targetnames[i])
-            for j in range(10):
-                vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
-            print sourcelist
-            vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
-                                   expconfig['refant'], sourcelist, 'CALP')
-            if haveungated:
-                for j in range(10):
-                    vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
-                vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
+                for i in tocalindices: 
+                    sourcelist.append(phsrefnames[i]) 
+                vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
                                        clversion, expconfig['refant'], sourcelist, 'CALP')
+            if not calonly:
+                sourcelist = []
+                for i in tocalindices:
+                    sourcelist.append(targetnames[i])
+                for j in range(10):
+                    vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
+                print(sourcelist)
+                vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
+                                       expconfig['refant'], sourcelist, 'CALP')
+                if haveungated:
+                    for j in range(10):
+                        vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
+                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
+                                           clversion, expconfig['refant'], sourcelist, 'CALP')
+        elif any(targetfilenum < 0 for targetfilenum in inbeamfilenums):
+            if not targetonly:
+                for j in range(10):
+                    vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
+                sourcelist = []
+                for i in tocalindices:
+                    sourcelist.append(targetnames[i])
+                print(sourcelist)
+                vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
+                                       expconfig['refant'], sourcelist, 'CALP')
+                if haveungated:
+                    for j in range(10):
+                        vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
+                    vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
+                                           clversion, expconfig['refant'], sourcelist, 'CALP')
+            if not calonly:
+                for i in range(numinbeams):
+                    for j in range(10):
+                        vlbatasks.deletetable(inbeamuvdatas[i], 'CL', clversion+j+1)
+                    sourcelist = []
+                    for j in tocalindices:
+                        if i < len(inbeamnames[j]):
+                            sourcelist.append(inbeamnames[j][i]) 
+                    print "Applying inbeamsn for ", sourcelist, " to file ", i
+                    vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
+                                           clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
+                sourcelist = []
+                for i in tocalindices: 
+                    sourcelist.append(phsrefnames[i]) 
+                vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
+                                       clversion, expconfig['refant'], sourcelist, 'CALP')
+        else:
+            print('This should not happen. The code is broken.')
+            sys.exit(1)
+        
         return sncount + 1
 
-    def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
+    def __________applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                          expconfig, targetconfigs, targetonly, calonly, doampcal,
                          dosecondary, sumifs, clversion, snversion, inbeamnames, 
                          targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
