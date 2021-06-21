@@ -710,9 +710,10 @@ class support_vlbireduce(object):
                 calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
             else:
                 calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
-            ## for the first imbeamselfcalp1 or inbeamselfcalpn apply
-            if not os.path.exists(calibtablepath):
-                calibtablepath = calibtablepath.replace('.dualphscal', '')
+            ## >>> for the first imbeamselfcalp1 or inbeamselfcalpn apply
+            #if not os.path.exists(calibtablepath):
+            #    calibtablepath = calibtablepath.replace('.dualphscal', '')
+            ## <<<
 
             print("Applying table " + calibtablepath)
             if targetonly and (not os.path.exists(calibtablepath)):
@@ -822,6 +823,11 @@ class support_vlbireduce(object):
                         vlbatasks.deletetable(ungateduvdata, 'CL', clversion+j+1)
                     vlbatasks.applysntable(ungateduvdata, snversion+sncount, '2PT', 
                                            clversion, expconfig['refant'], sourcelist, 'CALP')
+                sourcelist = []
+                for i in tocalindices: 
+                    sourcelist.append(phsrefnames[i]) 
+                vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
+                                       clversion, expconfig['refant'], sourcelist, 'CALP')
             if not calonly:
                 for i in range(numinbeams):
                     for j in range(10):
@@ -833,11 +839,6 @@ class support_vlbireduce(object):
                     print "Applying inbeamsn for ", sourcelist, " to file ", i
                     vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
                                            clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
-                sourcelist = []
-                for i in tocalindices: 
-                    sourcelist.append(phsrefnames[i]) 
-                vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
-                                       clversion, expconfig['refant'], sourcelist, 'CALP')
         else:
             print('This should not happen. The code is broken.')
             sys.exit(1)
