@@ -2112,15 +2112,14 @@ class vlbireduce(support_vlbireduce):
                                  "_pipeline_uv.fits")
             self.ibshiftdivphscaluvfiles.append(directory + '/' + experiment + '_' + phscalsrc + '_ibshiftdiv_uv.fits')
             self.inbeamuvfiles.append([])
-            #self.inbeampreselfcaluvfiles.append([])
+            self.inbeampreselfcaluvfiles.append('')
             self.dividedinbeamuvfiles.append([])
-        for targetoutname in targetnames:
+        for i in range(numtargets):
+            targetoutname = targetnames[i]
             gfile = directory + '/' + experiment + "_" + targetoutname + \
                     "_pipeline_uv.gated.fits"
             ufile = directory + '/' + experiment + "_" + targetoutname + \
                     "_pipeline_uv.ungated.fits"
-            for config in targetconfigs:
-                if targetoutname in config 
             if targetoutname in targetconfigs[i]['primaryinbeam']:
                 ifile_preselfcal = directory + '/' + experiment + "_preselfcal_" + \
                     targetoutname + "_pipeline_uv.fits"
@@ -2133,7 +2132,7 @@ class vlbireduce(support_vlbireduce):
             self.gateduvfiles.append(gfile)
             self.ungateduvfiles.append(ufile)
             if targetoutname in targetconfigs[i]['primaryinbeam']:
-                self.inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
+                self.inbeampreselfcaluvfiles[i] = ifile_preselfcal
 
         for i in range(numtargets):
             icount = 0
@@ -2156,7 +2155,7 @@ class vlbireduce(support_vlbireduce):
                 self.inbeamuvfiles[i].append(ifile)
                 self.dividedinbeamuvfiles[i].append(dfile)
                 if inbeamoutname in targetconfigs[i]['primaryinbeam']:
-                    self.inbeampreselfcaluvfiles[i].append(ifile_preselfcal)
+                    self.inbeampreselfcaluvfiles[i] = ifile_preselfcal
                 icount += 1
     
     def split__normalize_on_individual_basis__then_write_out_uvdata_for_all_sources(self,
@@ -2271,7 +2270,7 @@ class vlbireduce(support_vlbireduce):
                         if inbeamsrc in config['primaryinbeam']:
                             vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                             #write out pre-selfcal in-beam cal data
-                            vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i][count], True)
+                            vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i], True)
                             #os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
                         #divide inbeamuvfiles by model
                         tempdivfile = directory + '/temp.fits'
@@ -2391,12 +2390,12 @@ class vlbireduce(support_vlbireduce):
                                          splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                     ## >>> inverse referencing
                     if targetnames[i] in config['primaryinbeam']:
-                        splitdata_PS = AIPSUVData(targetnames[i], 'PRESEL', 1, 1) #pre-selfcalibration
-                        if splitdata_PS.exists():
-                            splitdata_PS.zap()
-                        vlbatasks.splittoseq(gateduvdata, self.clversion+self.targetcl, 'PRESEL', targetnames[i], splitseqno,
+                        #splitdata_PS = AIPSUVData(targetnames[i], 'PRESEL', 1, 1) #pre-selfcalibration
+                        if self.splitdata_PS.exists():
+                            self.splitdata_PS.zap()
+                        vlbatasks.splittoseq(gateduvdata, self.clversion, 'PRESEL', targetnames[i], splitseqno,
                              splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                        vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i][count], True)
+                        vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i], True)
                     ## <<<
                     if os.path.exists(scinttablepaths[i]) and config['scintcorrmins'] > 0:
                         vlbatasks.loadtable(splitdata2, scinttablepaths[i], 1)
@@ -2464,7 +2463,7 @@ class vlbireduce(support_vlbireduce):
                 ## <<< gated data first
 
                 ## >>> preselfcal gated in the case of inverse referencing
-                if targetnames[i] in targetconfigs[i]['primaryinbeam']:
+                if targetnames[i] in config['primaryinbeam']:
                     targetimagefile = directory + '/' + experiment + '_' + targetnames[i] + \
                         '_preselfcal.difmap.gated.fits'
                     jmfitfile = directory + '/' + experiment + '_' + targetnames[i] + \
@@ -2474,7 +2473,11 @@ class vlbireduce(support_vlbireduce):
                             '_preselfcal.difmap.gated.fits'
                         jmfitfile = directory + '/' + experiment + '_pulsar_preselfcal' + \
                             '.gated.difmap.jmfit'
-                
+                    vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], targetimagefile, fullauto, stokesi,
+                                               config['difmappixelmas'], config['difmapnpixels'],
+                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'],
+                                               beginif, endif-subtractif)
+                    vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< preselfcal gated in the case of inverse referencing
 
                 ## >>> ungated data
