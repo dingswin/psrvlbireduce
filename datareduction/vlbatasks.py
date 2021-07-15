@@ -6103,7 +6103,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         j = 0
         for row in sntable:
             mag = row.real1[0]**2 + row.imag1[0]**2
-            if mag < 1.1:
+            if mag < 1.1: ## just a sanity check, supposed to 1, but allow for some round-up error
                 #row.imag1 = [0,0]
                 times = np.append(times, row.time)
                 antenna_nos = np.append(antenna_nos, row.antenna_no)

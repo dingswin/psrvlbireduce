@@ -4048,6 +4048,22 @@ class generatepmparin:
     def calculate_apparent_proper_motion_in_LSR(s, RA, Dec, d, v_l_loc=0, v_b_loc=0): #in h, deg
         """
         calculate the apparent proper motion of LSR (v_b_loc=v_l_loc=0) observed from the solar system
+
+        Input parameters
+        ----------------
+        RA : str
+            in HH:MM:SS.SSS.
+        Dec : str
+            in dd:mm:ss.ssss.
+        d : float
+            distance in kpc.
+
+        Return parameters
+        -----------------
+        mu_a : float
+            in mas/yr.
+        mu_d : float
+            in mas/yr.
         """
         R0 = 8.15 #(+-0.15kpc) Reid et al. 2019
         V_Sun2GC = 247 #(+-4km/s)

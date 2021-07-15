@@ -2162,7 +2162,9 @@ class vlbireduce(support_vlbireduce):
                 if not targetonly:
                     count = 0
                     if imageoutofbeam:
-                        # First the ampcal source, only do it once
+                        ################################################
+                        ## First the ampcal source, only do it once
+                        ################################################
                         if i==0:
                             splitdata = AIPSUVData(ampcalsrc, 'FINAL', 1, 1)
                             if splitdata.exists():
@@ -2178,7 +2180,10 @@ class vlbireduce(support_vlbireduce):
                             #                               ampcalsrc, 1)
                             #ampcaluvfile = directory + '/' + experiment + "_" + ampcalsrc + "_pipeline_uv.fits"
                             #vlbatasks.writedata(splitdata, ampcaluvfile, True)
-                        # Then the phase reference source
+                        
+                        ################################################
+                        ## Then the phase reference source
+                        ################################################
                         aipssrcname = phscalnames[i]
                         if len(aipssrcname) > 12:
                             aipssrcname = aipssrcname[:12]
@@ -2218,8 +2223,9 @@ class vlbireduce(support_vlbireduce):
                                 #if not skipplots:
                                 #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
                                 #                    fullauto, stokesi)
-                        
-                    # Then the inbeams
+                    ################################################
+                    ## Then the inbeams
+                    ################################################
                     for inbeamsrc in inbeamnames[i]:
                         aipssrcname = inbeamsrc
                         if len(inbeamsrc) > 12:
@@ -2328,6 +2334,9 @@ class vlbireduce(support_vlbireduce):
                             os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
                         """
                         count += 1
+                ################################################
+                ## finally gateduvdata and ungateduvdata
+                ################################################
                 if not calonly:
                     splitdata1 = AIPSUVData(targetnames[i], 'UFINL', 1, 1)
                     if splitdata1.exists():

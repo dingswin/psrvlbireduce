@@ -446,7 +446,7 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs,
             modeldir, modeltype, targetonly, calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved)
-    ## Load the inbeam CALIB p1 solutions ########################################
+    ## Load the p1 inbeam CALIB solutions ########################################
     reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
             ungateduvdata, tabledir)
@@ -458,7 +458,7 @@ def main():
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(dualphscal_setup, directory,
             tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, expconfig, 
             targetconfigs, inbeamnames, targetnames)
-    ## Load the inbeam CALIB pn solutions ########################################################################
+    ## Load the pn inbeam CALIB pn solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
             gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
             tabledir)
@@ -470,7 +470,7 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
             targetnames, numtargets, directory, tabledir, alwayssaved)
-    ## Load all the inbeam CALIB solutions ########################################################################
+    ## Load amp+p1 inbeam CALIB solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated,
             ungateduvdata, dualphscal_setup, tabledir)
@@ -478,7 +478,7 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
             targetnames, numtargets, directory, tabledir, alwayssaved)
-    ## Load all the inbeam CALIB solutions ########################################################################
+    ## Load amp+pn inbeam CALIB solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
             dualphscal_setup, tabledir)
@@ -486,7 +486,7 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
             targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved)
-    ## Load all the inbeam CALIB solutions ########################################################################
+    ## Load the secondary inbeam CALIB solutions ########################################################################
     reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
             dualphscal_setup, tabledir)

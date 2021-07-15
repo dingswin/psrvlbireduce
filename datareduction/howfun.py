@@ -60,7 +60,10 @@ def dms2deg(array):
             degrees = np.append(degrees, degree)
     return degrees
 
-def separation(RA1,Dec1,RA2,Dec2): #-- calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format
+def separation(RA1,Dec1,RA2,Dec2): 
+    """
+    calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format
+    """
     RA0 = np.array([dms2deg(str(RA1)), dms2deg(str(RA2))])
     Dec = np.array([dms2deg(str(Dec1)), dms2deg(str(Dec2))])
     Dec_rad = Dec*math.pi/180
