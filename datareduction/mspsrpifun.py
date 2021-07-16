@@ -3169,18 +3169,37 @@ class generatepmparin:
         #s.epoch = epoch
         [auxdir, s.configdir, s.targetdir, s.phscalname, s.prIBCname] = prepare_path_source(targetname, s.inverse_referencing)
         s.pmparesultsdir = s.targetdir + '/pmparesults/'
-    def find_statsfiles(s, check_inbeam=''):
+    def find_statsfiles(s, check_inbeam='', **kwargs):
+        """
+        Input parameters
+        ----------------
+        kwargs: key=value
+            1) search_keyword : str
+                A string used to look for statsfiles, e.g. 'preselfcal'
+        """
+        try:
+            search_keyword = kwargs['search_keyword']
+        except KeyError:
+            search_keyword = ''
+        usage = "When search_keyword != '', one needs to assign check_inbeam to search for statsfiles. In other words, in this case, check_inbeam does not necessarily refer to inbeamsrc."
+
         targetdir = s.targetdir
         if not os.path.exists(targetdir):
             print("%s doesn't exist; aborting\n" % targetdir)
             sys.exit()
-        if not s.inverse_referencing:
-            if check_inbeam == '':
-                s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+        if search_keyword == '':
+            if not s.inverse_referencing:
+                if check_inbeam == '':
+                    s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+                else:
+                    s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
             else:
-                s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
+                s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
+        elif search_keyword != '' and check_inbeam != '':
+            s.statsfiles = glob.glob(r'%s/*/*%s*%s*.stats' % (targetdir, check_inbeam, search_keyword))
         else:
-            s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
+            print(usage)
+            sys.exit()
         s.statsfiles.sort()
     def statsfile2expno_and_decyear(s, statsfile):
         b = plot_position_scatter(s.targetname, s.exceptions)
@@ -3211,27 +3230,27 @@ class generatepmparin:
         median_decyear = howfun.sample2median(decyears)
         median = Time(median_decyear, format='decimalyear')
         return round(median.mjd)
-    def write_out_preliminary_pmpar_in(s, check_inbeam=''):
+    def write_out_pmpar_in(s, statsfiles, pulsitions):
         """
-        for example, check_inbeam='IBC01433' means looking at bd1*IBC01433_preselfcal*stats and make the corresponding IBC01433.pmpar.in
+        Input parameters
+        ----------------
+        statsfiles : list of str
+            A list of statsfile entailing the position information.
+        pulsitions : str
+            The output pmpar.in file contain pulsar positions (pulsitions).
         """
-        s.find_statsfiles(check_inbeam)
         if not os.path.exists(s.pmparesultsdir):
             os.system('mkdir %s' % s.pmparesultsdir)
         inverse_referenced_to = ''
         if s.inverse_referencing:
             inverse_referenced_to = '.to.' + s.prIBCname
-        if check_inbeam == '':
-            pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
-        else:
-            pulsitions = s.pmparesultsdir + '/' + check_inbeam + inverse_referenced_to + '.pmpar.in.preliminary'
         s.RAs = np.array([])
         s.Decs = np.array([])
         s.error0RAs = np.array([])
         s.error0Decs = np.array([])
         s.expnos = np.array([])
         s.decyears = np.array([])
-        s.epoch = s.statsfiles2median_decyear2epoch(s.statsfiles)
+        s.epoch = s.statsfiles2median_decyear2epoch(statsfiles)
         fileWrite = open(pulsitions, 'w')
         if s.inverse_referencing:
             fileWrite.write("### positions for %s inverse-referencing to %s\n" % (s.prIBCname, s.targetname))
@@ -3243,7 +3262,7 @@ class generatepmparin:
         fileWrite.write("epoch = %f\n" % s.epoch)
         fileWrite.write("#pi = 0\n")
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
-        for statsfile in s.statsfiles:
+        for statsfile in statsfiles:
             [expno, decyear] = s.statsfile2expno_and_decyear(statsfile)
             s.expnos = np.append(s.expnos, expno)
             s.decyears = np.append(s.decyears, decyear)
@@ -3255,6 +3274,27 @@ class generatepmparin:
             fileWrite.write("%s %s %.7f %s %.6f\n" % (decyear, RA, error0RA, Dec, error0Dec))
         fileWrite.close()
         s.nepoch = len(s.RAs)
+        
+    def write_out_preliminary_pmpar_in(s, check_inbeam=''):
+        """
+        for example, check_inbeam='IBC01433' means looking at bd1*IBC01433_preselfcal*stats and make the corresponding IBC01433.pmpar.in
+        """
+        if check_inbeam == '':
+            pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
+        else:
+            pulsitions = s.pmparesultsdir + '/' + check_inbeam + inverse_referenced_to + '.pmpar.in.preliminary'
+        s.find_statsfiles(check_inbeam)
+        s.write_out_pmpar_in(s.statsfiles, pulsitions)
+    def write_out_pmpar_in_given_srcname_and_pmparinsuffix(s, srcname, search_keyword, pmparinsuffix=''):
+        """
+        """
+        if pmparinsuffix == '':
+            pmparinsuffix = search_keyword
+        if (pmparinsuffix != '') and (not pmparinsuffix.startswith('.')):
+            pmparinsuffix = '.' + pmparinsuffix    
+        pulsitions = s.pmparesultsdir + '/' + srcname + '.pmpar.in' + pmparinsuffix
+        s.find_statsfiles(srcname, search_keyword=search_keyword)
+        s.write_out_pmpar_in(s.statsfiles, pulsitions)
 
     def write_out_pmparin_incl_sysErr(s, pmparesultsdir, targetname, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA_rchsq, **kwargs):
         """
