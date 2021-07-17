@@ -344,7 +344,7 @@ def targetdir2phscalstatsfiles(targetdir, exceptions=''):
     phscalstatsfiles.sort()
     return phscalstatsfiles
 def targetdir2prIBCstatsfiles(targetdir, exceptions=''):
-    prIBCstatsfiles = glob.glob(r'%s/*/*_preselfcal.difmap.jmfit.stats' % targetdir)
+    prIBCstatsfiles = glob.glob(r'%s/*/*_preselfcal.difmap.jmfit*.stats' % targetdir)
     if exceptions != '':
         for exception in exceptions:
             while any(exception in prIBCstatsfile for prIBCstatsfile in prIBCstatsfiles):
@@ -552,7 +552,7 @@ def prepareplotscatter(targetname): #generate input for MATLAB plotting
     [refRAphscal, refDECphscal] = srcposition(targetname, phscalname)
     [diffRAphscal, diffDECphscal] = diffposition(phscalRAs, refRAphscal, phscalDecs, refDECphscal)
     print diffRAphscal, diffDECphscal
-    prIBCstatsfiles = glob.glob(r'%s/*/*_preselfcal.difmap.jmfit.stats' % targetdir)
+    prIBCstatsfiles = glob.glob(r'%s/*/*_preselfcal.difmap.jmfit*.stats' % targetdir)
     [prIBC_RAs, prIBC_Decs] = nonpulsar_statsfiles2positions(prIBCstatsfiles)
     [refRAprIBC, refDECprIBC] = srcposition(targetname, prIBCname)
     [diffRAprIBC, diffDECprIBC] = diffposition(prIBC_RAs, refRAprIBC, prIBC_Decs, refDECprIBC) 
@@ -3198,7 +3198,7 @@ class generatepmparin:
                 if check_inbeam == '':
                     s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
                 else:
-                    s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
+                    s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
             else:
                 s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
         elif search_keyword != '' and check_inbeam != '':

@@ -2070,6 +2070,9 @@ class vlbireduce(support_vlbireduce):
                         self.splitdata_PS = AIPSUVData(aipssrcname, 'PRESEL', 1, 1) #pre-selfcalibration
                         if self.splitdata_PS.exists():
                             self.splitdata_PS.zap()
+                        self.divideddata_PS = AIPSUVData(aipssrcname, 'PSDIV', 1, 1)
+                        if self.divideddata_PS.exists():
+                            self.divideddata_PS.zap()
                 ## >>> for inverse referencing where target is used as primaryinbeam
                 for targetname in targetnames: 
                     if targetname in targetconfigs[j]['primaryinbeam']:
@@ -2079,6 +2082,9 @@ class vlbireduce(support_vlbireduce):
                         self.splitdata_PS = AIPSUVData(aipstargetname, 'PRESEL', 1, 1) #pre-selfcalibration
                         if self.splitdata_PS.exists():
                             self.splitdata_PS.zap()
+                        #self.divideddata_PS = AIPSUVData(aipssrcname, 'PSDIV', 1, 1)
+                        #if self.divideddata_PS.exists():
+                        #    self.divideddata_PS.zap()
                 ## <<<
                 splitdata = AIPSUVData(phscalnames[j], 'FINAL', 1, 1)
                 if splitdata.exists():
@@ -2261,18 +2267,59 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion+self.targetcl, 'FINAL', inbeamsrc, 
                                              splitseqno, splitmulti, splitband, splitbeginif, splitendif, 
                                              combineifs, self.leakagedopol)
-                        #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
-                        #if not skipplots:
-                        #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, inbeamsrc, plotfile, False,
-                        #                    fullauto, stokesi)
                         vlbatasks.writedata(splitdata, self.inbeamuvfiles[i][count], True)
-                        #split primary in-beam calibrator referenced to phscal (pre-inbeamselfcal)
+                        ## split primary in-beam calibrator referenced to phscal (pre-inbeamselfcal)
                         if inbeamsrc in config['primaryinbeam']:
                             vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                            #write out pre-selfcal in-beam cal data
-                            vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i], True)
-                            #os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
-                        #divide inbeamuvfiles by model
+                            ## >>> normalize and write out divided pre-selfcal inbeam data
+                            if config['separateifmodel']:
+                                ifdivideddatas = []
+                                for j in range(beginif,endif+1):
+                                    inbeam_image_file = modeldir + inbeamsrc + ".IF" + str(j) + self.cmband + ".clean.fits"
+                                    if not os.path.exists(inbeam_image_file):
+                                        print "Need a frequency-dependent model for " + inbeamsrc + " since --divideinbeammodel=True and separateifmodel=True"
+                                        print "But " + inbeam_image_file + " was not found."
+                                        sys.exit()
+                                    shortname = inbeamsrc
+                                    if len(inbeamsrc) > 12:
+                                        shortname = inbeamsrc[:12]
+                                    modeldata = AIPSImage(shortname, "CLEAN", 1, 1)
+                                    if modeldata.exists():
+                                        modeldata.zap()
+                                    vlbatasks.fitld_image(inbeam_image_file, modeldata)
+                                    ifdivideddata = AIPSUVData(aipssrcname, 'IFDIV', 1, j)
+                                    if ifdivideddata.exists():
+                                        ifdivideddata.zap()
+                                    vlbatasks.normaliseUVData(self.splitdata_PS, modeldata, ifdivideddata, j, j)
+                                    ifdivideddatas.append(ifdivideddata)
+                                if self.divideddata_PS.exists():
+                                    self.divideddata_PS.zap()
+                                vlbatasks.dbcon(ifdivideddatas, self.divideddata_PS)
+                            else:
+                                inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
+                                if not os.path.exists(inbeam_image_file):
+                                    print "Need a model for " + inbeamsrc + " since --divideinbeammodel=True"
+                                    print "But " + inbeam_image_file + " was not found."
+                                    sys.exit()
+                                shortname = inbeamsrc
+                                if len(inbeamsrc) > 12:
+                                    shortname = inbeamsrc[:12]
+                                modeldata = AIPSImage(shortname, "CLEAN", 1, 1)
+                                if modeldata.exists():
+                                    modeldata.zap()
+                                vlbatasks.fitld_image(inbeam_image_file, modeldata)
+                                if self.divideddata_PS.exists():
+                                    self.divideddata_PS.zap()
+                                vlbatasks.normaliseUVData(self.splitdata_PS, modeldata, self.divideddata_PS)
+                            
+                            tempdivfile = directory + '/temp.fits'
+                            os.system("rm -f " + tempdivfile)
+                            vlbatasks.writedata(self.divideddata_PS, tempdivfile, True)
+                            os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i])
+
+                            ## <<< normalize and write out divided pre-selfcal inbeam data
+                            
+                        ## divide inbeamuvfiles by model
                         tempdivfile = directory + '/temp.fits'
                         if inbeamsrc in self.dividesourcelist:
                             if config['separateifmodel'] and inbeamsrc in config['primaryinbeam']:
@@ -2294,22 +2341,6 @@ class vlbireduce(support_vlbireduce):
                                     if ifdivideddata.exists():
                                         ifdivideddata.zap()
                                     vlbatasks.normaliseUVData(splitdata, modeldata, ifdivideddata, j, j)
-                                    #uvflg = AIPSTask('uvflg', version = aipsver)
-                                    #uvflg.indata = ifdivideddata
-                                    #for f in range(beginif,endif+1):
-                                    #    if not f == j:
-                                    #        uvflg.bif = f
-                                    #        uvflg.eif = f
-                                    #        uvflg()
-                                    #flaggeddivideddata = AIPSUVData(aipssrcname, 'FGDIV', 1, j)
-                                    #if flaggeddivideddata.exists():
-                                    #    flaggeddivideddata.zap()
-                                    #splat = AIPSTask('splat', version = aipsver)
-                                    #splat.indata = ifdivideddata
-                                    #splat.flagver = 1
-                                    #splat.outdata = flaggeddivideddata
-                                    #splat()
-                                    #ifdivideddatas.append(flaggeddivideddata)
                                     ifdivideddatas.append(ifdivideddata)
                                 divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                                 if divideddata.exists():
@@ -2562,15 +2593,24 @@ class vlbireduce(support_vlbireduce):
                         aipssrcname = inbeamnames[i][j]
                         if len(aipssrcname) > 12:
                             aipssrcname = aipssrcname[:12]
-                        jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.difmap.jmfit' 
-                        preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
-                        if preselfcalinbeamimage.exists():
-                            preselfcalinbeamimage.zap()
+                        jmfitfile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.difmap.jmfit' 
+                        targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal_divided_difmap.fits'
+                        #preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                        #if preselfcalinbeamimage.exists():
+                        #    preselfcalinbeamimage.zap()
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
-                                   0, 0, 0, 100, 20)
-                        vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                           False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
+                        vlbatasks.difmap_maptarget(self.dividedinbeamuvfiles[i][j], targetimagefile, 
+                                                   fullauto, stokesi, config['difmappixelmas'], 
+                                                   config['difmapnpixels'], config['difmapweightstring'], '20, False', 
+                                                   config['usegaussianinbeam'], beginif, 
+                                                   endif-subtractif)
+                        vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
+                                        stokesi, endif-subtractif)
+                        
+                        #vlbatasks.widefieldimage(self.divideddata_PS, aipssrcname, 256, 0.75, True, 0.050,
+                        #           0, 0, 0, 100, 20)
+                        #vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                        #                   False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
 
                     icount += 1
         else:
