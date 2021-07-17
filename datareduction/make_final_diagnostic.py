@@ -31,7 +31,7 @@ def plt_uvdata(code):
 
     for file in filelist:
         plotfile.append(file.rstrip('fits') + 'png')
-        plotfile.append(file.rstrip('fits') + '.avg.png')
+        plotfile.append(file.rstrip('fits') + 'avg.png')
 
         dfile = open('diagnostic_tmp.par', 'w')
         dfile.write('!\n')

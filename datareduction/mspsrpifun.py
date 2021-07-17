@@ -276,11 +276,17 @@ def statsfiles2expnos(statsfiles):
 
 def dms_positions2stat(RAs, Decs):
     """
-    Function:
+    Function
+    --------
     Consume calibrator positions (relative to another calibrator) and calculate the average position and the position scatter.
     
-    Outlier exclusion:
+    Outlier exclusion
+    -----------------
     3-sigma theshold is used to exclude outliers in an iterative way.
+
+    Output parameters
+    -----------------
+    return [RA_average_dms, RA_std_mas], [Dec_average_dms, Dec_std_mas]
     """
     outlier_count = 0
     while outlier_count < 20: ## when estimating scatter, exclude 2sigma outliers in an iterative way
@@ -359,10 +365,10 @@ def target2positionscatter(targetname, exceptions=''):
     ## find and parse statsfiles, reach RAs/Decs #########################
     phscalstatsfiles = targetdir2phscalstatsfiles(targetdir, exceptions)
     [phscalRAs, phscalDecs] = nonpulsar_statsfiles2positions(phscalstatsfiles)
-    print phscalRAs, phscalDecs
+    print(phscalRAs, phscalDecs)
     prIBCstatsfiles = targetdir2prIBCstatsfiles(targetdir, exceptions)
     [prIBC_RAs, prIBC_Decs] = nonpulsar_statsfiles2positions(prIBCstatsfiles)
-    print prIBC_RAs, prIBC_Decs
+    print(prIBC_RAs, prIBC_Decs)
     ## statistics about RAs/Decs ##########################################
     return dms_positions2stat(phscalRAs, phscalDecs), dms_positions2stat(prIBC_RAs, prIBC_Decs)
 
@@ -3287,6 +3293,18 @@ class generatepmparin:
         s.write_out_pmpar_in(s.statsfiles, pulsitions)
     def write_out_pmpar_in_given_srcname_and_pmparinsuffix(s, srcname, search_keyword, pmparinsuffix=''):
         """
+        Functions
+        ---------
+        Create a pmpar.in file by searching statsfiles containing srcname and search_keyword info.
+        
+        Input parameters
+        ----------------
+        srcname : str
+            Source name info.
+        search_keyword : str
+            A keyword in statsfile used to pinpoint statsfiles.
+        pmparinsuffix : str (default: '')
+            Suffix for the output pmpar.in file; when it equals '', the search_keyword will be used as the suffix.
         """
         if pmparinsuffix == '':
             pmparinsuffix = search_keyword
@@ -3992,17 +4010,20 @@ class generatepmparin:
     def abspsrposition_enhanced(s, targetname, dualphscal=False, dualphscalratio=1, 
             prIBC_has_defined_position_in_catalog=False, exceptive_epochs='', HowManySigma=1):
         """
-        Notice for use:
+        Notice for use
+        --------------
         a) The function is designed to estimate the absolute position for the target anchored to a primary in-beam calibrator, 
         and indirectly to a main phase calibrator. This works for all PSRPI and MSRPI targets.
         b) It can also work for dualphscal setup.
         c) It would also work for the simplest phscal-target setup.
 
-        Measured value: 
+        Measured value
+        --------------
         This function adopts the most probable RA/Dec that is kept by the boostrap.estimates.out file.
         Then it will be shifted when the target is tied to the main phscal, and sebsequently aligned to the catalog phscal position.
         
-        Uncertainty: 
+        Uncertainty
+        -----------
         a) For phscal-prIBC-target case: This function reports two sets of results (scatter of positions for prIBC or phscal). 
         The uncertainties include the bootstrap uncertainty, prIBC position uncertainty and catalog uncertainty for the main phscal.
         b) For dualphscal setup: Assuming both calibrators have well defined positions, then no posterior position as well as its

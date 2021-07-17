@@ -1,0 +1,9 @@
+! Started logfile: difmap.log on Sat Jul 17 16:33:33 2021
+![@/home/hding/packages/src/uvf_difmap/difmap.boot]
+! Obeying initialization file: /home/hding/packages/src/uvf_difmap/difmap.boot
+device /xs
+! Attempting to open device: '/xs'
+![Exited script file: /home/hding/packages/src/uvf_difmap/difmap.boot]
+quit
+! Quitting program
+! Log file difmap.log closed on Sat Jul 17 16:33:35 2021
