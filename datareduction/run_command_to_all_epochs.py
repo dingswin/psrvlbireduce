@@ -36,3 +36,6 @@ print(targetdir)
 for expno in expnos:
     os.chdir(targetdir + '/' + expno)
     os.system('%s' % command)
+
+
+

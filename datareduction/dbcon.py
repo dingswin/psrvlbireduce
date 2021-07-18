@@ -1,4 +1,9 @@
 #!/usr/bin/env ParselTongue
+"""
+Possible solutions of complaints
+--------------------------------
+1. delete all entries in AIPS.userno=2575 if it complains.
+"""
 #Imports ########################################################
 from AIPS import AIPS
 from AIPSTask import AIPSTask
