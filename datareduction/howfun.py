@@ -60,41 +60,51 @@ def dms2deg(array):
             degrees = np.append(degrees, degree)
     return degrees
 
-def ____separation(RA1,Dec1,RA2,Dec2): 
+def separation_large_scale(RA1,Dec1,RA2,Dec2): 
     """
+    Function
+    --------
     calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format
+
+    Caveat
+    ------
+    the mathematical formalism reflects the geometry on the spherical surface; it is more accurate than separation().
+    However, owing to the variable precision limit from python, at small scales, separation_large_scale() is vulnerable to 
+    problems. For example, cos(1e-9) becomes straight 1.
     """
     RA0 = np.array([dms2deg(str(RA1)), dms2deg(str(RA2))])
     Dec = np.array([dms2deg(str(Dec1)), dms2deg(str(Dec2))])
     Dec_rad = Dec*math.pi/180
     RA = RA0*15 #hour to deg
     RA_rad = RA*math.pi/180
-    #cos_sep = math.cos(Dec_rad[0])*math.cos(Dec_rad[1])*math.cos(RA_rad[0]-RA_rad[1]) + math.sin(Dec_rad[0])*math.sin(Dec_rad[1])
     cos_sep = np.cos(Dec_rad[0])*np.cos(Dec_rad[1])*np.cos(RA_rad[0]-RA_rad[1]) + np.sin(Dec_rad[0])*np.sin(Dec_rad[1])
-    print(cos_sep>1)
     sep = math.acos(cos_sep)
     sep = sep*180/math.pi*60 # rad to arcmin
     return sep
 def separation(RA1,Dec1,RA2,Dec2): 
     """
+    Function
+    --------
     calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format;
-    exactly the same as ____separation(), except that in ____separation() in rare cases cos_sep>1, due to round_up errors. 
+    
+    Mathematical Formalism
+    ----------------------
+    When the RA offset and Dec offset are both >6 arcmin, the separation_large_scale() is used.
+    Otherwise, the mathematical formalism only reflects Euclidean geometry, 
+    instead of the one on the spherical surface.
     """
     RA0 = np.array([dms2deg(str(RA1)), dms2deg(str(RA2))])
     Dec = np.array([dms2deg(str(Dec1)), dms2deg(str(Dec2))])
-    Dec_rad = Dec*math.pi/180
-    #RA = RA0*np.cos(Dec_rad)*15 # hour to deg
+    Dec_rad = Dec*math.pi/180.
     RA = RA0*15 #hour to deg
-    RA_rad = RA*math.pi/180
-    #cos_sep = math.cos(Dec_rad[0])*math.cos(Dec_rad[1])*math.cos(RA_rad[0]-RA_rad[1]) + math.sin(Dec_rad[0])*math.sin(Dec_rad[1])
-    cos_sep = np.cos(RA_rad[0])*np.cos(Dec_rad[0])*np.cos(RA_rad[1])*np.cos(Dec_rad[1]) +\
-              np.cos(Dec_rad[0])*np.sin(RA_rad[0])*np.cos(Dec_rad[1])*np.sin(RA_rad[1]) +\
-              np.sin(Dec_rad[0])*np.sin(Dec_rad[1])
-    #diffRA = abs(RA[0]-RA[1])*60 #deg to min
-    #diffDec = abs(Dec[0]-Dec[1])*60 
-    sep = math.acos(cos_sep)
-    sep = sep*180/math.pi*60 # rad to arcmin
-    #sep = math.sqrt(diffRA**2+diffDec**2)
+    if (abs(RA[1]-RA[0]) > 0.1) and (abs(Dec[1]-Dec[0]) > 0.1): ## large scale
+        RA_rad = RA*math.pi/180
+        cos_sep = np.cos(Dec_rad[0])*np.cos(Dec_rad[1])*np.cos(RA_rad[0]-RA_rad[1]) + np.sin(Dec_rad[0])*np.sin(Dec_rad[1])
+        sep = math.acos(cos_sep)
+        sep = sep*180/math.pi*60 # rad to arcmin
+    else: ## small scale --> use approximation
+        sep_sq = (Dec[1]-Dec[0])**2 + (RA[1]-RA[0])**2*np.cos(Dec_rad[0]*Dec_rad[1])
+        sep = 60*np.sqrt(sep_sq) #arcmin
     return sep
 def separations(RA, Dec, RAs, Decs):
     """

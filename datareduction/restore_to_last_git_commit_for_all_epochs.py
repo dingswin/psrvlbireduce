@@ -45,4 +45,4 @@ for i in range(len(expnos)):
     expdir = targetdir + '/' + expnos[i]
     os.chdir(expdir)
     os.system('git reset %s --hard' % commit_NOs[i])
-print("git-reset done!")
+print("\ngit-reset done!")

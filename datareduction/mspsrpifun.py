@@ -289,7 +289,7 @@ def dms_positions2stat(RAs, Decs):
     return [RA_average_dms, RA_std_mas], [Dec_average_dms, Dec_std_mas]
     """
     outlier_count = 0
-    while outlier_count < 20: ## when estimating scatter, exclude 2sigma outliers in an iterative way
+    while outlier_count < 20: ## when estimating scatter, exclude 3sigma outliers in an iterative way
         [RA_average, RA_std_ms] = dms_array2stat(RAs)
         [Dec_average, Dec_std_mas] = dms_array2stat(Decs)
         Dec_av_rad = Dec_average*math.pi/180
@@ -301,7 +301,7 @@ def dms_positions2stat(RAs, Decs):
         Dec1s = np.array([])
         outliers = []
         for i in range(len(RAs)):
-            print RAs[i], Decs[i], RA_average_dms
+            print(RAs[i], Decs[i], RA_average_dms, Dec_average_dms)
             sep_mas = howfun.separation(str(RAs[i]), str(Decs[i]), str(RA_average_dms), str(Dec_average_dms)) #in arcmin
             sep_mas *= 60*1000
             if sep_mas <= 3*sigma:
@@ -312,7 +312,7 @@ def dms_positions2stat(RAs, Decs):
                 outlier_count += 1
         RAs = RA1s
         Decs = Dec1s
-        print outlier_count
+        print(outlier_count)
         if len(outliers) == 0:
             break
     [RA_average, RA_std_ms] = dms_array2stat(RAs)
@@ -769,9 +769,11 @@ def modeltype(targetname):
     else:
         modeltype = 'final'
     return modeltype, userno
-def jmfitfromfile(targetname, srcname):
+def jmfitfromfile(targetname, srcname, overwrite_statsfile=False):
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     outputstatsfile = targetdir + '/.' + srcname + '.stats'
+    if overwrite_statsfile and os.path.exists(outputstatsfile):
+        os.remove(outputstatsfile)
     if not os.path.exists(outputstatsfile):
         [modeltype1, junk1] = modeltype(targetname)
         srcmodel = auxdir + '/sourcemodels/' + modeltype1 + '/' + srcname + '.clean.fits'
@@ -3196,7 +3198,7 @@ class generatepmparin:
         if search_keyword == '':
             if not s.inverse_referencing:
                 if check_inbeam == '':
-                    s.statsfiles=glob.glob(r'%s/*/*.gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
+                    s.statsfiles=glob.glob(r'%s/*/*[!preselfcal].gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
                 else:
                     s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
             else:
@@ -3238,6 +3240,10 @@ class generatepmparin:
         return round(median.mjd)
     def write_out_pmpar_in(s, statsfiles, pulsitions):
         """
+        Function
+        --------
+        used by s.write_out_preliminar_pmpar_in() and s.write_out_pmpar_in_given_srcname_and_pmparinsuffix().
+
         Input parameters
         ----------------
         statsfiles : list of str
@@ -3247,9 +3253,6 @@ class generatepmparin:
         """
         if not os.path.exists(s.pmparesultsdir):
             os.system('mkdir %s' % s.pmparesultsdir)
-        inverse_referenced_to = ''
-        if s.inverse_referencing:
-            inverse_referenced_to = '.to.' + s.prIBCname
         s.RAs = np.array([])
         s.Decs = np.array([])
         s.error0RAs = np.array([])
@@ -3285,6 +3288,9 @@ class generatepmparin:
         """
         for example, check_inbeam='IBC01433' means looking at bd1*IBC01433_preselfcal*stats and make the corresponding IBC01433.pmpar.in
         """
+        inverse_referenced_to = ''
+        if s.inverse_referencing:
+            inverse_referenced_to = '.to.' + s.prIBCname
         if check_inbeam == '':
             pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
         else:
@@ -4142,6 +4148,28 @@ class generatepmparin:
         mu_l, mu_b = v_l_obs/d/ab.A, v_b_obs/d/ab.A #in mas/yr
         mu_a, mu_d = aa.galactic_proper_motion2equatorial_proper_motion(mu_l, mu_b)
         return mu_a, mu_d
+
+    def calculate_a_revised_map_center_for_IBC_to_align_its_position_to_the_average_preselfcal_position(s, targetname, prIBCname):
+        """
+        for some reason, needs to do several iterations before aligning the position perfectly! needs to be addressed later.
+        """
+        position_preselfcal = target2positionscatter(targetname)[1]
+        RA_PS_list, Dec_PS_list = position_preselfcal
+        RA_PS, std_RA_PS = RA_PS_list
+        Dec_PS, std_Dec_PS = Dec_PS_list
+        RA_PS_h = howfun.dms2deg(RA_PS)
+        Dec_PS_deg = howfun.dms2deg(Dec_PS)
+        Dec_PS_rad = Dec_PS_deg * np.pi / 180.
+        position_map_center = srcposition_map_center(targetname, prIBCname)
+        position_centroid = srcposition(targetname, prIBCname)
+        map_center_to_centroid = diffposition(position_map_center[0], position_centroid[0], position_map_center[1], position_centroid[1])
+        Dec_mas_MC2C = map_center_to_centroid[1]
+        RA_ms_MC2C = map_center_to_centroid[0]/15./np.cos(Dec_PS_rad) ## turn the RA shift from mas to ms
+        RA_h = RA_PS_h + RA_ms_MC2C/1000./3600.
+        RA_deg = RA_h * 15
+        Dec_deg = Dec_PS_deg + Dec_mas_MC2C/1000./3600.
+        return RA_deg, Dec_deg
+        
 
 class look_for_indirect_SNR_associations:
     """
