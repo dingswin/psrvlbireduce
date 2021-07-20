@@ -2231,7 +2231,7 @@ class vlbireduce(support_vlbireduce):
                                 except KeyError:
                                     phscalseparateifmodel = False
                                 if phscalseparateifmodel:
-                                    divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
+                                    self.divideddata_IBSDIV = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
                                         inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
                                 else:
                                     vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
@@ -2245,11 +2245,11 @@ class vlbireduce(support_vlbireduce):
                                     if modeldata.exists():
                                         modeldata.zap()
                                     vlbatasks.fitld_image(phscal_image_file, modeldata)
-                                    divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                                    if divideddata.exists():
-                                        divideddata.zap()
-                                    vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
-                                vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
+                                    self.divideddata_IBSDIV = AIPSUVData(aipssrcname, 'ISDIV', 1, 1)
+                                    if self.divideddata_IBSDIV.exists():
+                                        self.divideddata_IBSDIV.zap()
+                                    vlbatasks.normaliseUVData(splitdata, modeldata,  self.divideddata_IBSDIV)
+                                vlbatasks.writedata(self.divideddata_IBSDIV, self.ibshiftdivphscaluvfiles[i], True)
                                 #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
                                 #if not skipplots:
                                 #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
@@ -2537,11 +2537,11 @@ class vlbireduce(support_vlbireduce):
                 ibshiftedimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
                 if ibshiftedimage.exists():
                     ibshiftedimage.zap()
-                divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                #divideddata_IBSDIV = AIPSUVData(aipssrcname, 'ISDIV', 1, 1)
                 jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_ibshiftdiv_difmap.jmfit'
                 #vlbatasks.difmap_maptarget(self.ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
                 #vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
-                vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050,
+                vlbatasks.widefieldimage(self.divideddata_IBSDIV, aipssrcname, 256, 0.75, True, 0.050,
                            0, 0, 0, 100, 20)
                 vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
                                      False,ibshiftedimage,48)
@@ -2599,7 +2599,7 @@ class vlbireduce(support_vlbireduce):
                         #if preselfcalinbeamimage.exists():
                         #    preselfcalinbeamimage.zap()
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        vlbatasks.difmap_maptarget(self.dividedinbeamuvfiles[i][j], targetimagefile, 
+                        vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], targetimagefile, 
                                                    fullauto, stokesi, config['difmappixelmas'], 
                                                    config['difmapnpixels'], config['difmapweightstring'], '20, False', 
                                                    config['usegaussianinbeam'], beginif, 
