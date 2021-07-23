@@ -791,6 +791,9 @@ def srcposition(targetname, srcname):
         print("The map center for the target is:\n")
         return srcposition_map_center(targetname, srcname)
 def srcposition_map_center(targetname, srcname):
+    """
+    be extra careful when map center needs to be changed during the data reduction!
+    """
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     tmpfile = targetdir + '/.' + srcname + '.map.center.position.tmp'
     if not os.path.exists(tmpfile):
@@ -801,11 +804,31 @@ def srcposition_map_center(targetname, srcname):
     print position
     return position
 def srcseparation(targetname, src1, src2):
+    """
+    Output parameter
+    ----------------
+    sep : float
+        angular separation in arcmin.
+    """
     [RA1, Dec1] = srcposition(targetname, src1)
     [RA2, Dec2] = srcposition(targetname, src2)
     sep = howfun.separation(RA1,Dec1,RA2,Dec2) #unit: arcmin
     print sep
     return sep
+def average_position(targetname, src1, src2):
+    """
+    Input parameters
+    ----------------
+    src1 : str
+        source position in HH:MM:SS.SSSS.
+    src2 : str
+        source position in dd:mm:ss.sssss.
+    """
+    [RA1, Dec1] = srcposition(targetname, src1)
+    [RA2, Dec2] = srcposition(targetname, src2)
+    RA = 0.5 * (howfun.dms2deg(RA1) + howfun.dms2deg(RA2))
+    Dec = 0.5 * (howfun.dms2deg(Dec1) + howfun.dms2deg(Dec2))
+    return howfun.deg2dms(RA), howfun.deg2dms(Dec)
 
 def Av_cscEls(targetname):
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
@@ -2929,6 +2952,8 @@ class find_virtual_calibrator_position_with_colinear_calibrators:
     
     Input parameters
     ----------------
+    phscal2name : str
+        inbeam source name.
     kwargs :
         1. inverse_referencing : bool (default : False)
             When inverse_referencing==True, target and phscal2 are switched.
@@ -3146,7 +3171,7 @@ class solve_the_two_correction_factors_in_2D_interpolation:
             s.ratio2 = sep3t/sep3
         print s.ratio1, s.ratio2
 
-class generatepmparin:
+class generatepmparin(object):
     """
     Functions:
     1) generate pmpar.in.preliminary or pmpar.in, using the 'write_out_preliminary/final_pmpar_in' function group
@@ -3213,7 +3238,15 @@ class generatepmparin:
         b = plot_position_scatter(s.targetname, s.exceptions)
         [expno, decyear] = b.statsfile2expno_and_decyear(statsfile)
         return expno, decyear
-    def statsfile2position_and_its_error(s, statsfile): 
+    def statsfile2position_and_its_error(s, statsfile):
+        """
+        Output parameters
+        -----------------
+        RA : str
+            in HH:MM:SS.SSS.
+        Dec : str
+            in dd:mm:ss.ssss.
+        """
         statsline = open(statsfile).readlines()[-7:]
         for line in statsline:
             if 'Actual RA' in line:
@@ -4169,7 +4202,23 @@ class generatepmparin:
         RA_deg = RA_h * 15
         Dec_deg = Dec_PS_deg + Dec_mas_MC2C/1000./3600.
         return RA_deg, Dec_deg
+    def calculate_a_revised_map_center_for_IBC_by_aligning_the_inbeam_shifted_position_to_the_phscal_position(s, targetname, phscalname, prIBCname):
+        prIBC_MC = prIBC_map_center = srcposition_map_center(targetname, prIBCname)
+        RA_deg_prIBC_MC = 15*howfun.dms2deg(prIBC_MC[0])
+        Dec_deg_prIBC_MC = howfun.dms2deg(prIBC_MC[1])
         
+        position_IBS = target2positionscatter(targetname)[0]
+        RA_IBS_list, Dec_IBS_list = position_IBS
+        RA_IBS, std_RA_IBS = RA_IBS_list
+        Dec_IBS, std_Dec_IBS = Dec_IBS_list
+        position_PC = position_phscal_centroid = srcposition(targetname, phscalname) 
+        Dec_phscal_rad = (howfun.dms2deg(Dec_IBS) + howfun.dms2deg(position_PC[1])) * 0.5 * np.pi / 180.
+        PC2IBS = phscal_centroid_to_IBS = diffposition(position_PC[0], RA_IBS, position_PC[1], Dec_IBS) ## in mas
+        RA_ms_PC2IBS = PC2IBS[0]/15./np.cos(Dec_phscal_rad) ## mas to ms
+        RA_deg = RA_deg_prIBC_MC + RA_ms_PC2IBS/1000./3600.*15
+        Dec_deg = Dec_deg_prIBC_MC + PC2IBS[1]/1000./3600.
+        return RA_deg, Dec_deg
+
 
 class look_for_indirect_SNR_associations:
     """
@@ -4360,20 +4409,10 @@ class measure_the_angular_broadened_size_of_the_target:
         """
         s.targetname = targetname
         [auxdir, configdir, s.targetdir, phscalname, prIBCname] = prepare_path_source(s.targetname)
-        s.expnos = s.targetname2expnos(targetname, exception_epochs)
+        s.expnos = targetname2expnos(targetname, exception_epochs)
         print(s.expnos)
         #s.generate_statsfiles_including_deconvolved_size_info_with_jmfitfromfile()
         #s.compile_the_deconvolved_size_of_the_target_and_calculate_statistics()
-    def targetname2expnos(s, targetname, exception_epochs): 
-        [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
-        expnos = []
-        vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
-        vexfiles.sort()
-        for vexfile in vexfiles:
-            expno = vexfile.split('/')[-2].strip()
-            if expno not in exception_epochs:
-                expnos.append(expno)
-        return expnos
     def generate_statsfiles_including_deconvolved_size_info_with_jmfitfromfile(s):
         for expno in s.expnos:
             expdir = s.targetdir + '/' + expno
@@ -4410,8 +4449,103 @@ class measure_the_angular_broadened_size_of_the_target:
         av_size = np.average(sizes)
         std_size = np.std(sizes)
         return av_major_ax, std_major_ax, av_minor_ax, std_minor_ax, av_size, std_size
-      
 
+def targetname2expnos(targetname, exception_epochs=[]): 
+    [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
+    expnos = []
+    vexfiles = glob.glob(r'%s/*/*.vex' % targetdir)
+    vexfiles.sort()
+    for vexfile in vexfiles:
+        expno = vexfile.split('/')[-2].strip()
+        if expno not in exception_epochs:
+            expnos.append(expno)
+    return expnos
 
-
+class inverse_referencing(generatepmparin):
+    def __init__(s, psrname, exceptions=''):
+        super(inverse_referencing, s).__init__(psrname, exceptions) #python2 way to use super
+    def find_exp_yamlfiles(s, psrname, exceptions=[]):
+        expnos = targetname2expnos(psrname, exceptions)
+        expyamlfiles = [s.configdir + '/' + expno + '.yaml' for expno in expnos]
+        return expyamlfiles
+    def edit_shifts_in_expyamlfile(s, expyamlfile, RA_shift, Dec_shift, **kwargs):
+        """
+        Note
+        ----
+        shifts supposed to be a list that contains shifts info for multiple target groups.
+        However, this function only works for data reduction involving one target group.
         
+        Input parameters
+        ----------------
+        kwargs : dict
+            1. targetname : str (default : s.targetname)
+        """
+        try:
+            targetname = kwargs['targetname']
+        except KeyError:
+            targetname = s.targetname
+        readfile = open(expyamlfile, 'r')
+        lines = readfile.readlines()
+        readfile.close()
+        #print(lines)
+        shifts_str = '["' + targetname + ',' + str(RA_shift) + ',' + str(Dec_shift) + '"]' ## only for one group
+        print(shifts_str)
+        writefile = open(expyamlfile, 'w')
+        for line in lines:
+            if line.startswith('shifts:'):
+                line = 'shifts: ' + shifts_str + '\n'
+            writefile.write(line)
+        writefile.close()
+    def get_pulsar_offset_given_expyamlfile(s, expyamlfile, **kwargs):
+        """
+        double check if the map center of the pulsar is the original one, or already shifted!
+        RA_model and Dec_model need to stick to the original position.
+        """
+        try:
+            targetname = kwargs['targetname']
+        except KeyError:
+            targetname = s.targetname
+        s.find_statsfiles()
+        expno = expyamlfile.split('/')[-1].split('.yaml')[0]
+        for statsfile in s.statsfiles:
+            if expno in statsfile:
+                RA, junk1, Dec, junk2 = s.statsfile2position_and_its_error(statsfile)
+        print(RA, Dec)
+        RA_model, Dec_model = srcposition(targetname, targetname)
+        shifts_in_mas = diffposition(RA, RA_model, Dec, Dec_model)
+        return shifts_in_mas
+    def edit_shifts_for_expyamlfiles(s):
+        expyamlfiles = s.find_exp_yamlfiles(s.targetname, s.exceptions)
+        os.chdir(s.configdir)
+        os.system("git add .;git commit -m 'before changing shifts entry for all exp.yaml related to %s'" % s.targetname)
+        for expyamlfile in expyamlfiles:
+            RA_shift, Dec_shift = s.get_pulsar_offset_given_expyamlfile(expyamlfile)
+            s.edit_shifts_in_expyamlfile(expyamlfile, RA_shift, Dec_shift)
+        print('have changed shifts entry for all exp.yaml related to %s' % s.targetname)
+
+class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
+    def __init__(s):
+        pass
+    def calculate_the_included_angle_in_the_near_field(s, position_virtual_calibrator, position_src1, position_src2):
+        """
+        Note
+        ----
+        1. all positions given in 'HH:MM:SS.SSSS,dd:mm:ss.sss'.
+        2. "near field" means Euclidean geometry.
+        3. the included angle refers to the one using virtual calibrator as vertex.
+
+        Output parameter
+        ----------------
+        included_angle : float
+            included angle in deg.
+        """
+        position_VC = position_virtual_calibrator.split(',') 
+        position1 = position_src1.split(',')
+        position2 = position_src2.split(',')
+        vector1 = diffposition(position1[0].strip(), position_VC[0].strip(), position1[1].strip(), position_VC[1].strip())
+        vector2 = diffposition(position2[0].strip(), position_VC[0].strip(), position2[1].strip(), position_VC[1].strip())
+        unit_v1 = vector1 / np.linalg.norm(vector1)
+        unit_v2 = vector2 / np.linalg.norm(vector2)
+        dot_product = np.dot(unit_v1, unit_v2)
+        included_angle = np.arccos(dot_product)
+        return included_angle * 180 / np.pi

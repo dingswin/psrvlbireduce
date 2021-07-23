@@ -251,13 +251,13 @@ class vlbireduce(support_vlbireduce):
                 shifts = expconfig["shifts"]
             except KeyError:
                 shifts = []
-                print "No sources to shift"
+                print("No sources to shift")
             for s in shifts:
                 if s == "": continue
                 srcname  = s.split(',')[0]
                 rashift  = float(s.split(',')[1])
                 decshift = float(s.split(',')[2])
-                print "Shifting " + srcname + " by " + str(rashift) + "," + str(decshift)
+                print("Shifting " + srcname + " by " + str(rashift) + "," + str(decshift))
                 foundone = False
                 for dataset in uvdatas:
                     present = False

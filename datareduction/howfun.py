@@ -85,7 +85,7 @@ def separation(RA1,Dec1,RA2,Dec2):
     """
     Function
     --------
-    calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format;
+    calculate angular separation (in arcmin) given RAs/Decs in dd:mm:ss.ssss format;
     
     Mathematical Formalism
     ----------------------
