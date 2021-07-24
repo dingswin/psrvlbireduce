@@ -829,8 +829,147 @@ def average_position(targetname, src1, src2):
     RA = 0.5 * (howfun.dms2deg(RA1) + howfun.dms2deg(RA2))
     Dec = 0.5 * (howfun.dms2deg(Dec1) + howfun.dms2deg(Dec2))
     return howfun.deg2dms(RA), howfun.deg2dms(Dec)
+def ____calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_and_src2(targetname, src1, src2, ratio):
+    """
+    deprecated!
+    """
+    if targetname != '':
+        [RA1, Dec1] = srcposition(targetname, src1)
+        [RA2, Dec2] = srcposition(targetname, src2)
+    else:
+        [RA1, Dec1] = src1.split(',')
+        [RA2, Dec2] = src2.split(',')
+    sep_src1_src2 = howfun.separation(RA1.strip(), Dec1.strip(), RA2.strip(), Dec2.strip()) ## in arcmin
+    sep_virtual_to_src1 = ratio * sep_src1_src2 / 60. *np.pi/180. ## in rad
+    RA1_h, Dec1_deg = howfun.dms2deg(RA1.strip()), howfun.dms2deg(Dec1.strip())
+    RA2_h, Dec2_deg = howfun.dms2deg(RA2.strip()), howfun.dms2deg(Dec2.strip())
+    RA1_rad, Dec1_rad = RA1_h*15*np.pi/180., Dec1_deg*np.pi/180.
+    RA2_rad, Dec2_rad = RA2_h*15*np.pi/180., Dec2_deg*np.pi/180.
+    ## >>> transform into X, Y, Z coordinate
+    x1 = np.cos(Dec1_rad) * np.cos(RA1_rad)
+    y1 = np.cos(Dec1_rad) * np.sin(RA1_rad)
+    z1 = np.sin(Dec1_rad)
+    x2 = np.cos(Dec2_rad) * np.cos(RA2_rad)
+    y2 = np.cos(Dec2_rad) * np.sin(RA2_rad)
+    z2 = np.sin(Dec2_rad)
+    ## <<<
+    ## >>> solve vector normal to plane passing src1, sr2, and (0,0,0) point
+    vector1 = [x1, y1, z1]
+    vector2 = [x2, y2, z2]
+    vectorN = np.cross(vector1, vector2)
+    ## <<<
+    ## >>> solve the position of the virtual calibrator in an iterative way
+    z_new = z2 ##initial value of z
+    z = z_new/2.
+    count = 0
+    while abs((z_new-z)/z)>1e-10 and count<1e5:
+        z = z_new
+        A = np.mat([[vectorN[0], vectorN[1]],
+                    [x1        , y1        ]])
+        B = np.mat([[-vectorN[2]*z                     ],
+                    [np.cos(sep_virtual_to_src1) - z1*z]])
+        solution = A.I * B
+        x = solution[0,0]
+        y = solution[1,0]
+        #print(x,y)
+        z_new = (1 - x**2 - y**2)**0.5
+        #print(z_new)
+        if z2 < 0:
+            z_new *= -1
+        count += 1
+    print('calculation (for the projected position) done in %d iterations' % count)
+    if count == 1e5:
+        print('solution for the projected position not converged; aborting')
+        sys.exit()
+    ## <<<
+    ## >>> reverse x,y,z to RA and Dec of the virtual calibrator
+    Dec_rad = np.arcsin(z)
+    RA_rad = np.arctan2(y/np.cos(Dec_rad), x/np.cos(Dec_rad))
+    RA_deg = RA_rad*180/np.pi
+    if RA_deg < 0:
+        RA_deg += 360
+    RA = howfun.deg2dms(RA_deg/15.)
+    Dec = howfun.deg2dms(Dec_rad*180/np.pi)
+    ## <<<
+    return RA, Dec
+def calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_and_src2(targetname, src1, src2, ratio):
+    """
+    Input parameters
+    ----------------
+    targetname : str
+        target name. if '', then src1 and src2 are expected to be the position in the format of 'HH:MM:SS.SSSS,dd:mm:ss.sss'.
+    src1 : str
+        source1 name or source1 position.
+        if targetname!='', then src1 is source1 name.
+        Otherwise, src1 is the position of source1 in the format of 'HH:MM:SS.SSSS,dd:mm:ss.sss'.
+    src2 : str
+        source2 name or source2 position.
+        if targetname!='', then src2 is source2 name.
+        Otherwise, src2 is the position of source2 in the format of 'HH:MM:SS.SSSS,dd:mm:ss.sss'.
+    ratio : float
+        the separation between the position (to be calculated) and src1 divided by the separation between src1 and src2.
+    """
+    if targetname != '':
+        [RA1, Dec1] = srcposition(targetname, src1)
+        [RA2, Dec2] = srcposition(targetname, src2)
+    else:
+        [RA1, Dec1] = src1.split(',')
+        [RA2, Dec2] = src2.split(',')
+    sep_src1_src2 = howfun.separation(RA1.strip(), Dec1.strip(), RA2.strip(), Dec2.strip()) ## in arcmin
+    sep_virtual_to_src1 = ratio * sep_src1_src2 / 60. *np.pi/180. ## in rad
+    RA1_h, Dec1_deg = howfun.dms2deg(RA1.strip()), howfun.dms2deg(Dec1.strip())
+    RA2_h, Dec2_deg = howfun.dms2deg(RA2.strip()), howfun.dms2deg(Dec2.strip())
+    RA1_rad, Dec1_rad = RA1_h*15*np.pi/180., Dec1_deg*np.pi/180.
+    RA2_rad, Dec2_rad = RA2_h*15*np.pi/180., Dec2_deg*np.pi/180.
+    ## >>> transform into X, Y, Z coordinate
+    x1 = np.cos(Dec1_rad) * np.cos(RA1_rad)
+    y1 = np.cos(Dec1_rad) * np.sin(RA1_rad)
+    z1 = np.sin(Dec1_rad)
+    x2 = np.cos(Dec2_rad) * np.cos(RA2_rad)
+    y2 = np.cos(Dec2_rad) * np.sin(RA2_rad)
+    z2 = np.sin(Dec2_rad)
+    ## <<<
+    ## >>> solve vector normal to plane passing src1, sr2, and (0,0,0) point
+    vector1 = [x1, y1, z1]
+    vector2 = [x2, y2, z2]
+    A1, B1, C1 = np.cross(vector1, vector2)
+    ## <<<
+    ## >>> express x and y in terms of z: x=a1*z+b1, y=a2*z+b2
+    a = np.cos(sep_virtual_to_src1)
+    d = A1*y1 - B1*x1
+    a1 = (-C1*y1+B1*z1)/d
+    b1 = -B1*a/d
+    a2 = (C1*x1-A1*z1)/d
+    b2 = A1*a/d
+    ## <<<
+    ## >>> solve quadratic equation for z, then get x and y from z
+    coeffecients = [a1**2+a2**2+1,  2*a1*b1+2*a2*b2,  b1**2+b2**2-1]
+    zs = np.roots(coeffecients)
+    if abs(zs[0]-z2) < abs(zs[1]-z2): ## choose the solution closest to z2
+        z = zs[0]
+    else:
+        z = zs[1]
+    x = a1*z + b1
+    y = a2*z + b2
+    ## <<<
+    ## >>> reverse x,y,z to RA and Dec of the virtual calibrator
+    Dec_rad = np.arcsin(z)
+    RA_rad = np.arctan2(y/np.cos(Dec_rad), x/np.cos(Dec_rad))
+    RA_deg = RA_rad*180/np.pi
+    if RA_deg < 0:
+        RA_deg += 360
+    RA = howfun.deg2dms(RA_deg/15.)
+    Dec = howfun.deg2dms(Dec_rad*180/np.pi)
+    ## <<<
+    return RA, Dec
+    
 def calculate_position_between_src1_and_src2_given_ratio_in_the_near_field(targetname, src1, src2, ratio):
     """
+    Caveat
+    ------
+    For anguluar separation src1 and src2 at 1deg level, the error can be as large as ~5arcsecond.
+    For 1arcmin-level separation, the error is smaller than 0.1arcsecond.
+
     Input parameters
     ----------------
     src1 : str
@@ -4538,6 +4677,7 @@ class inverse_referencing(generatepmparin):
             RA_shift, Dec_shift = s.get_pulsar_offset_given_expyamlfile(expyamlfile)
             s.edit_shifts_in_expyamlfile(expyamlfile, RA_shift, Dec_shift)
         print('have changed shifts entry for all exp.yaml related to %s' % s.targetname)
+
 
 class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
     """
