@@ -820,14 +820,30 @@ def average_position(targetname, src1, src2):
     Input parameters
     ----------------
     src1 : str
-        source position in HH:MM:SS.SSSS.
+        source1 name.
     src2 : str
-        source position in dd:mm:ss.sssss.
+        source2 name.
     """
     [RA1, Dec1] = srcposition(targetname, src1)
     [RA2, Dec2] = srcposition(targetname, src2)
     RA = 0.5 * (howfun.dms2deg(RA1) + howfun.dms2deg(RA2))
     Dec = 0.5 * (howfun.dms2deg(Dec1) + howfun.dms2deg(Dec2))
+    return howfun.deg2dms(RA), howfun.deg2dms(Dec)
+def calculate_position_between_src1_and_src2_given_ratio_in_the_near_field(targetname, src1, src2, ratio):
+    """
+    Input parameters
+    ----------------
+    src1 : str
+        source1 name.
+    src2 : str
+        source2 name.
+    ratio : float
+        the separation between the position (to be calculated) and src1 divided by the separation between src1 and src2.
+    """
+    [RA1, Dec1] = srcposition(targetname, src1)
+    [RA2, Dec2] = srcposition(targetname, src2)
+    RA = (1 - ratio) * howfun.dms2deg(RA1) + ratio * howfun.dms2deg(RA2)
+    Dec = (1 - ratio) * howfun.dms2deg(Dec1) + ratio * howfun.dms2deg(Dec2)
     return howfun.deg2dms(RA), howfun.deg2dms(Dec)
 
 def Av_cscEls(targetname):
@@ -4524,6 +4540,11 @@ class inverse_referencing(generatepmparin):
         print('have changed shifts entry for all exp.yaml related to %s' % s.targetname)
 
 class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
+    """
+    Designed to find a virtual calibrator in the inverse referencing case where 1-D interpolation can result in a 
+    virtual calibrator in the vicinty of two IBCs; and the included angle is sufficiently close to 90 deg, so that
+    STERNE.py can be used.
+    """
     def __init__(s):
         pass
     def calculate_the_included_angle_in_the_near_field(s, position_virtual_calibrator, position_src1, position_src2):
@@ -4549,3 +4570,45 @@ class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
         dot_product = np.dot(unit_v1, unit_v2)
         included_angle = np.arccos(dot_product)
         return included_angle * 180 / np.pi
+    def get_the_largest_included_angle_in_the_near_field(s, bright_psr_name, phscalname, IBC1name, IBC2name, ratio_range=[0,1.], step_number=100.):
+        """
+        designed to solve the ratio_max_included_angle and the max_included_angle in the inverse-referencing dualphscal case.
+
+        Input parameters
+        ----------------
+        ratio_range : list of float (default : [0,1])
+            for the meaning of ratio see calculate_position_between_src1_and_src2_given_ratio_in_the_near_field()
+        """
+        position_psr = srcposition(bright_psr_name, bright_psr_name)
+        position_phscal = srcposition(bright_psr_name, phscalname)
+        position_IBC1 = srcposition(bright_psr_name, IBC1name)
+        position_IBC2 = srcposition(bright_psr_name, IBC2name)
+        
+        position_phscal_str = ','.join(position_phscal)
+        position_psr_str = ','.join(position_psr)
+        position_IBC1_str = ','.join(position_IBC1)
+        position_IBC2_str = ','.join(position_IBC2)
+        
+        ratios = np.arange(ratio_range[0], ratio_range[1], (ratio_range[1]-ratio_range[0])/step_number)
+        max_included_angle = -360 ##deg
+        for ratio in ratios:
+            position_between_IBCs = calculate_position_between_src1_and_src2_given_ratio_in_the_near_field(bright_psr_name, IBC1name, IBC2name, ratio)
+            position_between_IBCs_str = ','.join(position_between_IBCs)
+            a = find_virtual_calibrator_position_with_colinear_calibrators(position_between_IBCs_str, position_phscal_str, position_psr_str)
+            position_virtual_calibrator_str = ','.join([a.RA_hms_V, a.Dec_dms_V])
+            included_angle = s.calculate_the_included_angle_in_the_near_field(position_virtual_calibrator_str, position_IBC1_str,\
+                position_IBC2_str)
+            if included_angle > max_included_angle:
+                max_included_angle = included_angle
+                ratio_max_included_angle = ratio
+        ## >>> to print the needed info
+        position_between_IBCs = calculate_position_between_src1_and_src2_given_ratio_in_the_near_field(bright_psr_name, IBC1name, IBC2name,\
+            ratio_max_included_angle)
+        position_between_IBCs_str = ','.join(position_between_IBCs)
+        print('\nHERE IS THE FINAL INFO YOU NEED:\n')
+        a = find_virtual_calibrator_position_with_colinear_calibrators(position_between_IBCs_str, position_phscal_str, position_psr_str)
+        position_virtual_calibrator_str = ','.join([a.RA_hms_V, a.Dec_dms_V])
+        included_angle = s.calculate_the_included_angle_in_the_near_field(position_virtual_calibrator_str, position_IBC1_str,\
+            position_IBC2_str)
+        ## <<<
+        return max_included_angle, ratio_max_included_angle
