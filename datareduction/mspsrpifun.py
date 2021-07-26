@@ -3577,6 +3577,14 @@ class generatepmparin(object):
             s.expnos = np.append(s.expnos, expno)
             s.decyears = np.append(s.decyears, decyear)
             [RA, error0RA, Dec, error0Dec] = s.statsfile2position_and_its_error(statsfile)
+            ## >>> compensate for the pulsar position shift for dualphscal inverse-referencing observations
+            if s.dualphscal and s.inverse_referencing:
+                psr_position_shift = s.expno2shifts_of_pulsar_when_doing_inverse_referencing(expno, s.targetname)
+                if psr_position_shift != False:
+                    RA_shift_to_compensate = -s.dualphscalratio * psr_position_shift[0] ## for the prIBC, or the de facto target; in mas
+                    Dec_shift_to_compensate = -s.dualphscalratio * psr_position_shift[1] ## for the prIBC, or the de facto target; in mas
+                    RA, Dec = howfun.shift_position(RA, Dec, RA_shift_to_compensate, Dec_shift_to_compensate)
+            ## <<<
             s.RAs = np.append(s.RAs, RA)
             s.Decs = np.append(s.Decs, Dec)
             s.error0RAs = np.append(s.error0RAs, error0RA)
@@ -3584,6 +3592,33 @@ class generatepmparin(object):
             fileWrite.write("%s %s %.7f %s %.6f\n" % (decyear, RA, error0RA, Dec, error0Dec))
         fileWrite.close()
         s.nepoch = len(s.RAs)
+    def expno2shifts_of_pulsar_when_doing_inverse_referencing(s, expno, psrname):
+        """
+        Functionality
+        -------------
+        read shifts of a pulsar (or a target/de facto prIBC) when inverse referencing and dualphscal
+            are both carried out.
+
+        Output parameter
+        ----------------
+        psr_position_shift : bool or list of float
+            False: when shifts is not provided in the exp.yaml, or it is not releveant to the pulsar.
+            [RA_shift_mas, Dec_shift_mas].
+        """
+        expconfigfile = s.configdir + '/' + expno + '.yaml'
+        expconfig = yaml.load(open(expconfigfile))
+        try:
+            shifts = expconfig['shifts']
+        except KeyError:
+            shifts = None
+        psr_position_shift = False
+        if shifts != None:
+            shift_list = shifts[0].split(',')
+            shift_src = shift_list[0].strip()
+            if shift_src == psrname:
+                psr_position_shift = map(float, shift_list[1:])
+        return psr_position_shift ## both items in mas
+            
         
     def write_out_preliminary_pmpar_in(s, check_inbeam=''):
         """

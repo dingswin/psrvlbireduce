@@ -60,11 +60,37 @@ def dms2deg(array):
             degrees = np.append(degrees, degree)
     return degrees
 
+def shift_position(RA, Dec, RA_shift, Dec_shift):
+    """
+    Functionality
+    -------------
+    shift position RA by RA_shift, and Dec by Dec_shift.
+
+    Input parameters
+    ----------------
+    RA : str
+        in HH:MM:SS.SSSS
+    Dec : str
+        in dd:mm:ss.sss
+    RA_shift : float
+        in mas.
+    Dec_shift : float
+        in mas.
+    """
+    RA_h, Dec_deg = dms2deg(RA), dms2deg(Dec)
+    Dec_rad = Dec_deg * np.pi/180.
+    RA_shift_ms = RA_shift/15./np.cos(Dec_rad)
+    RA_shift_h = RA_shift_ms/1000./3600.
+    Dec_shift_deg = Dec_shift/1000./3600.
+    RA_shifted = deg2dms(RA_h + RA_shift_h)
+    Dec_shifted = deg2dms(Dec_deg + Dec_shift_deg)
+    return RA_shifted, Dec_shifted
+
 def separation_large_scale(RA1,Dec1,RA2,Dec2): 
     """
     Function
     --------
-    calculate angular separation (in min) given RAs/Decs in dd:mm:ss.ssss format
+    calculate angular separation (in arcmin) on the unit spherical surface, given RAs/Decs in dd:mm:ss.ssss format.
 
     Caveat
     ------
