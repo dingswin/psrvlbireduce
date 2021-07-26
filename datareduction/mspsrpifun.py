@@ -20,7 +20,8 @@ def expno2sources(expno, inverse_referencing=False):
     """
     Note
     ----
-    It might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC.
+    It might be little bit confusing, when inverse_referencing=True, the inverse-referenced source (normally an AGN) is set as the prIBC,
+    which is the same as the normal referencing.
 
     Return parameters
     -----------------
@@ -33,10 +34,12 @@ def expno2sources(expno, inverse_referencing=False):
     targetname = expconfig['targets'][0]
     configfile = configdir + '/' + targetname + '.yaml'
     config = yaml.load(open(configfile))
+    #targetname = config['primarytarget']
     if not inverse_referencing:
         prIBCname = config['primaryinbeam']
     else:
         prIBCname = config['primarytarget']    
+    #prIBCname = config['primaryinbeam']
     targetdir = expconfig['rootdir']
     foldername = targetdir.split('/')[-1]
     if foldername == '':
@@ -908,6 +911,13 @@ def calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_a
         Otherwise, src2 is the position of source2 in the format of 'HH:MM:SS.SSSS,dd:mm:ss.sss'.
     ratio : float
         the separation between the position (to be calculated) and src1 divided by the separation between src1 and src2.
+
+    Output parameters
+    -----------------
+    RA : str
+        right ascension in HH:MM:SS.SSS
+    Dec : str
+        declination in dd:mm:ss.ssss
     """
     if targetname != '':
         [RA1, Dec1] = srcposition(targetname, src1)
@@ -967,7 +977,8 @@ def calculate_position_between_src1_and_src2_given_ratio_in_the_near_field(targe
     """
     Caveat
     ------
-    For anguluar separation src1 and src2 at 1deg level, the error can be as large as ~5arcsecond.
+    For anguluar separation src1 and src2 at 1deg level, the error can be as large as ~5arcsecond. In this case,
+        use calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_and_src2() instead.
     For 1arcmin-level separation, the error is smaller than 0.1arcsecond.
 
     Input parameters
@@ -1033,9 +1044,31 @@ def sysErr(targetname, src1, src2):
 
 ## group 2b: epoch-based sysErr estimator #########################################################
 class expno_sysErr:
+    """
+    Input parameters
+    ----------------
+    paraA_rchsq : float (default : None)
+        manually setting paraA, when, e.g. observation is not done at L band.
+        paraA_rchsq got its name because it is normally acquired by the reduced chi-square standard, corresponding
+        to unity rchsq.
+        It only makes difference when dualphscal==True. be sure to set to None for L-band astrometry (when
+        using the default paraA=1e-3 and paraB=0.6 from Deller et al. 2019). When paraA_rchsq is assigned, then 
+        paraB will be set to 0 (see Class expno_sysErr()).
+    kwargs : dict
+        1. manual_dualphscalratio : float (default: None)
+            manually setting the ratio of dualphscal if not suitable to estimate it automatically 
+            in some complicated situations.
+        2. ____manual_virtual_calibrator (deprecated!!!) : list  
+            Info for manually assigned virtual calibrator (when virtual calibrator is not calculated with the target),
+            consisted of three elements: phscal1, phscal2 and dualphscalratio.
+            For example, manual_virtual_calibrator=['J1935+2031','J1939+2134',1.28]
+    """
     paraA = 0.001
     paraB = 0.6
-    def __init__(s, expno, dualphscal='', paraA_rchsq=1e-4, inverse_referencing=False):
+    def __init__(s, expno, dualphscal=False, paraA_rchsq=None, inverse_referencing=False, **kwargs):
+        """
+        paraA_rchsq is 3e-4 for XTE J1810-197 as the observation band is not L band.
+        """
         s.inverse_referencing = inverse_referencing
         [s.targetname, s.foldername, s.phsrefname, s.prIBCname] = expno2sources(expno, s.inverse_referencing)
         s.expno = expno
@@ -1045,7 +1078,28 @@ class expno_sysErr:
         s.paraA_rchsq = paraA_rchsq
         s.dualphscal = dualphscal
         s.dodefaultnames = s.read_dodefaultnames_given_expno(s.expno)
+        ## >>> kwargs
+        #try:
+        #    s.virtual_calibrator_manual_info = kwargs['manual_virtual_calibrator']
+        #    s.manual_virtual_calibrator = True
+        #except KeyError:
+        #    s.manual_virtual_calibrator = False
+        try:
+            s.manual_dualphscalratio = kwargs['manual_dualphscalratio']
+        except KeyError:
+            s.manual_dualphscalratio = None
+        ## <<<
     def sysErr(s):
+        """
+        Output parameter
+        ----------------
+        sysErrRA : float
+            in mas.
+        sysErrDec : float
+            in mas.
+        sysErrRA_ms : float
+            in ms.
+        """
         [beamRA, beamDec] = s.beam_in_RA_Dec()
         delta_sys1 = s.delta_sys()    
         sysErrRA  = beamRA*delta_sys1 #in mas
@@ -1053,13 +1107,20 @@ class expno_sysErr:
         sysErrRA_ms = howfun.mas2ms(sysErrRA, s.Dec_target)
         return sysErrRA, sysErrDec, sysErrRA_ms
     def delta_sys(s):
+        """
+        Caveat
+        ------
+        when paraA_rchsq is provided, this function is only valid when the de facto prIBC is bright.
+        """
         sep = s.separation_between_target_and_virtual_cal_in_dualphscal_mode()
         #sep = s.target_prIBC_separation()
         Av_cscEl1 = s.Av_cscEl()
         [junk1, junk2, junk3, SNprIBC] = s.targetbeam()
-        if s.dualphscal:
-            delta_sys = s.paraA_rchsq*sep*Av_cscEl1 ## since not using IBC and both phscals are relatively bright
+        if s.dualphscal and s.paraA_rchsq!=None:
+            delta_sys = s.paraA_rchsq*sep*Av_cscEl1 ## only valid when IBC is bright!!
         else:
+        #    delta_sys = np.sqrt( (s.paraA*sep*Av_cscEl1)**2 + (s.paraB/SNprIBC)**2 )
+        #delta_sys = np.sqrt( (s.paraA*sep*Av_cscEl1)**2 + (s.paraB/SNprIBC)**2 )
             delta_sys = s.paraA*sep*Av_cscEl1 + s.paraB/SNprIBC
         return delta_sys
     def target_prIBC_separation(s):
@@ -1078,24 +1139,34 @@ class expno_sysErr:
         expconfigfile = configdir + '/' + expno + '.yaml'
         expconfig = yaml.load(open(expconfigfile))
         return expconfig['dodefaultnames']
-    def targetbeam(s): #also get SNprIBCs, using prIBC statsfile,
-        """
-        Note
-        ----
-        1. statsfile for divided IBC fitsfile is not used, as the image S/N normally increases after dividing the model.
-        """
-        if not s.dodefaultnames:
-            prIBCstatsfiles = glob.glob(r'%s/*%s.difmap.jmfit.stokesi.stats' % (s.expdir, s.prIBCname))
+    def find_de_facto_prIBCstatsfiles(s):
+        if not s.inverse_referencing:
+            if not s.dodefaultnames:
+                prIBCstatsfiles = glob.glob(r'%s/*%s.difmap.jmfit.stokesi.stats' % (s.expdir, s.prIBCname))
+            else:
+                prIBCstatsfiles = glob.glob(r'%s/*_inbeam0_0_divided.difmap.jmfit.stokesi.stats' % s.expdir)
         else:
-            prIBCstatsfiles = glob.glob(r'%s/*_inbeam0_0_divided.difmap.jmfit.stokesi.stats' % s.expdir)
-        print prIBCstatsfiles
+            if not s.dodefaultnames:
+                prIBCstatsfiles = glob.glob(r'%s/*[!preselfcal].gated.difmap.jmfit.stokesi.stats' % s.expdir)
+            else:
+                prIBCstatsfiles = glob.glob(r'%s/%s_pulsar.gated.difmap.jmfit.stokesi.stats' % (s.expdir, s.expno))
+        print(prIBCstatsfiles)
         if len(prIBCstatsfiles) != 1:
             if s.prIBCname == s.phsrefname:
                 prIBCstatsfiles = glob.glob(r'%s/*%s_ibshiftdiv_difmap.jmfit.stats' % (s.expdir, s.prIBCname))
                 if len(prIBCstatsfiles) != 1:
                     print "No statsfile or more than one statsfiles for the primary in-beam calibrator is found."
                     sys.exit()
-        prIBCstatsfile = prIBCstatsfiles[0]
+        return prIBCstatsfiles[0]
+        
+    def targetbeam(s): #also get SNprIBCs, using prIBC statsfile,
+        """
+        Note
+        ----
+        1. statsfile for divided IBC fitsfile is not used, as the image S/N normally increases after dividing the model.
+        """
+        prIBCstatsfile = s.find_de_facto_prIBCstatsfiles()
+        #prIBCstatsfile = prIBCstatsfiles[0]
         lines = open(prIBCstatsfile).readlines()[-10:]
         for line in lines:
             if 'S/N' in line:
@@ -1144,11 +1215,40 @@ class expno_sysErr:
         Av_cscEl = np.average(TelAv_csc_Els) #averaged csc(el) over telescopes and scans
         return Av_cscEl
     def separation_between_target_and_virtual_cal_in_dualphscal_mode(s):
+        """
+        Output parameter
+        ----------------
+        sep : float
+            angular separation in arcmin.
+        """
         [RA1, Dec1] = srcposition(s.foldername, s.foldername)
         s.Dec_target = Dec1
         if s.dualphscal and s.phsrefname != s.prIBCname:
-            a = find_virtual_calibrator_position_with_colinear_calibrators(s.targetname, s.phsrefname, s.prIBCname) 
-            [sep, inbeamsn_ratio] = a.separation_between_virtual_phscal_and_sources()
+            if not s.inverse_referencing:
+                if s.manual_dualphscalratio == None:
+                    a = find_virtual_calibrator_position_with_colinear_calibrators(s.foldername, s.phsrefname, s.prIBCname) 
+                    [sep, inbeamsn_ratio] = a.separation_between_virtual_phscal_and_sources()
+                else:
+                    position_target = srcposition(s.foldername, s.foldername)
+                    position_VC = position_virtual_calibrator = calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_and_src2(\
+                        s.foldername, s.phsrefname, s.prIBCname, s.manual_dualphscalratio)
+                    sep = howfun.separation(position_target[0], position_target[1], position_VC[0], position_VC[1])
+            else:
+                if s.manual_dualphscalratio == None:
+                    position_target = srcposition(s.foldername, s.foldername)
+                    position_phscal = srcposition(s.foldername, s.phsrefname)
+                    position_prIBC  = srcposition(s.foldername, s.prIBname)
+                    position_target_str = ','.join(position_target)
+                    position_phscal_str = ','.join(position_phscal)
+                    position_prIBC_str = ','.join(position_prIBC)
+                    a = find_virtual_calibrator_position_with_colinear_calibrators(position_prIBC_str,\
+                        position_phscal_str, position_prIBC_str) 
+                    [sep, inbeamsn_ratio] = a.separation_between_virtual_phscal_and_sources()
+                else:
+                    position_prIBC = srcposition(s.foldername, s.prIBCname)
+                    position_VC = position_virtual_calibrator = calculate_position_given_dualphscalratio_on_the_geodetic_line_passing_src1_and_src2(\
+                        s.foldername, s.phsrefname, s.foldername, s.manual_dualphscalratio)
+                    sep = howfun.separation(position_prIBC[0], position_prIBC[1], position_VC[0], position_VC[1])
         else:
             print("Not a dual-phscal configuration; go with normal separation")
             sep = s.target_prIBC_separation() #correct it back after test
@@ -1199,6 +1299,10 @@ def align_position_in_adhoc_experiment(RA, errRA, Dec, errDec, targetname, excep
     1) This is a combination of the align_position_in_adhoc_experiment0/1. 
     2) It chooses either prIBC relative to phscal or phscal to prIBC with smaller scatter in a semi-automatic way.
     3) 'refRA/Dec' is the average position of the calibrator positions.
+
+    Caveat
+    ------
+    not working for inverse referencing!
     """
     ## ref position (and its scatter) of the phsref Cal relative to prIBC for new observations
     [refRA0, refDec0] = target2positionscatter(targetname, exceptions)[0]
@@ -3328,7 +3432,8 @@ class solve_the_two_correction_factors_in_2D_interpolation:
 
 class generatepmparin(object):
     """
-    Functions:
+    Functions
+    ---------
     1) generate pmpar.in.preliminary or pmpar.in, using the 'write_out_preliminary/final_pmpar_in' function group
     2) while estimating systematics, you can choose dual-phscal mode
     3) then you can bootstrap with the pmparinfile
@@ -3338,17 +3443,25 @@ class generatepmparin(object):
     7) to make pmparin in the case of inverse referencing with respect to more than one IBCs, one needs to change 'primartytarget' (prIBC)
        through all IBCs; each time run and create a pmparin (either pmpar.in or pmpar.in.preliminary)
 
-    Usage instructions:
+    Usage instructions
+    ------------------
     The functions are largely organized in the order of running: write_out_preliminary/final --> bootstrap_pmpar --> boostrapped_sample2estimates
     --> make plots
 
-    Input:
-    e.g. exceptions=['bh142','bh145a']
+    Input parameters
+    ----------------
+    exceptions : list (default : '')
+        e.g. exceptions=['bh142','bh145a']
+    dualphscalratio : float (default : None)
+        manually setting dualphscalratio. If exceptions are provided, then dualphscalratio (whether an automatically
+        calculated one or a manually set one) has to be provided, to enable frame aligning. If dualphscalratio is 
+        None, dualphscalratio will be automatically calculated for all but frame aligning.
 
-    Reference epoch:
+    Reference epoch
+    ---------------
     It will be automatically determined as the median of the epochs, and rounded to an integer.
     """
-    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=1, inverse_referencing=False):
+    def __init__(s, targetname, exceptions='', dualphscal=False, dualphscalratio=None, inverse_referencing=False):
         s.targetname = targetname
         s.exceptions = exceptions
         s.dualphscal = dualphscal
@@ -3512,15 +3625,27 @@ class generatepmparin(object):
         """
         Input parameters
         ----------------
+        paraA_rchsq : float (default : None)
+            paraA_rchsq got its name because it is normally acquired by the reduced chi-square standard, corresponding
+            to unity rchsq.
+            It only makes difference when dualphscal==True. be sure to set to None for L-band astrometry (when
+            using the default paraA=1e-3 and paraB=0.6 from Deller et al. 2019). When paraA_rchsq is assigned, then 
+            paraB will be set to 0 (see Class expno_sysErr()).
         kwargs : 
             1. inverse_referencing : bool (default : False)
                 This is not actually necessary since self.inverse_referencing can be called.
                 But the introduction of this kwarg allow extracting this function from the class.
+            2. manual_dualphscalratio : float (default : None)
+                manually setting the ratio of dualphscal.
         """
         try:
             inverse_referencing = kwargs['inverse_referencing']
         except KeyError:
             inverse_referencing = False
+        try:
+            manual_dualphscalratio = kwargs['manual_dualphscalratio']
+        except KeyError:
+            manual_dualphscalratio = None
         errorRAs   = np.array([])
         errorDecs  = np.array([])
         if pulsition_suffix != '':
@@ -3541,7 +3666,7 @@ class generatepmparin(object):
         fileWrite.write("#pi = 0\n")
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
         for i in range(nepoch):
-            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing)
+            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing, manual_dualphscalratio=manual_dualphscalratio)
             [sysErrRA_mas, sysErrDec_mas, sysErrRA_ms] = sysError.sysErr()
             sysErrRA_s = sysErrRA_ms/1000
             sysErrDec_as = sysErrDec_mas/1000
@@ -3553,6 +3678,9 @@ class generatepmparin(object):
         fileWrite.close()
         return pulsitions, errorRAs, errorDecs
     def write_out_pmparin_incl_sysErr_two_paraA_rchsq(s, pmparesultsdir, targetname, exceptions, pulsition_suffix, nepoch, epoch, decyears, expnos, RAs, error0RAs, Decs, error0Decs, dualphscal, paraA1_rchsq, paraA2_rchsq):
+        """
+        for astrometry including exceptional epochs using a different paraA_rchsq.
+        """
         errorRAs   = np.array([])
         errorDecs  = np.array([])
         if pulsition_suffix != '':
@@ -3588,21 +3716,31 @@ class generatepmparin(object):
         [RA0, Dec0, junk1, PI0, mu_a0, mu_d0, junk2, junk3, junk4, junk5, junk6, rchsq] = readpmparout(pmparout)
         D0 = 1/PI0
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq
-    def write_out_final_pmpar_in(s, paraA_rchsq=1e-3, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
+    def write_out_final_pmpar_in(s, paraA_rchsq=None, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
         """
         Note
         ----
         1. inverse_referencing is directly feeded into self.write_out_pmparin_incl_sysErr() as a kwarg.
+        2. iteratively getting paraA_rchsq is turned off!
+        
+        Input parameters
+        ----------------
+        paraA_rchsq : float (default : None)
+            paraA_rchsq got its name because it is normally acquired by the reduced chi-square standard, corresponding
+            to unity rchsq.
+            It only makes difference when dualphscal==True. be sure to set to None for L-band astrometry (when
+            using the default paraA=1e-3 and paraB=0.6 from Deller et al. 2019). When paraA_rchsq is assigned, then 
+            paraB will be set to 0 (see Class expno_sysErr()).
         """
         s.write_out_preliminary_pmpar_in()
         if not s.dualphscal:
-            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, 1e-3, inverse_referencing=s.inverse_referencing)
+            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing, manual_dualphscalratio=s.dualphscalratio)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         if s.dualphscal:
-            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'use.A1', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing)
+            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'dual.phscal', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing, manual_dualphscalratio=s.dualphscalratio)
             #[pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr_two_paraA_rchsq(s.pmparesultsdir, s.targetname, s.exceptions, 'unity.rchsq', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA1_rchsq, paraA_rchsq)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
-            while False: #iteratively getting paraA_rchsq is turned off
+            while False: ## iteratively getting paraA_rchsq is turned off!!
                 if rchsq < 1:
                     print("Reduced chi-square already less than unity without systematics; aborting")
                     sys.exit()
@@ -4687,6 +4825,29 @@ class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
     """
     def __init__(s):
         pass
+    def calculate_the_included_angle(s, position_virtual_calibrator, position_src1, position_src2):
+        position_VC = position_virtual_calibrator.split(',') 
+        position1 = position_src1.split(',')
+        position2 = position_src2.split(',')
+        RA_VC_rad  = 15*np.pi/180.*howfun.dms2deg(position_VC[0].strip())
+        Dec_VC_rad = np.pi/180.*howfun.dms2deg(position_VC[1].strip())
+        RA1_rad    = 15*np.pi/180.*howfun.dms2deg(position1[0].strip())
+        Dec1_rad   = np.pi/180.*howfun.dms2deg(position1[1].strip())
+        RA2_rad    = 15*np.pi/180.*howfun.dms2deg(position2[0].strip())
+        Dec2_rad   = np.pi/180.*howfun.dms2deg(position2[1].strip())
+        ## >>> convert to x,y,z coordinate
+        vector_VC = [np.cos(RA_VC_rad)*np.cos(Dec_VC_rad), np.cos(Dec_VC_rad)*np.sin(RA_VC_rad), np.sin(Dec_VC_rad)]
+        vector1 = [np.cos(RA1_rad)*np.cos(Dec1_rad), np.cos(Dec1_rad)*np.sin(RA1_rad), np.sin(Dec1_rad)]
+        vector2 = [np.cos(RA2_rad)*np.cos(Dec2_rad), np.cos(Dec2_rad)*np.sin(RA2_rad), np.sin(Dec2_rad)]
+        ## <<<
+        vectorN_p1 = vector_normal_to_plane1 = np.cross(vector_VC, vector1)
+        vectorN_p2 = vector_normal_to_plane2 = np.cross(vector_VC, vector2)
+        unit_vN1 = vectorN_p1 / np.linalg.norm(vectorN_p1)
+        unit_vN2 = vectorN_p2 / np.linalg.norm(vectorN_p2)
+        dot_product = np.dot(unit_vN1, unit_vN2)
+        included_angle = np.arccos(dot_product)
+        return included_angle*180/np.pi ## in deg
+
     def calculate_the_included_angle_in_the_near_field(s, position_virtual_calibrator, position_src1, position_src2):
         """
         Note
