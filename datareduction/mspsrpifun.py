@@ -3454,8 +3454,11 @@ class generatepmparin(object):
         e.g. exceptions=['bh142','bh145a']
     dualphscalratio : float (default : None)
         manually setting dualphscalratio. If exceptions are provided, then dualphscalratio (whether an automatically
-        calculated one or a manually set one) has to be provided, to enable frame aligning. If dualphscalratio is 
-        None, dualphscalratio will be automatically calculated for all but frame aligning.
+        calculated one or a manually set one) has to be provided, to enable frame aligning. In the case where inverse 
+        referencing and dual-phscal are both carried out, dualphscalratio might be also required to compensate for the 
+        position shifts of the pulsar.
+        If dualphscalratio is None, dualphscalratio will be automatically calculated, which however does not work for 
+        the two above-mentioned scenarios.
 
     Reference epoch
     ---------------
@@ -3543,7 +3546,10 @@ class generatepmparin(object):
         """
         Function
         --------
-        used by s.write_out_preliminar_pmpar_in() and s.write_out_pmpar_in_given_srcname_and_pmparinsuffix().
+        1. used by s.write_out_preliminar_pmpar_in() and s.write_out_pmpar_in_given_srcname_and_pmparinsuffix().
+        2. when s.inverse_referencing and s.dualphscal are both True, the pulsar shifts are looked at, which
+            are used to compensate the resultant shifts in the prIBC (the de facto target) positions. For this
+            compensation, s.dualphscalratio needs to be assigned!
 
         Input parameters
         ----------------
@@ -3631,6 +3637,8 @@ class generatepmparin(object):
             pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
         else:
             pulsitions = s.pmparesultsdir + '/' + check_inbeam + inverse_referenced_to + '.pmpar.in.preliminary'
+        if s.dualphscal:
+            pulsitions = pulsitions.replace('pmpar.in.preliminary','dual.phscal.pmpar.in.preliminary')
         s.find_statsfiles(check_inbeam)
         s.write_out_pmpar_in(s.statsfiles, pulsitions)
     def write_out_pmpar_in_given_srcname_and_pmparinsuffix(s, srcname, search_keyword, pmparinsuffix=''):
@@ -3646,13 +3654,14 @@ class generatepmparin(object):
         search_keyword : str
             A keyword in statsfile used to pinpoint statsfiles.
         pmparinsuffix : str (default: '')
-            Suffix for the output pmpar.in file; when it equals '', the search_keyword will be used as the suffix.
+            Suffix for the output pmpar.in file, to be added right before "pmpar.in"; when it equals '', 
+            the search_keyword will be used as the suffix.
         """
         if pmparinsuffix == '':
             pmparinsuffix = search_keyword
         if (pmparinsuffix != '') and (not pmparinsuffix.startswith('.')):
             pmparinsuffix = '.' + pmparinsuffix    
-        pulsitions = s.pmparesultsdir + '/' + srcname + '.pmpar.in' + pmparinsuffix
+        pulsitions = s.pmparesultsdir + '/' + srcname + pmparinsuffix + '.pmpar.in'
         s.find_statsfiles(srcname, search_keyword=search_keyword)
         s.write_out_pmpar_in(s.statsfiles, pulsitions)
 
@@ -3688,7 +3697,7 @@ class generatepmparin(object):
         inverse_referenced_to = ''
         if inverse_referencing:
             inverse_referenced_to = '.to.' + s.prIBCname
-        pulsitions = pmparesultsdir + '/' + targetname + inverse_referenced_to + '.pmpar.in' + pulsition_suffix
+        pulsitions = pmparesultsdir + '/' + targetname + inverse_referenced_to + pulsition_suffix + '.pmpar.in'
         fileWrite = open(pulsitions, 'w')
         if s.inverse_referencing:
             fileWrite.write("### positions for %s inverse-referencing to %s\n" % (s.prIBCname, s.targetname))
@@ -3720,7 +3729,7 @@ class generatepmparin(object):
         errorDecs  = np.array([])
         if pulsition_suffix != '':
             pulsition_suffix = '.' + pulsition_suffix
-        pulsitions = pmparesultsdir + '/' + targetname + '.pmpar.in' + pulsition_suffix
+        pulsitions = pmparesultsdir + '/' + targetname + pulsition_suffix + '.pmpar.in'
         fileWrite = open(pulsitions, 'w')
         fileWrite.write("### pmpar format\n")
         fileWrite.write("#name = " + targetname + "\n")

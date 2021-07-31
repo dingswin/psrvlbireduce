@@ -129,7 +129,7 @@ def separation(RA1,Dec1,RA2,Dec2):
         sep = math.acos(cos_sep)
         sep = sep*180/math.pi*60 # rad to arcmin
     else: ## small scale --> use approximation
-        sep_sq = (Dec[1]-Dec[0])**2 + (RA[1]-RA[0])**2*np.cos(Dec_rad[0]*Dec_rad[1])
+        sep_sq = (Dec[1]-Dec[0])**2 + (RA[1]-RA[0])**2 * np.cos(Dec_rad[0]) * np.cos(Dec_rad[1])
         sep = 60*np.sqrt(sep_sq) #arcmin
     return sep
 def separations(RA, Dec, RAs, Decs):
@@ -175,6 +175,11 @@ def separation_deg(RA1, Dec1, RA2, Dec2): # all in deg format
 def separations_deg(RA, Dec, RAs, Decs):
     """
     like the 'separation_deg' function, but working for array as well.
+
+    Output parameters
+    -----------------
+    seps : float/list of float
+        angular separation(s) (in deg).
     """
     if type(RAs) == float:
         sep = separation_deg(RA, Dec, RAs, Decs)
@@ -184,7 +189,7 @@ def separations_deg(RA, Dec, RAs, Decs):
         cos_seps = np.cos(Dec_rad)*np.cos(Decs_rad)*np.cos(RA_rad-RAs_rad) + np.sin(Dec_rad)*np.sin(Decs_rad)
         seps = np.arccos(cos_seps)
         seps *= 180/math.pi
-        return seps
+        return seps ## in deg
 
 def distance_from_an_array_of_positions_to_one_specific_position(X,Y,xs,ys):
     if type(xs)==int or type(xs)==float:
