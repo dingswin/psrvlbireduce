@@ -220,25 +220,17 @@ def main():
         dotriphscal = True
     except KeyError:
         dotriphscal = False
-    
+
     if float(dualphscal_setup[0]) > 0 and dotriphscal:
         print("Can't do both dualphscal and triphscal; aborting...")
         sys.exit()
-
 
 
     ################################################################################
     ## get an instance of the vlbireduce class
     ################################################################################
     reducevlbi = vlbireduce(runfromlevel, runtolevel)
-    
-    ################################################################################
-    ## add extra yaml parameters to the instance (to minimize changes during upgrades)
-    ################################################################################
-    try:
-        reducevlbi.inbeammodelshifts = expconfig['inbeammodelshifts'] ## in mas
-    except KeyError:
-        reducevlbi.inbeammodelshifts = [[0,0]] * numtargets
+
 
     ################################################################################
     ## Parse the source file and set some more variables
