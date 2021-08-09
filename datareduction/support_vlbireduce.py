@@ -123,7 +123,7 @@ class support_vlbireduce(object):
                       expconfig, targetconfigs, modeldir, modeltype, targetonly,
                       calonly, beginif, endif, doampcal, dosecondary, sumifs,
                       clversion, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, 
-                      leakagedopol=0):
+                      leakagedopol=0, **kwargs):
         """
         Functionality
         -------------
@@ -148,6 +148,9 @@ class support_vlbireduce(object):
             clversion of uvdata (see local parameters) to run CALIB. Since uvdata can be for inbeam or
             for target (when applying inverse referencing), clversion need to be aligned to avoid
             complaints.
+        kwargs : dict
+            1. inbeammodelshift : list of 2 float (default: [0,0])
+                [ra_shift, dec_shift] of the model (in mas)
         
         Local parameters
         ----------------
@@ -167,6 +170,10 @@ class support_vlbireduce(object):
         tocalindices : list of int
             indice of targets to do inbeam self-calibration (incl. inverse referencing).
         """
+        try:
+            inbeammodelshift = [kwargs['inbeammodelshift'][0]/1000., kwargs['inbeammodelshift'][1]/1000.] ## into arcsec
+        except KeyError:
+            inbeammodelshift = [0,0]
         normed = []
         tocaluvdata = []
         tocalimagedata = []
@@ -502,7 +509,7 @@ class support_vlbireduce(object):
                                                  1, expconfig['refant'], doampcal, 
                                                  solmins, dostokesi, soltype, 
                                                  solsnr, sumifs, inbeamuvrange, weightit,
-                                                 flagwheremodelbelow)
+                                                 flagwheremodelbelow, modelshift=inbeammodelshift)
                     snoutver = 1
                     if not expconfig['skipsnedt']:
                         vlbatasks.snedt(inbeam_uv_data, 1)
