@@ -383,6 +383,9 @@ class plot_position_scatter:
         #s.plot_prIBC_preselfcal_scatter()
         #s.plot_phscal_scatter_interpolated_from_prIBC_and_prIBC_preselfcal_scatter()
     def plot_phscal_scatter_interpolated_from_prIBC_and_prIBC_preselfcal_scatter(s, colorbarstep=0.1):
+        """
+        the function that makes one of the PSR J1012+5307 paper images
+        """
         import matplotlib.pyplot as plt
         import matplotlib.gridspec as gridspec
         [RAs_phscal, Decs_phscal] = s.get_phscal_positions_interpolated_from_prIBC()
@@ -786,6 +789,9 @@ def jmfitfromfile(targetname, srcname, overwrite_statsfile=False):
         os.system("jmfitfromfile.py %s %s" % (srcmodel, outputstatsfile))
     return outputstatsfile
 def srcposition(targetname, srcname):
+    """
+    when position changed, make sure to delete any tempfile.
+    """
     if targetname != srcname:
         statsfile = jmfitfromfile(targetname, srcname)
         print("The position corresponding to the brightest spot on the map is:\n")
@@ -795,7 +801,10 @@ def srcposition(targetname, srcname):
         return srcposition_map_center(targetname, srcname)
 def srcposition_map_center(targetname, srcname):
     """
+    Note
+    ----
     be extra careful when map center needs to be changed during the data reduction!
+    when map centre position changed, make sure to delete the tmpfile.
     """
     [auxdir, configdir, targetdir, phscalname, prIBCname] = prepare_path_source(targetname)
     tmpfile = targetdir + '/.' + srcname + '.map.center.position.tmp'
@@ -4521,7 +4530,12 @@ class generatepmparin(object):
 
     def calculate_a_revised_map_center_for_IBC_to_align_its_position_to_the_average_preselfcal_position(s, targetname, prIBCname):
         """
-        for some reason, needs to do several iterations before aligning the position perfectly! needs to be addressed later.
+        using preselfcal IBC positions to align the IBC frame with the phscal frame
+
+        Note
+        ----
+        when the map center of the IBC model is changed, the preselfcal IBC image divided by the model would also change.
+        but if you do not divide the preselfcal image with the model, it should stay unchanged.
         """
         position_preselfcal = target2positionscatter(targetname)[1]
         RA_PS_list, Dec_PS_list = position_preselfcal
@@ -4540,6 +4554,9 @@ class generatepmparin(object):
         Dec_deg = Dec_PS_deg + Dec_mas_MC2C/1000./3600.
         return RA_deg, Dec_deg
     def calculate_a_revised_map_center_for_IBC_by_aligning_the_inbeam_shifted_position_to_the_phscal_position(s, targetname, phscalname, prIBCname):
+        """
+        using the inbeam-shifted phscal positions to do the alignment.
+        """
         prIBC_MC = prIBC_map_center = srcposition_map_center(targetname, prIBCname)
         RA_deg_prIBC_MC = 15*howfun.dms2deg(prIBC_MC[0])
         Dec_deg_prIBC_MC = howfun.dms2deg(prIBC_MC[1])
@@ -4860,6 +4877,15 @@ class inverse_referencing(generatepmparin):
             s.edit_shifts_in_expyamlfile(expyamlfile, RA_shift, Dec_shift)
         print('have changed shifts entry for all exp.yaml related to %s' % s.targetname)
 
+class dualphscal(generatepmparin):
+    """
+    """
+    def __init__(s, psrname, exceptions=''):
+        super(inverse_referencing, s).__init__(psrname, exceptions) #python2 way to use super
+    def find_exp_yamlfiles(s, psrname, exceptions=[]):
+        expnos = targetname2expnos(psrname, exceptions)
+        expyamlfiles = [s.configdir + '/' + expno + '.yaml' for expno in expnos]
+        return expyamlfiles
 
 class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
     """

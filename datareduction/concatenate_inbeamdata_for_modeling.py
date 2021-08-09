@@ -2,11 +2,11 @@
 """
 Usage
 -----
-concatenate_*py inbeamname
+concatenate_*py inbeamname (or phscal)
 
 Input
 -----
-inbeamname, input as argv[1].
+inbeamname (or phscalname), input as argv[1].
 
 Note
 ----
@@ -33,7 +33,7 @@ os.chdir(inbeamname)
 print('Combining single-epoch uvfitsfiles')
 os.system('dbcon.py')
 os.system('mv dbcon_uv.fits %s_formodeling_uv.fits' % inbeamname)
-#print('Deleting single-epoch uvfitsfiles...')
-#fitsfile2delete = glob.glob(r'*_pipeline_uv.fits')
-#for fitsfile in fitsfile2delete:
-#    os.remove(fitsfile)
+print('Deleting single-epoch uvfitsfiles...')
+fitsfile2delete = glob.glob(r'*_pipeline_uv.fits')
+for fitsfile in fitsfile2delete:
+    os.remove(fitsfile)
