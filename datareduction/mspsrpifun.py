@@ -3506,6 +3506,8 @@ class generatepmparin(object):
                     s.statsfiles=glob.glob(r'%s/*/*[!preselfcal].gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
                 else:
                     s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
+                    if len(s.statsfiles) == 0:
+                        s.statsfiles=glob.glob(r'%s/*/*_%s.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #as target, not calibrator
             else:
                 s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
         elif search_keyword != '' and check_inbeam != '':
@@ -3551,7 +3553,7 @@ class generatepmparin(object):
         median_decyear = howfun.sample2median(decyears)
         median = Time(median_decyear, format='decimalyear')
         return round(median.mjd)
-    def write_out_pmpar_in(s, statsfiles, pulsitions):
+    def write_out_pmpar_in(s, statsfiles, pulsitions, reference_statsfiles=None):
         """
         Function
         --------
@@ -3566,7 +3568,22 @@ class generatepmparin(object):
             A list of statsfile entailing the position information.
         pulsitions : str
             The output pmpar.in file contain pulsar positions (pulsitions).
+        reference_statsfiles : list of str (default : None)
+            statsfiles for a reference source that is close to the target but not bright enough for self-calibration.
         """
+        statsfiles.sort()
+        num_statsfiles = len(statsfiles)
+        if reference_statsfiles != None:
+            reference_statsfiles.sort()
+            if len(reference_statsfiles) != num_statsfiles:
+                print("The provided reference statsfiles should be as numerous as the statsfiles! aborting")
+                sys.exit()
+            ## >>> derive avg position for the reference AGN source
+            [RAs_ref, Decs_ref] = nonpulsar_statsfiles2positions(reference_statsfiles)
+            ref_position_avg = dms_positions2stat(RAs_ref, Decs_ref)
+            RA_ref_avg = ref_position_avg[0][0]
+            Dec_ref_avg = ref_position_avg[1][0]
+            ## <<<
         if not os.path.exists(s.pmparesultsdir):
             os.system('mkdir %s' % s.pmparesultsdir)
         s.RAs = np.array([])
@@ -3587,11 +3604,17 @@ class generatepmparin(object):
         fileWrite.write("epoch = %f\n" % s.epoch)
         fileWrite.write("#pi = 0\n")
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
-        for statsfile in statsfiles:
-            [expno, decyear] = s.statsfile2expno_and_decyear(statsfile)
+        for i in range(num_statsfiles):
+            [expno, decyear] = s.statsfile2expno_and_decyear(statsfiles[i])
             s.expnos = np.append(s.expnos, expno)
             s.decyears = np.append(s.decyears, decyear)
-            [RA, error0RA, Dec, error0Dec] = s.statsfile2position_and_its_error(statsfile)
+            [RA, error0RA, Dec, error0Dec] = s.statsfile2position_and_its_error(statsfiles[i])
+            if reference_statsfiles != None:
+                RA_ref, error0RA_ref, Dec_ref, error0Dec_ref = s.statsfile2position_and_its_error(reference_statsfiles[i])
+                error0RA = (error0RA**2 + error0RA_ref**2)**0.5
+                error0Dec = (error0Dec**2 + error0Dec_ref**2)**0.5
+                diffRA_mas, diffDec_mas = diffposition(RA, RA_ref, Dec, Dec_ref)
+                RA, Dec = howfun.shift_position(RA_ref_avg, Dec_ref_avg, diffRA_mas, diffDec_mas)
             ## >>> compensate for the pulsar position shift for dualphscal inverse-referencing observations
             if s.dualphscal and s.inverse_referencing:
                 psr_position_shift = s.expno2shifts_of_pulsar_when_doing_inverse_referencing(expno, s.targetname)
@@ -3635,21 +3658,40 @@ class generatepmparin(object):
         return psr_position_shift ## both items in mas
             
         
-    def write_out_preliminary_pmpar_in(s, check_inbeam=''):
+    def write_out_preliminary_pmpar_in(s, check_inbeam='', reference_to_check_inbeam=False):
         """
         for example, check_inbeam='IBC01433' means looking at bd1*IBC01433_preselfcal*stats and make the corresponding IBC01433.pmpar.in
+
+        Input parameters
+        ----------------
+        reference_to_check_inbeam : bool (default : False)
+            when check_inbeam != '', then check_inbeam can be used as the reference source (the calibrator
+            that is supposed to be close to the target but not bright enough for self-calibration).
         """
-        inverse_referenced_to = ''
+        referenced_to = ''
         if s.inverse_referencing:
-            inverse_referenced_to = '.to.' + s.prIBCname
+            referenced_to = '.to.' + s.prIBCname
+        elif reference_to_check_inbeam and (check_inbeam != ''):
+            referenced_to = '.to.' + check_inbeam
+        
         if check_inbeam == '':
-            pulsitions = s.pmparesultsdir + '/' + s.targetname + inverse_referenced_to + '.pmpar.in.preliminary'
+            pulsitions = s.pmparesultsdir + '/' + s.targetname + referenced_to + '.pmpar.in.preliminary'
+        elif not reference_to_check_inbeam:
+            pulsitions = s.pmparesultsdir + '/' + check_inbeam + referenced_to + '.pmpar.in.preliminary'
         else:
-            pulsitions = s.pmparesultsdir + '/' + check_inbeam + inverse_referenced_to + '.pmpar.in.preliminary'
+            pulsitions = s.pmparesultsdir + '/' + s.targetname + referenced_to + '.pmpar.in.preliminary'
+
         if s.dualphscal:
             pulsitions = pulsitions.replace('pmpar.in.preliminary','dual.phscal.pmpar.in.preliminary')
-        s.find_statsfiles(check_inbeam)
-        s.write_out_pmpar_in(s.statsfiles, pulsitions)
+        
+        if reference_to_check_inbeam and (check_inbeam != ''):
+            s.find_statsfiles(check_inbeam)
+            reference_statsfiles = s.statsfiles
+            s.find_statsfiles()
+            s.write_out_pmpar_in(s.statsfiles, pulsitions, reference_statsfiles)
+        else:    
+            s.find_statsfiles(check_inbeam)
+            s.write_out_pmpar_in(s.statsfiles, pulsitions, None)
     def write_out_pmpar_in_given_srcname_and_pmparinsuffix(s, srcname, search_keyword, pmparinsuffix=''):
         """
         Functions
