@@ -1071,6 +1071,9 @@ class expno_sysErr:
             Info for manually assigned virtual calibrator (when virtual calibrator is not calculated with the target),
             consisted of three elements: phscal1, phscal2 and dualphscalratio.
             For example, manual_virtual_calibrator=['J1935+2031','J1939+2134',1.28]
+        3. reference_to_src : str (default : None)
+            the reference source name, normally a non-calibratalbe close-by (to target) source.
+            If None, this function is disabled.
     """
     paraA = 0.001
     paraB = 0.6
@@ -1097,6 +1100,10 @@ class expno_sysErr:
             s.manual_dualphscalratio = kwargs['manual_dualphscalratio']
         except KeyError:
             s.manual_dualphscalratio = None
+        try:
+            s.reference_to_src = kwargs['reference_to_src']
+        except KeyError:
+            s.reference_to_src = None
         ## <<<
     def sysErr(s):
         """
@@ -1260,7 +1267,13 @@ class expno_sysErr:
                     sep = howfun.separation(position_prIBC[0], position_prIBC[1], position_VC[0], position_VC[1])
         else:
             print("Not a dual-phscal configuration; go with normal separation")
-            sep = s.target_prIBC_separation() #correct it back after test
+            if s.reference_to_src != None:
+                tempsrcname = s.prIBCname ## temparily change s.prIBCname to s.reference_to_src
+                s.prIBCname = s.reference_to_src
+                sep = s.target_prIBC_separation()
+                s.prIBCname = tempsrcname ## change s.prIBCname back
+            else:
+                sep = s.target_prIBC_separation() #correct it back after test
         return sep
 
 # group 3: draw online absolute position and errors ###############################################
@@ -3506,8 +3519,10 @@ class generatepmparin(object):
                     s.statsfiles=glob.glob(r'%s/*/*[!preselfcal].gated.difmap.jmfit.stokesi.stats' % targetdir) #find statsfile for each epoch
                 else:
                     s.statsfiles=glob.glob(r'%s/*/*_%s_preselfcal.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #find statsfile for each epoch
-                    if len(s.statsfiles) == 0:
-                        s.statsfiles=glob.glob(r'%s/*/*_%s.difmap.jmfit*.stats' % (targetdir, check_inbeam)) #as target, not calibrator
+                    if len(s.statsfiles) == 0: ## as target, not calibrator
+                        s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, check_inbeam)) ## prioritize divided always
+                        if len(s.statsfiles) == 0:
+                            s.statsfiles = glob.glob(r'%s/*/*_%s.difmap.jmfit*.stats' % (targetdir, check_inbeam)) 
             else:
                 s.statsfiles = glob.glob(r'%s/*/*_%s_divided.difmap.jmfit.stokesi.stats' % (targetdir, s.prIBCname))
         elif search_keyword != '' and check_inbeam != '':
@@ -3732,6 +3747,9 @@ class generatepmparin(object):
                 But the introduction of this kwarg allow extracting this function from the class.
             2. manual_dualphscalratio : float (default : None)
                 manually setting the ratio of dualphscal.
+            3. reference_to_src : str (default : None)
+                the reference source name, normally a non-calibratalbe close-by (to target) source.
+                If None, this function is disabled.
         """
         try:
             inverse_referencing = kwargs['inverse_referencing']
@@ -3741,6 +3759,10 @@ class generatepmparin(object):
             manual_dualphscalratio = kwargs['manual_dualphscalratio']
         except KeyError:
             manual_dualphscalratio = None
+        try:
+            reference_to_src = kwargs['reference_to_src']
+        except KeyError:
+            reference_to_src = None
         errorRAs   = np.array([])
         errorDecs  = np.array([])
         if pulsition_suffix != '':
@@ -3761,7 +3783,8 @@ class generatepmparin(object):
         fileWrite.write("#pi = 0\n")
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
         for i in range(nepoch):
-            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing, manual_dualphscalratio=manual_dualphscalratio)
+            sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing,\
+                manual_dualphscalratio=manual_dualphscalratio, reference_to_src=reference_to_src)
             [sysErrRA_mas, sysErrDec_mas, sysErrRA_ms] = sysError.sysErr()
             sysErrRA_s = sysErrRA_ms/1000
             sysErrDec_as = sysErrDec_mas/1000
@@ -3811,7 +3834,7 @@ class generatepmparin(object):
         [RA0, Dec0, junk1, PI0, mu_a0, mu_d0, junk2, junk3, junk4, junk5, junk6, rchsq] = readpmparout(pmparout)
         D0 = 1/PI0
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq
-    def write_out_final_pmpar_in(s, paraA_rchsq=None, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4):
+    def write_out_final_pmpar_in(s, paraA_rchsq=None, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4, reference_to_src=None):
         """
         Note
         ----
@@ -3826,10 +3849,16 @@ class generatepmparin(object):
             It only makes difference when dualphscal==True. be sure to set to None for L-band astrometry (when
             using the default paraA=1e-3 and paraB=0.6 from Deller et al. 2019). When paraA_rchsq is assigned, then 
             paraB will be set to 0 (see Class expno_sysErr()).
+        reference_to_src : str (default : None)
+            the reference source name, normally a non-calibratalbe close-by (to target) source.
+            If None, this function is disabled.
         """
         s.write_out_preliminary_pmpar_in()
         if not s.dualphscal:
-            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing, manual_dualphscalratio=s.dualphscalratio)
+            [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir,\
+                s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs,\
+                s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing,\
+                manual_dualphscalratio=s.dualphscalratio, reference_to_src=reference_to_src)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         if s.dualphscal:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'dual.phscal', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing, manual_dualphscalratio=s.dualphscalratio)
