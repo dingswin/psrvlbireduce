@@ -1074,6 +1074,8 @@ class expno_sysErr:
         3. reference_to_src : str (default : None)
             the reference source name, normally a non-calibratalbe close-by (to target) source.
             If None, this function is disabled.
+        4. check_source : str (default : None)
+            normally an IBC to check if it displays proper motion or parallax.
     """
     paraA = 0.001
     paraB = 0.6
@@ -1081,15 +1083,6 @@ class expno_sysErr:
         """
         paraA_rchsq is 3e-4 for XTE J1810-197 as the observation band is not L band.
         """
-        s.inverse_referencing = inverse_referencing
-        [s.targetname, s.foldername, s.phsrefname, s.prIBCname] = expno2sources(expno, s.inverse_referencing)
-        s.expno = expno
-        auxdir    = os.environ['PSRVLBAUXDIR']
-        targetdir = auxdir + '/processing/' + s.foldername
-        s.expdir = targetdir + '/' + expno
-        s.paraA_rchsq = paraA_rchsq
-        s.dualphscal = dualphscal
-        s.dodefaultnames = s.read_dodefaultnames_given_expno(s.expno)
         ## >>> kwargs
         #try:
         #    s.virtual_calibrator_manual_info = kwargs['manual_virtual_calibrator']
@@ -1104,7 +1097,22 @@ class expno_sysErr:
             s.reference_to_src = kwargs['reference_to_src']
         except KeyError:
             s.reference_to_src = None
+        try:
+            s.check_source = kwargs['check_source']
+        except KeyError:
+            s.check_source = None
         ## <<<
+        s.inverse_referencing = inverse_referencing
+        [s.targetname, s.foldername, s.phsrefname, s.prIBCname] = expno2sources(expno, s.inverse_referencing)
+        if s.reference_to_src != None:
+            s.prIBCname = s.reference_to_src
+        s.expno = expno
+        auxdir    = os.environ['PSRVLBAUXDIR']
+        targetdir = auxdir + '/processing/' + s.foldername
+        s.expdir = targetdir + '/' + expno
+        s.paraA_rchsq = paraA_rchsq
+        s.dualphscal = dualphscal
+        s.dodefaultnames = s.read_dodefaultnames_given_expno(s.expno)
     def sysErr(s):
         """
         Output parameter
@@ -1140,7 +1148,12 @@ class expno_sysErr:
             delta_sys = s.paraA*sep*Av_cscEl1 + s.paraB/SNprIBC
         return delta_sys
     def target_prIBC_separation(s):
+        """
+        while check_source is not None and not targetname, then it becomes the target!
+        """
         [RA1, Dec1] = srcposition(s.foldername, s.foldername)
+        if s.check_source != None and (s.check_source != s.foldername):
+            [RA1, Dec1] = srcposition(s.foldername, s.check_source)
         s.Dec_target = Dec1
         [RA2, Dec2] = srcposition(s.foldername, s.prIBCname)
         sep = howfun.separation(RA1,Dec1,RA2,Dec2) #unit: arcmin
@@ -1267,13 +1280,7 @@ class expno_sysErr:
                     sep = howfun.separation(position_prIBC[0], position_prIBC[1], position_VC[0], position_VC[1])
         else:
             print("Not a dual-phscal configuration; go with normal separation")
-            if s.reference_to_src != None:
-                tempsrcname = s.prIBCname ## temparily change s.prIBCname to s.reference_to_src
-                s.prIBCname = s.reference_to_src
-                sep = s.target_prIBC_separation()
-                s.prIBCname = tempsrcname ## change s.prIBCname back
-            else:
-                sep = s.target_prIBC_separation() #correct it back after test
+            sep = s.target_prIBC_separation() #correct it back after test
         return sep
 
 # group 3: draw online absolute position and errors ###############################################
@@ -1455,6 +1462,7 @@ def align_position_in_adhoc_experiment0(RA, errRA, Dec, errDec, targetname, exce
 
 class estimate_uncertainty:
     """
+    This class is made for the astrometric work regarding PSR J1012+5307.
     estimate uncertainty with direct-fitting uncertainties
     """
     yr2d = 365.242199
@@ -1565,6 +1573,9 @@ class estimate_uncertainty:
             print 'PbShk = %f +- %f' % (PbShk, errPbShk)
             return PbShk, errPbShk
     def uncertainty_PbGal(s, howmanysigma=1, usetimingfit=True):
+        """
+        Zhu et al. 2015
+        """
         if not usetimingfit: #use timing Pb and VLBI mu_a, mu_d and pi
             pass
         if usetimingfit:
@@ -1620,6 +1631,9 @@ class estimate_uncertainty:
         return PbGal1
     
     def PbGW(s):
+        """
+        Eq. 21 of Lazaridis et al. 2009
+        """
         q = s.q
         errQ = s.errQ
         m_c = s.m_c
@@ -3750,7 +3764,10 @@ class generatepmparin(object):
             3. reference_to_src : str (default : None)
                 the reference source name, normally a non-calibratalbe close-by (to target) source.
                 If None, this function is disabled.
+            4. check_source : str (default : None)
+                normally an IBC to check if it shows parallax and proper motion.
         """
+        ## >>> kwargs
         try:
             inverse_referencing = kwargs['inverse_referencing']
         except KeyError:
@@ -3763,14 +3780,24 @@ class generatepmparin(object):
             reference_to_src = kwargs['reference_to_src']
         except KeyError:
             reference_to_src = None
+        try:
+            check_source = kwargs['check_source']
+        except KeyError:
+            check_source = None
+        ## <<<
         errorRAs   = np.array([])
         errorDecs  = np.array([])
         if pulsition_suffix != '':
             pulsition_suffix = '.' + pulsition_suffix
         inverse_referenced_to = ''
-        if inverse_referencing:
+        if inverse_referencing and (reference_to_src == None):
             inverse_referenced_to = '.to.' + s.prIBCname
+        elif reference_to_src != None and (not inverse_referencing):
+            inverse_referenced_to = '.to.' + reference_to_src
         pulsitions = pmparesultsdir + '/' + targetname + inverse_referenced_to + pulsition_suffix + '.pmpar.in'
+        if check_source != None:
+            pulsitions = pmparesultsdir + '/' + check_source + inverse_referenced_to + pulsition_suffix + '.pmpar.in'
+
         fileWrite = open(pulsitions, 'w')
         if s.inverse_referencing:
             fileWrite.write("### positions for %s inverse-referencing to %s\n" % (s.prIBCname, s.targetname))
@@ -3784,7 +3811,7 @@ class generatepmparin(object):
         fileWrite.write("# decimalyear RA +/- Dec +/-\n")
         for i in range(nepoch):
             sysError = expno_sysErr(expnos[i], dualphscal, paraA_rchsq, inverse_referencing,\
-                manual_dualphscalratio=manual_dualphscalratio, reference_to_src=reference_to_src)
+                manual_dualphscalratio=manual_dualphscalratio, reference_to_src=reference_to_src, check_source=check_source)
             [sysErrRA_mas, sysErrDec_mas, sysErrRA_ms] = sysError.sysErr()
             sysErrRA_s = sysErrRA_ms/1000
             sysErrDec_as = sysErrDec_mas/1000
@@ -3834,7 +3861,7 @@ class generatepmparin(object):
         [RA0, Dec0, junk1, PI0, mu_a0, mu_d0, junk2, junk3, junk4, junk5, junk6, rchsq] = readpmparout(pmparout)
         D0 = 1/PI0
         return D0, PI0, mu_a0, mu_d0, RA0, Dec0, rchsq
-    def write_out_final_pmpar_in(s, paraA_rchsq=None, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4, reference_to_src=None):
+    def write_out_final_pmpar_in(s, paraA_rchsq=None, paraA_rchsq_step=1e-3, paraA1_rchsq=3.102e-4, reference_to_src=None, check_source=None):
         """
         Note
         ----
@@ -3852,13 +3879,19 @@ class generatepmparin(object):
         reference_to_src : str (default : None)
             the reference source name, normally a non-calibratalbe close-by (to target) source.
             If None, this function is disabled.
+        check_source : str (default : None)
+            normally an IBC to check if it displays proper motion or parallax.
         """
-        s.write_out_preliminary_pmpar_in()
+        if reference_to_src != None and (check_source == None):
+            s.write_out_preliminary_pmpar_in(reference_to_src, True)
+        elif reference_to_src == None and check_source != None:
+            s.write_out_preliminary_pmpar_in(check_source, False)
+
         if not s.dualphscal:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir,\
                 s.targetname, '', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs,\
                 s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing,\
-                manual_dualphscalratio=s.dualphscalratio, reference_to_src=reference_to_src)
+                manual_dualphscalratio=s.dualphscalratio, reference_to_src=reference_to_src, check_source=check_source)
             [D0, PI0,mu_a0,mu_d0,RA0,Dec0, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname)
         if s.dualphscal:
             [pulsitions, errorRAs, errorDecs] = s.write_out_pmparin_incl_sysErr(s.pmparesultsdir, s.targetname, 'dual.phscal', s.nepoch, s.epoch, s.decyears, s.expnos, s.RAs, s.error0RAs, s.Decs, s.error0Decs, s.dualphscal, paraA_rchsq, inverse_referencing=s.inverse_referencing, manual_dualphscalratio=s.dualphscalratio)
@@ -3900,13 +3933,14 @@ class generatepmparin(object):
         priors can be 'mu_a=3.1 mu_d=-2.3' or 'mu_a=3.1+-0.2 mu_d=-2.3+-0.3' or 'mu_a=3.1 mu_d=-2.3+-0.3' or just 'mu_a=2.3+-0.1'
         """
         from astropy.table import vstack
-        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+        srcname = pmparinfile.split('.pmpar.in')[0]
+        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + srcname + '_relative_positions.dat'
         if os.path.exists(bootstrapped_relative_positions_table):
             os.remove(bootstrapped_relative_positions_table)
-        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        saved_plot_parameters = s.pmparesultsdir + '/.' + srcname + '_five_histograms_plot_parameters.pickle' 
         if os.path.exists(saved_plot_parameters):
             os.remove(saved_plot_parameters)
-        pulsitions = s.pmparesultsdir + '/.' + s.targetname + '.pmpar.in.bootstrap'
+        pulsitions = s.pmparesultsdir + '/.' + srcname + '.pmpar.in.bootstrap'
         pmparinfile = s.pmparesultsdir + '/' + pmparinfile
         if not os.path.exists(pmparinfile):
             print("%s does not exists; aborting\n" % pmparinfile)
@@ -3941,7 +3975,7 @@ class generatepmparin(object):
             for i in random_indices:
                 fileWrite.write(positions[i])
             fileWrite.close()
-            [D, PI, mu_a, mu_d, RA, Dec, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, s.targetname) 
+            [D, PI, mu_a, mu_d, RA, Dec, rchsq] = s.pulsitions2paras(pulsitions, s.pmparesultsdir, srcname) 
             PIs = np.append(PIs, PI)
             mu_as = np.append(mu_as, mu_a)
             mu_ds = np.append(mu_ds, mu_d)
@@ -3951,7 +3985,7 @@ class generatepmparin(object):
             count += 1
         t = Table([PIs, mu_as, mu_ds, RAs, Decs], names=['PI', 'mu_a', 'mu_d', 'RA', 'Dec']) 
         print t
-        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
+        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + srcname + '_five_parameters.dat'
         if not overwrite_table:
             if os.path.exists(bootstrapped_five_parameters_table):
                 t0 = Table.read(bootstrapped_five_parameters_table, format='ascii')
@@ -3962,8 +3996,14 @@ class generatepmparin(object):
         a = estimate_uncertainty(s.targetname)
         v_t = (mu_a**2+mu_d**2)**0.5 / PI * a.A
         return v_t
-    def bootstrapped_sample2measured_value(s):
-        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + s.targetname + '_five_parameters.dat'
+    def bootstrapped_sample2measured_value(s, srcname=''):
+        """
+        if the input pmpar.in is not named targetname + .pmpar.in, then an extra srcname is needed to 
+        fetch the right bootstrap results.
+        """
+        if srcname == '':
+            srcname = s.targetname
+        bootstrapped_five_parameters_table = s.pmparesultsdir + '/.' + srcname + '_five_parameters.dat'
         if not os.path.exists(bootstrapped_five_parameters_table):
             print("%s (bootstrap results) does not exist; aborting\n" % bootstrapped_five_parameters_table)
             sys.exit()
@@ -3972,13 +4012,13 @@ class generatepmparin(object):
             exec("%ss = np.array(t['%s'])" % (estimate, estimate))
             #exec("%ss.sort()" % estimate)
         ## relative positions #############
-        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + s.targetname + '_relative_positions.dat'
+        bootstrapped_relative_positions_table = s.pmparesultsdir + '/.' + srcname + '_relative_positions.dat'
         if os.path.exists(bootstrapped_relative_positions_table):
             t_RP = Table.read(bootstrapped_relative_positions_table, format='ascii')
             for estimate in ['rRA', 'rDec']:
                 exec("%ss = np.array(t_RP['%s'])" % (estimate, estimate))
         ## plot parameters ################
-        saved_plot_parameters = s.pmparesultsdir + '/.' + s.targetname + '_five_histograms_plot_parameters.pickle' 
+        saved_plot_parameters = s.pmparesultsdir + '/.' + srcname + '_five_histograms_plot_parameters.pickle' 
         if os.path.exists(saved_plot_parameters):
             readfile = open(saved_plot_parameters, 'r')
             plot_parameter_dictionary = pickle.load(readfile)
@@ -3990,7 +4030,7 @@ class generatepmparin(object):
             most_probable_v_t = s.calculate_v_t(s.most_probable_PI, s.most_probable_mu_a, s.most_probable_mu_d)
             #[rRAs_MP, rDecs_MP] = diffposition(howfun.deg2dms(RAs), howfun.deg2dms(s.most_probable_RA), howfun.deg2dms(Decs), howfun.deg2dms(s.most_probable_Dec))
         ## write out estimates #########################################################
-        bootstrap_estimates_output = s.pmparesultsdir + '/' + s.targetname + '.bootstrap.estimates.out'
+        bootstrap_estimates_output = s.pmparesultsdir + '/' + srcname + '.bootstrap.estimates.out'
         fileWrite = open(bootstrap_estimates_output, 'w')
         fileWrite.write("estimates obtained with %d bootstrap runs:\n" % len(PIs))
         for how_many_sigma in [3, 2, 1]: #only saves s.value_* and so on for the 1sigma
@@ -5054,3 +5094,295 @@ class calculate_best_virtual_calibrator_that_optimizes_the_use_of_STERNE:
             position_IBC2_str)
         ## <<<
         return max_included_angle, ratio_max_included_angle
+
+
+class Pbdot_test_for_double_neutron_stars:
+    """
+    This class is made for deriving Pbdot-related values regarding the astrometric work regarding PSR J1537+1155.
+    Lots of the contents were copied from the estimate_uncertainty() class.
+
+    Input parameters
+    ----------------
+    targetname : str
+    timingfityear : str
+        a file that contains the timing parameters.
+    """
+    yr2d = 365.242199
+    A = 1./1000/3600/180*math.pi*(1./yr2d/24/3600) #mas/yr to rad/s
+    A = A*3.0857*10**16 # rad/s*kpc -> km/s, altogether mas/yr*kpc ->km/s
+    pc2ly = 3.26163344
+    pc2m = 3.08567758e16
+    ecc = 0.27367752 
+    GdotG = 7.1e-14 #Gdot/G by Hofmann et al. 2010
+    errGdotG = 7.6e-14 #1sigma error for a
+    #q = 0.990709773318469 #m_p/m_c by Fonseca et al. 2014
+    #errQ =
+    m_p = 1.3330 ## pulsar mass (in solar mass), Fonseca et al. 2014
+    errM_p = 0.0002
+    m_c = 1.3455 ## companion mass in (solar mass), Fonseca et al. 2014
+    errM_c = 0.0002
+    T = constants.G*AC.M_sun.value/constants.c**3
+
+    def __init__(s, targetname='', timingfityear=''): #s -> self
+        s.targetname, s.timingfityear = targetname, timingfityear
+    def workflow(s):
+        """
+        to initiate the code
+        """
+        #print readpulsition(targetname)
+        [s.RA, s.Dec, s.epoch, s.pi, s.mu_a, s.mu_d, s.error0_pi, s.error0_mu_a, 
+        s.error0_mu_d, s.l, s.b, funk1] = readpulsition(s.targetname)
+        s.calculate_mass_ratio_and_uncertainty()
+        if s.timingfityear != '':
+            if type(s.timingfityear) != str:
+                s.timingfityear = str(s.timingfityear)
+            print '\n' + s.timingfityear
+            [s.epochTm, s.DM, s.Pb, s.estimatesTm, s.errorsTm] = s.readtimingfit(s.timingfityear)
+            [s.RATm, s.DecTm, s.piTm, s.mu_aTm, s.mu_dTm] = s.estimatesTm
+            [s.error_RATm, s.error_DecTm, s.error_piTm, s.error_mu_aTm, s.error_mu_dTm] = s.errorsTm
+            print s.readtimingfit(s.timingfityear)
+    def calculate_mass_ratio_and_uncertainty(s):
+        s.q = s.m_p / s.m_c
+        s.errQ = s.q * ((s.errM_c/s.m_c)**2 + (s.errM_p/s.m_p)**2)**0.5
+    def readtimingfit(s, timingfityear):
+        [junk1,junk2,targetdir,junk3,junk4] = prepare_path_source(s.targetname)
+        timingfitfile = targetdir + '/pmparesults/timing_results/' + str(timingfityear) + 'timingfit'
+        estimates = np.array([])
+        errors = np.array([])
+        lines = open(timingfitfile).readlines()
+        for line in lines:
+            for estimate in ['epoch', 'DM', 'Pb']:
+                if estimate in line:
+                    line1 = line.split('=')[-1].strip().split(' ')[0].strip()
+                    exec("%s = %s" % (estimate, line1))
+            for estimate in ['RA', 'Dec']:
+                if estimate in line:
+                    line1 = line.split('=')[-1].strip()
+                    exec("%s = line1.split('+-')[0].strip()" % estimate)
+                    exec("err_%s = float(line1.split('+-')[1].strip())/3600" % estimate)
+                    exec("estimates = np.append(estimates, howfun.dms2deg(%s))" % estimate)
+                    exec("errors = np.append(errors, err_%s)" % estimate)
+            for estimate in ['pi', 'mu_a', 'mu_d', 'P_bdot']:
+                if estimate in line:
+                    line1 = line.split('=')[-1].strip()
+                    if not 'P_bdot' in line:
+                        exec("%s = %s" % (estimate, line1.split('+-')[0].strip()))
+                        exec("err_%s = float(line1.split('+-')[1].strip().split(' ')[0].strip())" % estimate)
+                        exec("estimates = np.append(estimates, float(%s))" % estimate)
+                        exec("errors = np.append(errors, err_%s)" % estimate)
+                    else:
+                        PbObs = line.split('=')[-1].strip()
+                        s.PbObs = float(PbObs.split('+-')[0].strip())
+                        s.errPbObs = float(PbObs.split('+-')[-1].strip())
+        return epoch, DM, Pb, estimates, errors
+    def transverse_velocity1(s, use_other_result=True): #use one-side difference
+        if not use_other_result:
+            return s.transverse_velocity1a(s.mu_a, s.mu_d, s.pi, s.error0_mu_a, s.error0_mu_d, s.error0_pi)
+        if use_other_result:
+            return s.transverse_velocity1a(s.mu_aTm, s.mu_dTm, s.piTm, s.error_mu_aTm, s.error_mu_dTm, s.error_piTm)
+    def transverse_velocity1a(s, mu_a, mu_d, pi, error_mu_a, error_mu_d, error_pi):
+        v0_t = (mu_a**2 + mu_d**2)**0.5/pi*s.A
+        err0_vt_pi = (mu_a**2 + mu_d**2)**0.5/(pi - error_pi)*s.A - v0_t
+        err0_vt_mu_a = ((mu_a+error_mu_a)**2 + mu_d**2)**0.5/pi*s.A - v0_t
+        err0_vt_mu_d = (mu_a**2 + (mu_d+error_mu_d)**2)**0.5/pi*s.A - v0_t
+        err0_vt = (err0_vt_pi**2 + err0_vt_mu_a**2 + err0_vt_mu_d**2)**0.5
+        return v0_t, err0_vt
+    def transverse_velocity2(s, use_other_result=True):
+        if not use_other_result:
+            return s.transverse_velocity2a(s.mu_a, s.mu_d, s.pi, s.error0_mu_a, s.error0_mu_d, s.error0_pi)
+        if use_other_result:
+            return s.transverse_velocity2a(s.mu_aTm, s.mu_dTm, s.piTm, s.error_mu_aTm, s.error_mu_dTm, s.error_piTm)
+    def transverse_velocity2a(s, mu_a, mu_d, pi, error_mu_a, error_mu_d, error_pi):
+        v0_t = (mu_a**2 + mu_d**2)**0.5/pi*s.A
+        ratio_square = (error_pi/pi)**2
+        ratio_square += (error_mu_a/mu_a)**2/(1+(mu_d/mu_a)**2)**2
+        ratio_square += (error_mu_d/mu_d)**2/(1+(mu_a/mu_d)**2)**2
+        ratio = ratio_square**0.5
+        err0_vt =v0_t * ratio
+        return v0_t, err0_vt
+    def uncertainty_PbShk(s, howmanysigma=1, usetimingfit=True):
+        CL = math.erf(howmanysigma/2**0.5) #CL: 3->0.9973, 2->0.9545, 1->0.6827
+        if not usetimingfit: #use timing Pb and VLBI mu_a, mu_d and pi
+            pass
+        if usetimingfit:
+            errorsTm = s.errorsTm*howmanysigma #Tm --> timing
+            [error_RATm, error_DecTm, error_piTm, error_mu_aTm, error_mu_dTm] = errorsTm
+            DTm = 1/s.piTm*1000*s.pc2ly #kpc ->ly
+            error_piTm = error_piTm/1000/s.pc2ly
+            muTm = np.array([s.mu_aTm, error_mu_aTm, s.mu_dTm, error_mu_dTm])
+            muTm = muTm/1000./3600./180*math.pi #mas/yr -> rad/yr
+            [mu_aTm, error_mu_aTm, mu_dTm, error_mu_dTm] = muTm
+            Pb = s.Pb/s.yr2d 
+            PbShk = (mu_aTm**2+mu_dTm**2)*DTm*Pb
+            errPbShk = (2*mu_aTm*Pb*DTm*error_mu_aTm)**2
+            errPbShk += (2*mu_dTm*Pb*DTm*error_mu_dTm)**2
+            errPbShk += ((mu_aTm**2+mu_dTm**2)*Pb*error_piTm*DTm**2)**2
+            errPbShk = errPbShk**0.5
+            print 'PbShk = %f +- %f' % (PbShk, errPbShk)
+            return PbShk, errPbShk
+    def uncertainty_PbGal(s, howmanysigma=1, usetimingfit=True):
+        """
+        Reference
+        ---------
+        Zhu et al. 2015
+        """
+        if not usetimingfit: #use timing Pb and VLBI mu_a, mu_d and pi
+            pass
+        if usetimingfit:
+            errorsTm = s.errorsTm*howmanysigma
+            [error_RATm, error_DecTm, error_piTm, error_mu_aTm, error_mu_dTm] = errorsTm
+            b = s.b/180*math.pi
+            l = s.l/180*math.pi
+            DTm = 1/s.piTm #kpc
+            error_DTm = DTm*error_piTm/s.piTm
+            PbGal1 = s.PbGal_vertical(DTm, b, s.Pb)
+            PbGal1_plus = s.PbGal_vertical(DTm+error_DTm, b, s.Pb) - PbGal1
+            PbGal1_minus = PbGal1 - s.PbGal_vertical(DTm-error_DTm, b, s.Pb)
+            print PbGal1, PbGal1_minus, PbGal1_plus
+            errPbGal1 = max(PbGal1_minus, PbGal1_plus)
+            
+            #now the second term, should be A2, simplified to A
+            Theta = 233.34 #km/s; McGaugh, 2018
+            error_Theta = 1.40 #km/s
+            R = 8.122 #kpc; GRAVITY Collaboration, 2018
+            error_R = 0.031 #kpc
+            beta = DTm/R*math.cos(b) - math.cos(l)
+            div1 = (math.sin(l))**2+beta**2
+            A_G = -math.cos(b)*Theta**2/R*(math.cos(l)+beta/div1) #km^2/s^2/kpc
+            A_G = A_G*10e6/10e3/s.pc2m #m/s^2
+            #print A_G
+            PbGal2 = A_G/constants.c*s.Pb #d/s
+            PbGal2 = PbGal2*24*3600
+            print PbGal2
+            dA_dTheta = 2/Theta*A_G #m/s^2/(km/s)
+            dBeta_dR = -DTm/R**2*math.cos(b) #1/kpc
+            div2 = (math.sin(l))**2-beta**2
+            dA_dR = -math.cos(b)*Theta**2/R*dBeta_dR*div2/div1**2 #km^2/s^2/kpc/kpc
+            dA_dR = dA_dR*10e6/10e3/s.pc2m #m/s^2/kpc
+            dA_dR = dA_dR - A_G/R #m/s^2/kpc
+            dBeta_dD = math.cos(b)/R #1/kpc
+            dA_dD = -math.cos(b)*Theta**2/R*dBeta_dD*div2/div1**2 #km^2/s^2/kpc/kpc
+            dA_dD = dA_dD*10e6/10e3/s.pc2m #m/s^2/kpc
+            errA_sq = (dA_dTheta*error_Theta)**2
+            errA_sq += (dA_dR*error_R)**2
+            errA_sq += (dA_dD*error_DTm)**2
+            errA = errA_sq**0.5 #m/s^2
+            errPbGal2 = errA/constants.c*s.Pb*24*3600 #s/s
+            print "Pbdot_Gal1 = %f +- %f (fs/s)\nPbdot_Gal2 = %f +- %f (fs/s)" % (PbGal1*1e15, errPbGal1*1e15, PbGal2*1e15, errPbGal2*1e15)
+            PbGal = PbGal1 + PbGal2
+            errPbGal = (errPbGal1**2+errPbGal2**2)**0.5
+            return PbGal, errPbGal
+
+    def PbGal_vertical(s, D, b, Pb): # b in rad, D in kpc
+        z = abs(math.sin(b))*D #kpc
+        Kz = 2.27*z + 3.68*(1-math.exp(-4.31*z)) #10pm/s^2
+        PbGal1_r = -Kz*abs(math.sin(b))/10**11/constants.c #the vertical term of Pbdot^{Gal}/Pb, in /s
+        PbGal1 = PbGal1_r*Pb*24*3600
+        return PbGal1
+    
+    def PbGW(s):
+        """
+        Reference
+        ---------
+        Weisberg & Huang 2016
+        """
+        f_ecc = 1 + 73./24.*s.ecc**2 + 37./96.*s.ecc**4
+        f_ecc *= (1 - s.ecc**2)**(-3.5)
+        q = s.q
+        errQ = s.errQ
+        m_c = s.m_c
+        errM_c = s.errM_c
+        T = s.T
+        Pb = s.Pb
+        C = -192*math.pi/5. * T**(5./3)
+        C *= (2*math.pi/Pb)**(5./3) # in (s/d)**(5/3)
+        C *= (1./24/3600)**(5./3) # in 1
+        PbGW = C*m_c**(5./3)*q/(q+1)**(1./3)
+        dPdM = 5./3*PbGW/m_c
+        dPdQ = 1./q-1./3/(q+1)
+        dPdQ *= PbGW
+        errPbGW_sq = (dPdM*errM_c)**2 + (dPdQ*errQ)**2
+        errPbGW = errPbGW_sq**0.5
+        PbGW *= f_ecc
+        errPbGW *= f_ecc
+        return PbGW, errPbGW
+    
+    def PbInt(s, howmanysigma=1, usetimingfit=True):
+        """
+        PbInt refers to Pbdot_Int, which equals to
+        Pbdot_Int = Pbdot_obs - Pbdot_Shk - Pbdot_Gal.
+        """
+        PbObs = s.PbObs #Desvignes et al. 2016
+        errPbObs = s.errPbObs
+        if usetimingfit:
+            PbGal, errPbGal = s.uncertainty_PbGal(howmanysigma) 
+            PbShk, errPbShk = s.uncertainty_PbShk(howmanysigma)
+        PbInt = PbObs - PbGal - PbShk
+        errors = np.array([errPbObs, errPbGal, errPbShk])
+        errPbInt = (sum(errors**2))**0.5
+        return PbInt, errPbInt
+
+    def PbInt_over_PbGW(s, howmanysigma=1, usetimingfit=True):
+        PbInt, errPbInt = s.PbInt(howmanysigma, usetimingfit)
+        PbGW, errPbGW = s.PbGW()
+        ratio = PbInt / PbGW
+        err_ratio = ratio * ((errPbInt/PbInt)**2 + (errPbGW/PbGW)**2)**0.5
+        return ratio, err_ratio
+
+    def PbEx(s, howmanysigma=1, usetimingfit=True):
+        PbObs = s.PbObs #Desvignes et al. 2016
+        errPbObs = s.errPbObs
+        [PbGW, errPbGW] = s.PbGW()
+        if usetimingfit:
+            PbGal, errPbGal = s.uncertainty_PbGal(howmanysigma) 
+            PbShk, errPbShk = s.uncertainty_PbShk(howmanysigma)
+        PbEx = PbObs - PbGW - PbGal - PbShk
+        errors = np.array([errPbObs, errPbGW, errPbGal, errPbShk])
+        errPbEx = (sum(errors**2))**0.5
+        return PbEx, errPbEx
+    def Gdot2PbGdot(s): #Gdot/G from LLR to Pbdot_Gdot
+        a = s.GdotG #Gdot/G by Hofmann et al. 2010
+        errA = s.errGdotG #1sigma error for a
+        q = s.q #m_p/m_c by Callanan et al. 1998
+        errQ = s.errQ
+        m = s.m_c #m_c/m_sun
+        errM = s.errM_c
+        
+        fq = 2*q+1-1/(q+1)
+        PbG = -2*a*s.Pb*(1-0.05*fq*m) #Pbdot_Gdot in d/yr
+        PbG = PbG/s.yr2d
+        print PbG
+        dPdA = PbG/a
+        dPdM = 2*0.05*a*s.Pb*fq/s.yr2d
+        dPdQ = 2*0.05*a*s.Pb/s.yr2d*m
+        dPdQ *= 2-1/(q+1)**2
+        errPbG_sq = (dPdA*errA)**2
+        errPbG_sq += (dPdM*errM)**2
+        errPbG_sq += (dPdQ*errQ)**2
+        errPbG = errPbG_sq**0.5
+        return PbG, errPbG
+    def Gdot2PbDp(s): #Gdot/G from LLR to Pbdot^dipole
+        PbEx, errPbEx = s.PbEx()
+        PbG, errPbG = s.Gdot2PbGdot()
+        PbDp = PbEx-PbG
+        errPbDp = (errPbEx**2+errPbG**2)**0.5
+        return PbDp, errPbDp
+    def Gdot2kD(s): #Gdot/G from LLR to Pbdot^dipole to kappa_D
+        PbDp, errPbDp = s.Gdot2PbDp() 
+        q = s.q #m_p/m_c by Callanan et al. 1998
+        errQ = s.errQ
+        m = s.m_c #m_c/m_sun
+        errM = s.errM_c
+        T = s.T
+        print T
+        B = 25/T/math.pi**2
+        kD = -B/m**3*(q+1)/q**3*s.Pb*PbDp #d/s
+        kD *= 24*3600
+        dKdM = -3/m*kD
+        dKdPbDp = kD/PbDp
+        dKdQ = (1/(q+1)-3/q)*kD
+        errK_sq = (dKdM*errM)**2
+        errK_sq += (dKdPbDp*errPbDp)**2
+        errK_sq += (dKdQ*errQ)**2
+        errK = errK_sq**0.5
+        return kD, errK
