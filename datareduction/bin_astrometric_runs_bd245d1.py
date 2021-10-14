@@ -29,11 +29,11 @@ if binno != -1:
     gatedfitsfiles = glob.glob(r'./*gated*BIN%d*idifits' % binno)
     if len(gatedfitsfiles) != 1:
         gatedfitsfiles = glob.glob(r'./*gated*BIN0%d*idifits' % binno)
-ungatedfitsfiles = glob.glob(r'./*_BIN0_*idifits')
-if len(ungatedfitsfiles) != 1:
-    print "There are other than 1 ungatedfitsfile; aborting\n"
-    sys.exit()
-ungatedfitsfile = ungatedfitsfiles[0]
+#ungatedfitsfiles = glob.glob(r'./*_SRC0_*idifits')
+#if len(ungatedfitsfiles) != 1:
+#    print "There are other than 1 ungatedfitsfile; aborting\n"
+#    sys.exit()
+#ungatedfitsfile = ungatedfitsfiles[0]
 #for fitsfile in ungatedfitsfiles:
 #    if 'J1818' in fitsfile.split('/')[-1]:
 #        ungatedfitsfile = fitsfile.split('/')[-1].strip()
@@ -77,14 +77,21 @@ for gatedfitsfile in gatedfitsfiles:
     print("writing %s.source using %s as gatedfitsfile...\n" % (experiment, gatedfitsfile))
     writefile = open(sourcefile,'w')
     writefile.write('GATED FITSFILE: %s\n' % gatedfitsfile)
-    writefile.write('UNGATED FITSFILE: %s\n' % ungatedfitsfile)
-    writefile.write('INBEAM 0 FITSFILE: %s\n' % ungatedfitsfile)
-    #writefile.write('INBEAM 1 FITSFILE: %s\n' % IGR_fitsfile)
+    writefile.write('UNGATED FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC4_0_211013T143824.idifits\n')
+    writefile.write('INBEAM 0 FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC0_0_211013T143824.idifits\n')
+    writefile.write('INBEAM 0 FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC0_0_211013T143824.idifits\n')
+    writefile.write('INBEAM 1 FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC1_0_211013T143824.idifits\n')
+    writefile.write('INBEAM 2 FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC2_0_211013T143824.idifits\n')
+    writefile.write('INBEAM 3 FITSFILE: VLBA_BD245D1_bd245d1_BIN0_SRC3_0_211013T143824.idifits\n')
     writefile.write('BANDPASS CAL: J1642+3948\n')
     writefile.write('NUMBER OF TARGETS: 1\n')
-    writefile.write('TARGET 0 NAME: J1818-1607\n')
-    writefile.write('TARGET 0 PHSREF: J1825-1718\n')
-    writefile.write('TARGET 0 INBEAM 0 NAME: J1805-1408\n')
+    writefile.write('TARGET 0 NAME: J1811-1736\n')
+    writefile.write('TARGET 0 PHSREF: J1753-1843\n')
+    writefile.write('TARGET 0 INBEAM 0 NAME: J1825-1718\n')
+    writefile.write('TARGET 0 INBEAM 1 NAME: IB001\n')
+    writefile.write('TARGET 0 INBEAM 2 NAME: IB002\n')
+    writefile.write('TARGET 0 INBEAM 3 NAME: IB003\n')
+    writefile.write('TARGET 0 INBEAM 4 NAME: IB004\n')
     #writefile.write('TARGET 0 INBEAM 1 NAME: J1817-1621\n')
     writefile.close()
     print("run final_astrometric_reduce.py using %s as gatedfitsfile\n" % gatedfitsfile)
