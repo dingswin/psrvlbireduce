@@ -904,6 +904,14 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return bandpassclversion 
+    
+    def plot_bandpass(self, plotbandpass, directory, inbeamuvdatas, ifs, chans):
+        if plotbandpass:
+            bandpassplot = directory + '/' + 'bandpass.ps' 
+            #vlbatasks.plotbandpass(inbeamuvdatas[0], 1, True, 9, bandpassplot, self.clversion, ifs, 0, chans, "I")
+            vlbatasks.plotbandpass(inbeamuvdatas[0], 1, True, 9, bandpassplot, self.clversion, ifs, 0, chans, "I")
+        else:
+            pass
 
     def prepare_variables_for_calibration_on_phase_calibrators(self, targetconfigs, phscalnames):
         """
@@ -1953,7 +1961,7 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved):
+            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
             print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
@@ -2457,7 +2465,8 @@ class vlbireduce(support_vlbireduce):
                                     '.gated.difmap.jmfit'
                 vlbatasks.difmap_maptarget(self.gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                            config['difmappixelmas'], config['difmapnpixels'],
-                                           config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'],
+                                           config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
+                                           expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'],
                                            beginif, endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< gated data first
@@ -2475,7 +2484,8 @@ class vlbireduce(support_vlbireduce):
                             '.gated.difmap.jmfit'
                     vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], targetimagefile, fullauto, stokesi,
                                                config['difmappixelmas'], config['difmapnpixels'],
-                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'],
+                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'],
+                                               expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'],
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< preselfcal gated in the case of inverse referencing
@@ -2493,7 +2503,8 @@ class vlbireduce(support_vlbireduce):
                 if haveungated and self.ungatedpresent[i]:
                     vlbatasks.difmap_maptarget(self.ungateduvfiles[i], targetimagefile, fullauto, 
                                                stokesi, config['difmappixelmas'], config['difmapnpixels'], 
-                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], config['usegaussiantarget'], 
+                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
+                                               expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'], 
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< ungated data
@@ -2529,8 +2540,8 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, 
                                                fullauto, stokesi, config['difmappixelmas'],
                                                config['difmapnpixels'], config['difmapweightstring'], '20, False',
-                                               config['usegaussianinbeam'], beginif,
-                                               endif-subtractif)
+                                               expconfig['difmaptargetuvtaperstring'], config['usegaussianinbeam'], 
+                                               beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                     stokesi, endif-subtractif)
                     if inbeamnames[i][j] in self.dividesourcelist:
@@ -2546,8 +2557,8 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.difmap_maptarget(self.dividedinbeamuvfiles[i][j], targetimagefile, 
                                                    fullauto, stokesi, config['difmappixelmas'], 
                                                    config['difmapnpixels'], config['difmapweightstring'], '20, False', 
-                                                   config['usegaussianinbeam'], beginif, 
-                                                   endif-subtractif)
+                                                   expconfig['difmaptargetuvtaperstring'], config['usegaussianinbeam'],
+                                                   beginif, endif-subtractif)
                         vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                         stokesi, endif-subtractif)
                     if inbeamnames[i][j] in config['primaryinbeam']:

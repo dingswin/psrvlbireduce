@@ -211,6 +211,15 @@ def main():
     if alwayssaved:
         interaction.setalwaysuse(True)
     try:
+        plotbandpass_setup = expconfig['plotbandpass']
+        plotbandpass = True
+        plotbandpass_IFs = plotbandpass_setup[0:2]
+        plotbandpass_chans = plotbandpass_setup[2:4]
+    except KeyError:
+        plotbandpass = False
+        plotbandpass_IFs = None
+        plotbandpass_chans = None
+    try:
         dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
     except KeyError:
         dualphscal_setup = ['-1','0']
@@ -414,7 +423,9 @@ def main():
     ## Load BPASS ##################################################################
     bandpassclversion = reducevlbi.load_BPASS_solutions(expconfig, tabledir, 
             calonly, gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas, haveungated)
-
+    ## Plot bandpass ###############################################################
+    reducevlbi.plot_bandpass(plotbandpass, directory, 
+            inbeamuvdatas, plotbandpass_IFs, plotbandpass_chans)
     ## prepare variables for FRING (phase reference calibrators) ####################
     reducevlbi.prepare_variables_for_calibration_on_phase_calibrators(targetconfigs, phscalnames)
 
@@ -485,7 +496,7 @@ def main():
     ## Do a secondary phase selfcal on the inbeam(s) if requested #################################################
     [tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved)
+            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
     ## Load the secondary inbeam CALIB solutions ########################################################################
     reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 

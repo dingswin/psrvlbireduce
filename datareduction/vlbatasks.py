@@ -2867,6 +2867,14 @@ def clcor_pang(uvdataset, clversion):
 
 ####### SOURCE POSITION CORRECTION #############################################
 def shift_source(uvdataset, source, rashift, decshift, clversion):
+    """
+    Input parameters
+    ----------------
+    rashift : float 
+        in mas.
+    decshift : float
+        in mas.
+    """
     clcor = AIPSTask('clcor', version = aipsver)
     clcor.indata = uvdataset
     clcor.sources[1] = source
@@ -5210,7 +5218,7 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
 
 ##### Use difmap to map a target ###############################################
 def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
-                     mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', dogaussian=False, 
+                     mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, 
                      beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
     """
     Note that for VLBI search (with no previous VLBI detection), uvaverstr should be set to <=30 to avoid smearing effect.
@@ -5231,6 +5239,7 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     difmap.stdin.write("mapsize " + str(mapsize) + "," + str(pixsize) + "\n")
     difmap.stdin.write("uvweight " + uvweightstr + "\n")
     difmap.stdin.write("uvaver " + uvaverstr + "\n")
+    difmap.stdin.write("uvtaper " + uvtaperstr + "\n")
     difmap.stdin.write("mapcolor none\n")
     if nointeraction:
         difmap.stdin.write("device /null\n")
@@ -5948,9 +5957,14 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         beamsplit = jmfitmessage[msgindex].split()
         if not len(beamsplit) == 10:
             print "*****WARNING*****: Poorly formatted beam string!"
-        beammaj = float(beamsplit[2])*pixsize
-        beammin = float(beamsplit[4])*pixsize
-        beampa  = float(beamsplit[8])*pixsize
+            if len(beamsplit) == 9:
+                beammaj = float(beamsplit[1].split('=')[-1])*pixsize
+                beammin = float(beamsplit[3])*pixsize
+                beampa  = float(beamsplit[7])*pixsize
+        else:
+            beammaj = float(beamsplit[2])*pixsize
+            beammin = float(beamsplit[4])*pixsize
+            beampa  = float(beamsplit[8])*pixsize
         msgindex += 1
         while jmfitmessage[msgindex].find('********* Solution from JMFIT') == -1 \
                   and msgindex < len(jmfitmessage):
@@ -6177,6 +6191,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                 print "Start new phase edit."
         
         phase_shifts = []
+        NAT = non_ambiguity_threshold = 90 ## in deg
         for i in range(1,s.numantennas+1):
             index = t['antenna_no']==i
             eachAnt = t[index]
@@ -6186,7 +6201,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                 for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
                     exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
                 continue
-            if max(eachAnt['phi'])>=90 or min(eachAnt['phi'])<=-90:
+            if max(eachAnt['phi'])>=NAT or min(eachAnt['phi'])<= -NAT:
                 print eachAnt['row_no']
                 print("Here is the diagnostic plot for phase edit on a new antenna.\n")
                 phase_shifts = []
