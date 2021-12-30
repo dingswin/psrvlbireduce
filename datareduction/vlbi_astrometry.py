@@ -220,6 +220,10 @@ def main():
         plotbandpass_IFs = None
         plotbandpass_chans = None
     try:
+        uvtaperstring = expconfig['difmaptargetuvtaperstring']
+    except KeyError:
+        uvtaperstring = '0.99,999'
+    try:
         dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
     except KeyError:
         dualphscal_setup = ['-1','0']
@@ -516,7 +520,7 @@ def main():
     ## Image targets using Difmap and fit for position ###############################################################
     reducevlbi.image_targets_using_DIFMAP_and_fit_for_position(calonly, numtargets, targetconfigs, expconfig,
                 directory, experiment, targetnames, beginif, endif, haveungated,
-                phscalnames, inbeamnames, inbeamuvdatas)
+                phscalnames, inbeamnames, inbeamuvdatas, uvtaperstring)
     ## Make some nice diagnostic plots #############################################
     if not skipdiagnosticplots:
         reducevlbi.make_diagnostic_plots(directory, codedir)

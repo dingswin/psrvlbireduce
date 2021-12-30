@@ -1589,7 +1589,7 @@ class vlbireduce(support_vlbireduce):
                             self.doneinbeams.append(primaryinbeam.strip())
                             self.inbeamfilenums.append(j)
                     ## here is the first ingredient of inverse referencing
-                    if primaryinbeam.strip() == targetnames[i]:
+                    if primaryinbeam.strip() == targetnames[i].strip():
                         if not targetnames[i] in self.doneinbeams: 
                             self.doneinbeams.append(targetnames[i]) 
                             self.inbeamfilenums.append(-1) ## < 0 --> inverse referencing, see inbeamselfcal()
@@ -2080,7 +2080,7 @@ class vlbireduce(support_vlbireduce):
                             self.splitdata_PS.zap()
                 ## >>> for inverse referencing where target is used as primaryinbeam
                 for targetname in targetnames: 
-                    if targetname in targetconfigs[j]['primaryinbeam']:
+                    if targetname.strip() == targetconfigs[j]['primaryinbeam'].strip():
                         aipstargetname = targetname
                         if len(targetname) > 12:
                             aipstargetname = targetname[:12]
@@ -2397,7 +2397,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.splittoseq(gateduvdata, self.clversion+self.targetcl, 'GFINL', targetnames[i], splitseqno,
                                          splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                     ## >>> inverse referencing
-                    if targetnames[i] in config['primaryinbeam']:
+                    if targetnames[i].strip() == config['primaryinbeam'].strip():
                         #splitdata_PS = AIPSUVData(targetnames[i], 'PRESEL', 1, 1) #pre-selfcalibration
                         if self.splitdata_PS.exists():
                             self.splitdata_PS.zap()
@@ -2436,7 +2436,8 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
-            directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas):
+            directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas,
+            uvtaperstring):
         #fullauto  = True
         stokesi   = True
         #gaussiantarget = False
@@ -2466,13 +2467,13 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.difmap_maptarget(self.gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                            config['difmappixelmas'], config['difmapnpixels'],
                                            config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
-                                           expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'],
+                                           uvtaperstring, config['usegaussiantarget'],
                                            beginif, endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< gated data first
 
                 ## >>> preselfcal gated in the case of inverse referencing
-                if targetnames[i] in config['primaryinbeam']:
+                if targetnames[i].strip() == config['primaryinbeam'].strip():
                     targetimagefile = directory + '/' + experiment + '_' + targetnames[i] + \
                         '_preselfcal.difmap.gated.fits'
                     jmfitfile = directory + '/' + experiment + '_' + targetnames[i] + \
@@ -2485,7 +2486,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], targetimagefile, fullauto, stokesi,
                                                config['difmappixelmas'], config['difmapnpixels'],
                                                config['difmapweightstring'], expconfig['difmaptargetuvaverstring'],
-                                               expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'],
+                                               uvtaperstring, config['usegaussiantarget'],
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< preselfcal gated in the case of inverse referencing
@@ -2504,7 +2505,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.difmap_maptarget(self.ungateduvfiles[i], targetimagefile, fullauto, 
                                                stokesi, config['difmappixelmas'], config['difmapnpixels'], 
                                                config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
-                                               expconfig['difmaptargetuvtaperstring'], config['usegaussiantarget'], 
+                                               uvtaperstring, config['usegaussiantarget'], 
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< ungated data
@@ -2540,7 +2541,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, 
                                                fullauto, stokesi, config['difmappixelmas'],
                                                config['difmapnpixels'], config['difmapweightstring'], '20, False',
-                                               expconfig['difmaptargetuvtaperstring'], config['usegaussianinbeam'], 
+                                               uvtaperstring, config['usegaussianinbeam'], 
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                     stokesi, endif-subtractif)
@@ -2557,7 +2558,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.difmap_maptarget(self.dividedinbeamuvfiles[i][j], targetimagefile, 
                                                    fullauto, stokesi, config['difmappixelmas'], 
                                                    config['difmapnpixels'], config['difmapweightstring'], '20, False', 
-                                                   expconfig['difmaptargetuvtaperstring'], config['usegaussianinbeam'],
+                                                   uvtaperstring, config['usegaussianinbeam'],
                                                    beginif, endif-subtractif)
                         vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                         stokesi, endif-subtractif)
