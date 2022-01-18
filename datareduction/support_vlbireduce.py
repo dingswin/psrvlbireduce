@@ -286,6 +286,7 @@ class support_vlbireduce(object):
                 if expconfig['ampcalscan'] > 0:
                     haveampcal = True
                 ## >>> split out inbeam_uv_data=inbeamsrc.CALIB.1 from uvdata
+                print(inbeamsrc, uvdata)
                 vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc, ## split to inbeam_uv_data
                                      1, domulti, haveampcal, beginif, 
                                      endif-subtractif, combineifs, leakagedopol)
