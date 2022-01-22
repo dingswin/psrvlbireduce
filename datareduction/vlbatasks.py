@@ -6172,13 +6172,59 @@ class calibrate_target_phase_with_two_colinear_phscals:
         if os.path.exists(outputsntable):
             os.remove(outputsntable)
         writetable(s.inbeamuvdata, 'SN', snver, outputsntable)
-        
+    def correcting_inbeamcalib_phase_with_dualphscal_edit(s, tabledir, plotpath2save):
+        """
+        The format of dualphscal.edit in the tabledir follows 'Ant_NO N1 N2' in the 
+            interactively_solve_phase_ambiguity function.
+        If dualphscal.edit is present and dualphscal=True, the pipeline will generate the final
+            phase edit automatically, then keep running till the end. This workflow would enable running
+            the pipeline from another country (in which case the latency time is long).
+        Plots are made to confirm that corrections are made.
+        """
+        from astropy.table import Table
+        import pickle
+        dualphscal_edit = tabledir + '/dualphscal.edit'
+        readfile = open(dualphscal_edit, 'r')
+        config_lines = readfile.readlines()
+        readfile.close()
+        t = s.t
+        for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+            exec('%ss = np.array([])' % parameter)
+        for config_line in config_lines:
+            if not config_line.startswith('#'):
+                Ant_NO, N1, N2 = config_line.strip().split(' ')
+                Ant_NO = int(Ant_NO)
+                N1 = int(N1)
+                N2 = int(N2)
+                for i in range(1,s.numantennas+1):
+                    index = t['antenna_no']==i
+                    eachAnt = t[index]
+                    if len(eachAnt)==0:
+                        continue
+                    if N2>-5:
+                        eachAnt['phi'][N1:len(eachAnt)] += N2*360
+                    elif N2>-10 and N2<-4:
+                        eachAnt.remove_row(N1)
+                    else:
+                        eachAnt.remove_rows(range(N1,len(eachAnt)))
+                    
+                    for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+                        exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+        s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
+        print(s.t1)
+        final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
+        writefile = open(final_saved_phase_edit, 'w')
+        pickle.dump(s.t1, writefile)
+        writefile.close()
+        #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False)
+
+
     def interactively_solve_phase_ambiguity(s, plotpath2save):
         from astropy.table import Table
         import pickle
         for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
             exec('%ss = np.array([])' % parameter)
-        saved_phase_edit = plotpath2save+'/.corrected_phases_inbeam_selfcal'
+        saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
         t = s.t
         if os.path.exists(saved_phase_edit):
             choise = raw_input('Do you want to use saved phase edit and continue the edit? Press y if affirmative: ')
@@ -6283,7 +6329,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         plt.title('phase-time evolution for antenna%d' % antenna_no)
         plt.show()
         plt.clf()
-    def plot_phi_versus_time_for_each_antenna(s, plotpath2save, projectcode, before_phase_correction=True):
+    def plot_phi_versus_time_for_all_antennas(s, plotpath2save, before_phase_correction=True):
         import matplotlib.pyplot as plt
         if before_phase_correction:
             t = s.t
@@ -6301,7 +6347,11 @@ class calibrate_target_phase_with_two_colinear_phscals:
             plt.xlabel('time (day)')
             plt.ylabel('phase (degree)')
             plt.title('phase-time evolution for antenna%d' % i)
-            plt.savefig("%s/%s_inbeamselfcal_phi_time_for_antenna%d_%s_phase_correction.eps" % (plotpath2save, projectcode, i, before_or_after))
+            figure2save = plotpath2save + '/inbeamselfcal_phi_time_for_antenna' + str(i) + '_' +\
+                before_or_after + '_phase_correction.png'
+            if os.path.exists(figure2save):
+                os.remove(figure2save)
+            plt.savefig(figure2save)
             plt.clf()
 
 class calibrate_target_phase_with_three_phscals:
