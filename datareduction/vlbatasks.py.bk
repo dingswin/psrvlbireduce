@@ -6190,36 +6190,33 @@ class calibrate_target_phase_with_two_colinear_phscals:
         t = s.t
         for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
             exec('%ss = np.array([])' % parameter)
+        for config_line in config_lines:
+            if not config_line.startswith('#'):
+                Ant_NO, N1, N2 = config_line.strip().split(' ')
+                Ant_NO = int(Ant_NO)
+                N1 = int(N1)
+                N2 = int(N2)
+                for i in range(1,s.numantennas+1):
+                    index = t['antenna_no']==i
+                    eachAnt = t[index]
+                    if len(eachAnt)==0:
+                        continue
+                    if N2>-5:
+                        eachAnt['phi'][N1:len(eachAnt)] += N2*360
+                    elif N2>-10 and N2<-4:
+                        eachAnt.remove_row(N1)
+                    else:
+                        eachAnt.remove_rows(range(N1,len(eachAnt)))
                     
-        for i in range(1,s.numantennas+1):
-            index = t['antenna_no']==i
-            eachAnt = t[index]
-            if len(eachAnt)==0:
-                continue
-            
-            for config_line in config_lines:
-                if not config_line.startswith('#'):
-                    Ant_NO, N1, N2 = config_line.strip().split(' ')
-                    Ant_NO = int(Ant_NO)
-                    N1 = int(N1)
-                    N2 = int(N2)
-                    if i==Ant_NO:
-                        if N2>-5:
-                            eachAnt['phi'][N1:len(eachAnt)] += N2*360
-                        elif N2>-10 and N2<-4:
-                            eachAnt.remove_row(N1)
-                        else:
-                            eachAnt.remove_rows(range(N1,len(eachAnt)))
-                    
-            for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
-                exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+                    for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
+                        exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print(s.t1)
         final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
         writefile = open(final_saved_phase_edit, 'w')
         pickle.dump(s.t1, writefile)
         writefile.close()
-        s.plot_phi_versus_time_for_all_antennas(plotpath2save, False)
+        #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False)
 
 
     def interactively_solve_phase_ambiguity(s, plotpath2save):
@@ -6333,9 +6330,6 @@ class calibrate_target_phase_with_two_colinear_phscals:
         plt.show()
         plt.clf()
     def plot_phi_versus_time_for_all_antennas(s, plotpath2save, before_phase_correction=True):
-        """
-        plot phases after phase-wrapping correction
-        """
         import matplotlib.pyplot as plt
         if before_phase_correction:
             t = s.t
