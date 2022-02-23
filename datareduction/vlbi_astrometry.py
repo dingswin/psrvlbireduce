@@ -234,6 +234,11 @@ def main():
     except KeyError:
         dotriphscal = False
 
+    try:
+        difmaptargetuvaverstring = expconfig['difmaptargetuvaverstring']
+    except KeyError:
+        difmaptargetuvaverstring = '20,false'
+
     if float(dualphscal_setup[0]) > 0 and dotriphscal:
         print("Can't do both dualphscal and triphscal; aborting...")
         sys.exit()
@@ -520,7 +525,7 @@ def main():
     ## Image targets using Difmap and fit for position ###############################################################
     reducevlbi.image_targets_using_DIFMAP_and_fit_for_position(calonly, numtargets, targetconfigs, expconfig,
                 directory, experiment, targetnames, beginif, endif, haveungated,
-                phscalnames, inbeamnames, inbeamuvdatas, uvtaperstring)
+                phscalnames, inbeamnames, inbeamuvdatas, uvtaperstring, difmaptargetuvaverstring)
     ## Make some nice diagnostic plots #############################################
     if not skipdiagnosticplots:
         reducevlbi.make_diagnostic_plots(directory, codedir)

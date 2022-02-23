@@ -2442,7 +2442,7 @@ class vlbireduce(support_vlbireduce):
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
             directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas,
-            uvtaperstring):
+            uvtaperstring, difmaptargetuvaverstring):
         #fullauto  = True
         stokesi   = True
         #gaussiantarget = False
@@ -2471,7 +2471,7 @@ class vlbireduce(support_vlbireduce):
                                     '.gated.difmap.jmfit'
                 vlbatasks.difmap_maptarget(self.gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                            config['difmappixelmas'], config['difmapnpixels'],
-                                           config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
+                                           config['difmapweightstring'], difmaptargetuvaverstring], 
                                            uvtaperstring, config['usegaussiantarget'],
                                            beginif, endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
@@ -2490,7 +2490,7 @@ class vlbireduce(support_vlbireduce):
                             '.gated.difmap.jmfit'
                     vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], targetimagefile, fullauto, stokesi,
                                                config['difmappixelmas'], config['difmapnpixels'],
-                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'],
+                                               config['difmapweightstring'], difmaptargetuvaverstring,
                                                uvtaperstring, config['usegaussiantarget'],
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
@@ -2509,7 +2509,7 @@ class vlbireduce(support_vlbireduce):
                 if haveungated and self.ungatedpresent[i]:
                     vlbatasks.difmap_maptarget(self.ungateduvfiles[i], targetimagefile, fullauto, 
                                                stokesi, config['difmappixelmas'], config['difmapnpixels'], 
-                                               config['difmapweightstring'], expconfig['difmaptargetuvaverstring'], 
+                                               config['difmapweightstring'], difmaptargetuvaverstring, 
                                                uvtaperstring, config['usegaussiantarget'], 
                                                beginif, endif-subtractif)
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
