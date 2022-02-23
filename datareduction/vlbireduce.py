@@ -824,7 +824,7 @@ class vlbireduce(support_vlbireduce):
                     leakagepcalmins = 0.02
                 hasbptable = False
                 vlbatasks.leakagecalc(inbeamuvdatas[0], self.leakagesource, leakagemodel, leakagefilename, 
-                            expconfig['refant'], leakageacalmins, leakagepcalmins, self.clversion,
+                            expconfig['refant'], leakageacalmins, leakagepcalmins, self.leakagescan, self.clversion,
                             hasbptable, leakageoutputfile, self.leakageuvrange, self.leakageweightit)
         else:
             print "Skipping calibration of leakage"

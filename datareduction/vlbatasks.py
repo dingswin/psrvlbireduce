@@ -6219,7 +6219,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         writefile = open(final_saved_phase_edit, 'w')
         pickle.dump(s.t1, writefile)
         writefile.close()
-        s.plot_phi_versus_time_for_all_antennas(plotpath2save, False)
+        #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False) ##cannot yet work with screen. to make plot, one needs to run the pipeline separately in a small runlevel range.
 
 
     def interactively_solve_phase_ambiguity(s, plotpath2save):
@@ -6336,6 +6336,8 @@ class calibrate_target_phase_with_two_colinear_phscals:
         """
         plot phases after phase-wrapping correction
         """
+        import matplotlib
+        matplotlib.use('Agg', warn=False, force=True) ##non-interactive way, which has to be claimed before import plt
         import matplotlib.pyplot as plt
         if before_phase_correction:
             t = s.t
@@ -6347,6 +6349,8 @@ class calibrate_target_phase_with_two_colinear_phscals:
             index = t['antenna_no']==i
             if len(t[index])==0:
                 continue
+            #print(t['time'][index], t['phi'][index])
+            print(matplotlib.rcParams['backend'])
             plt.scatter(t['time'][index], t['phi'][index], marker='.')
             if before_phase_correction:
                 plt.ylim(-180,180)
