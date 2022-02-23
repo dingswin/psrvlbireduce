@@ -2471,7 +2471,7 @@ class vlbireduce(support_vlbireduce):
                                     '.gated.difmap.jmfit'
                 vlbatasks.difmap_maptarget(self.gateduvfiles[i], targetimagefile, fullauto, stokesi,
                                            config['difmappixelmas'], config['difmapnpixels'],
-                                           config['difmapweightstring'], difmaptargetuvaverstring], 
+                                           config['difmapweightstring'], difmaptargetuvaverstring, 
                                            uvtaperstring, config['usegaussiantarget'],
                                            beginif, endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
