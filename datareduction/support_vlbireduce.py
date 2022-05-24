@@ -792,7 +792,7 @@ class support_vlbireduce(object):
                                            clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
                 sourcelist = []
                 for i in tocalindices: 
-                    sourcelist.append(phsrefnames[i]) 
+                    sourcelist.append(phsrefnames[i])
                 vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
                                        clversion, expconfig['refant'], sourcelist, 'CALP')
             if not calonly:

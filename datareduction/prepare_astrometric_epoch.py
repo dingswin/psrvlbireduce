@@ -60,7 +60,7 @@ def main():
     if not os.path.exists(vexfile):
         print("%s not found on ftp server; aborting\n" % vexfile)
         sys.exit()
-
+    
     vexin = open(sys.argv[1])
     vexlines = vexin.readlines()
     vexin.close()

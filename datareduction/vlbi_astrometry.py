@@ -280,7 +280,7 @@ def main():
             phscalnames = [phscalnames]
         ampcalsrc     = expconfig['ampcalsrc'] ## here we should consider to generalize to ampcalsrcs later
     except KeyError:
-    ## the deprecated source file setup that would still be in use for until old data are published
+    ## the deprecated source file setup that would still be in use until old data are published
         print("some of the expconfig variables are missing, try to find it in source file as an alternative")
         sourcefile = directory + experiment.lower() + ".source"
         if not os.path.exists(sourcefile):
@@ -289,6 +289,7 @@ def main():
         else:
             gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
             targetnames, inbeamnames, phscalnames, ampcalsrc = reducevlbi.parsesourcefile(sourcefile, experiment, klass, uvsequence)
+
     ## the deprecated part ends here
     reducevlbi.cmband = ""
     try:
