@@ -27,7 +27,7 @@ AIPS.userno = 123
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC20'
 imagefile = sys.argv[1]
 #if len(imagefile) > 10:
 #    imagefile = imagefile[-10:]
@@ -76,7 +76,7 @@ if not jmfitfile[0] == '/':
 ################################################################################
 # Run JMFIT
 ################################################################################
-print "JMFIT'ing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
+print "JMFITing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
 wrong_imagedata = AIPSUVData('JUNK', 'IMG', 1, 1)
 if wrong_imagedata.exists():
     wrong_imagedata.zap()

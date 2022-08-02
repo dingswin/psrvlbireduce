@@ -1,0 +1,28 @@
+rootdir: /fred/oz002/hding/mspsrpi/processing/J1738+0333/
+klass: 'UVDATA'
+refant: 9
+skiptecor: False
+skippbcor: False
+skippcal: True
+skipsnedt: True
+autoflag: False
+useprelimmodels: True
+writerawinbeam: False
+clearcatalog: False
+unflagpietown: False
+dodefaultnames: False
+ampcalscan: 1
+userno: 197
+targets: ["J1738+0333"]
+shifts: [""]
+# For the solution intervals below, <0 means skip that step
+bandpassfringmins: 3
+bandpassfringsnr: 6
+difmaptargetuvaverstring: 20,True
+# parameters inherited from source file
+gateduvfile: VLBA_BD179I0_gatedi0_BIN0_SRC0_0_150824T163822.idifits 
+ungateduvfile: VLBA_BD179I0_ungatedi0_BIN0_SRC0_0_150824T164359.idifits
+inbeamfiles: ['VLBA_BD179I0_inbeam1i0_BIN0_SRC0_0_150824T164856.idifits', 'VLBA_BD179I0_inbeam2i0_BIN0_SRC0_0_150824T165207.idifits', 'VLBA_BD179I0_inbeam3i0_BIN0_SRC0_0_150824T165321.idifits']
+inbeamnames: ['IBC01313', 'IBC01325', 'IBC01308']
+phscalnames: J1740+0311
+ampcalsrc: J1743-0350

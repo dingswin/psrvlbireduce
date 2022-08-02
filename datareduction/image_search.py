@@ -1,3 +1,4 @@
+#!/usr/bin/env ParselTongue
 ################################################################################
 ## image_search.py: A ParselTongue script for searching for inbeam calibrators
 ## Adam Deller, 03 Mar 2010
@@ -27,7 +28,7 @@ warnings.defaultaction = "always"
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC20'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("--rootdir", dest="rootdir",

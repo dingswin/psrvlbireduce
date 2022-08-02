@@ -1,0 +1,37 @@
+primaryinbeam: IBC01313 #:main[,second,third] - multiple inbeams turns summation on
+primarytarget: J1738+0333
+dividesources: IBC01313
+#IBC01325,IBC01308 #Comma separated list of any sources to be divided by their models
+usegaussiantarget: False
+usegaussianinbeam: True
+stokesi: True #Use stokesi for imaging solutions
+skiplastif: False #flag the last IF
+separateifmodel: False # No frequency dependence to the model
+aipsimageweight: 'N' # Natural
+# For the solution intervals below, <0 means skip that step
+scintcorrmins: -1 # Minutes for scintillation amplitude correction
+phsreffringmins: 3     # FRING, delay and rate, separate subbands (phase reference)
+phsreffringsnr: 5
+#phsreffringsumifs: True
+phsrefcalibpnmins: 1.5
+phsrefcalibpntype: L1R
+phsrefcalibpnsnr: 5
+phsrefcalibapnmins: 20 # CALIB, amp and phase, separate subbands (phase reference)
+phsrefcalibapntype: L1R
+phsrefcalibapnsnr: 6
+inbeamcalibp1mins: 2   # CALIB, phase only, summed subbands (inbeam)
+inbeamcalibp1type: L1R
+inbeamcalibp1snr: 5
+inbeamcalibpnmins: 20   # CALIB, phase only, separate subbands (inbeam)
+inbeamcalibpntype: L1R
+inbeamcalibpnsnr: 5
+inbeamcalibpnstokesi: True
+#inbeamcalibsp1mins: 2   # CALIB, phase only, summed subbands (inbeam)
+#inbeamcalibsp1type: L1R
+#inbeamcalibsp1snr: 7
+inbeamcalibap1mins: -3 # CALIB, amp and phase, summed subbands (inbeam)
+inbeamcalibap1type: L1R
+inbeamcalibap1snr: 7
+difmapnpixels: 2048
+difmappixelmas: 0.75
+difmapweightstring: 0,-1 # Natural weighting

@@ -1,4 +1,14 @@
 #!/usr/bin/env ParselTongue
+"""
+Usage
+-----
+also used to concatenate idifits files, so make sure not to have 
+both .fits and .idifits in one folder before the concatenation.
+
+Possible solutions of complaints
+--------------------------------
+1. delete all entries in AIPS.userno=2575 if it complains.
+"""
 #Imports ########################################################
 from AIPS import AIPS
 from AIPSTask import AIPSTask
@@ -12,7 +22,7 @@ import os, sys, glob
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC20'
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("--rootdir", dest="rootdir",
@@ -52,7 +62,8 @@ filelistdir     = options.filelistdir
 if filelist == "" and expseries == "":
     print "Doing a glob of all *.fits files in the current directory"
     doglob = True
-    flist = glob.glob("*.fits")
+    #flist = glob.glob("*.fits")
+    flist = glob.glob("*fits")
     if len(flist) > 0:
         for f in flist:
             filelist = filelist + f + ','
