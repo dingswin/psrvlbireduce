@@ -5,11 +5,11 @@ from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
-#import matplotlib
+import matplotlib
 #matplotlib.use('Agg')
 from scipy.special import jn
 import sys, os, subprocess, math, datetime, glob
-import interaction, pylab, ephem, astro_utils
+import interaction, ephem, astro_utils, pylab
 import numpy as np
 from interaction import yesno
 
@@ -2465,6 +2465,7 @@ def atlod(atfile, uvdata, sources):
 ####### FITLD FOR NON-CORRELATOR UV FILES ######################################
 def fitld_uvfits(uvfitsfile, aipsdata, sources):
     fitld = AIPSTask('fitld', version = aipsver)
+    fitld.doweight=1
     fitld.digicor = 0
     fitld.ncount = 1
     if sources != "":
@@ -2525,6 +2526,7 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
     if len(splitfile) > 1:
         fitld.doconcat = 1
     print fitld.doconcat
+    fitld.doweight = 1
     fitld.optype = ''
     fitld.ncount = 0
     fitld.dotable = 1
@@ -2591,6 +2593,7 @@ def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='
 ####### FITLD FOR IMAGE FILES ##################################################
 def fitld_image(file, aipsdata):
     fitld = AIPSTask('fitld', version = aipsver)
+    fitld.doweight = 1
     fitld.dotable = 1
     fitld.douvcomp = 1
     fitld.digicor = -1
@@ -4922,7 +4925,7 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
     return True
 
 ##### Make a postscript of a bandpass ##########################################
-def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion=1, ifs=[0,0], smooth=0, chans=[0,0], stokes=""):
+def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion=1, ifs=[0,0], smooth=0, chans=[0,0], stokes="",baselines=None):
     possm = AIPSTask('possm', version = aipsver)
     possm.indata = uvdata
     possm.stokes = stokes
@@ -4941,6 +4944,13 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
     else:
         print "Chans parameter must be a len(2) list for bchan and echan, was", chans
         sys.exit()
+    if baselines is not None:
+        if isinstance(baselines,(list,)):
+            for i in baselines:
+                possm.baseline[i] = i
+        else:
+            print "baselines parameter must be a list"
+            sys.exit()
     if clversion > 0:
         possm.docalib = 1
         possm.gainuse = clversion
@@ -5208,7 +5218,9 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
     #difmap.stdin.write("device " + imagename + ".clean.ps/PS\n")
     psfile = imagename.split('/')[-1] +  ".clean.ps"
     os.system("rm -f " + psfile)
-    difmap.stdin.write("device %s/PS\n" % psfile)
+    print(psfile)
+    #difmap.wait()
+    difmap.stdin.write("device %s /ps\n" % psfile)
     difmap.stdin.write("mappl cln\n")
     if os.path.exists(imagename):
         os.system("rm -f " + imagename)
