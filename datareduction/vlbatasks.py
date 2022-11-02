@@ -5218,8 +5218,6 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
     #difmap.stdin.write("device " + imagename + ".clean.ps/PS\n")
     psfile = imagename.split('/')[-1] +  ".clean.ps"
     os.system("rm -f " + psfile)
-    print(psfile)
-    #difmap.wait()
     difmap.stdin.write("device %s /ps\n" % psfile)
     difmap.stdin.write("mappl cln\n")
     if os.path.exists(imagename):
