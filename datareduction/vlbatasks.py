@@ -5,7 +5,7 @@ from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
-import matplotlib
+#import matplotlib
 #matplotlib.use('Agg')
 from scipy.special import jn
 import sys, os, subprocess, math, datetime, glob
