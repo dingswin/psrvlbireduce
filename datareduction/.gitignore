@@ -20,4 +20,8 @@ bin_astrometric_runs_bd244d.py
 bin_astrometric_runs_bd245b2.py
 bin_astrometric_runs_bd245d1.py
 bin_astrometric_runs.py
-./__pycache__/interaction.cpython-39.pyc
+__pycache__/astro_utils.cpython-39.pyc
+__pycache__/interaction.cpython-39.pyc
+__pycache__/support_vlbireduce.cpython-39.pyc
+__pycache__/vlbatasks.cpython-39.pyc
+__pycache__/vlbireduce.cpython-39.pyc
