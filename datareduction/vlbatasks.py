@@ -3125,7 +3125,7 @@ def get_max_tableno(uvdataset, tabletype):
     tables = uvdataset.tables
     maxtableversion = 0
     for table in tables:
-	if table[1][-2:] == tabletype:
+        if table[1][-2:] == tabletype:
             if table[0] > maxtableversion:
                 maxtableversion = table[0]
     return maxtableversion

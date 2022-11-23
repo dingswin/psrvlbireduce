@@ -2,7 +2,7 @@
 ###########################################################################
 ###-- remove sn,bp,ps tables in "tables" folders and rerun vlbi_astrometry.py for a set of observations
 ###-- tailored for MSPSRPI
-###-- if -e bd223a, just rerun bd223a, if -s J1012+5307, rerun all epochs regarding the target 
+###-- if -e bd223a, just rerun bd223a, if -t J1012+5307, rerun all epochs regarding the target 
 ############################################################################
 import os,sys,glob,yaml,howfun,datetime
 from optparse import OptionParser
@@ -12,7 +12,7 @@ def exp2expdir(string):
     print(expconfigfile)
     if not os.path.exists(expconfigfile):
         parser.error("Experiment config file %s does not exist!" % expconfigfile)
-    expconfig     = yaml.load(open(expconfigfile))
+    expconfig     = yaml.safe_load(open(expconfigfile))
     expdir        = expconfig['rootdir'] + '/' + experiment + '/'
     return expdir
 def prepare_given_exp(experiment):

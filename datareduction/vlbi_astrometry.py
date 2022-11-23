@@ -162,7 +162,7 @@ def main():
     expconfigfile = configdir + experiment + '.yaml'
     if not os.path.exists(expconfigfile):
         parser.error("Experiment config file %s does not exist!" % expconfigfile)
-    expconfig     = yaml.load(open(expconfigfile))
+    expconfig     = yaml.safe_load(open(expconfigfile))
     rootdir       = expconfig['rootdir']
     try:
         if expconfig['uselocalmodels']:
@@ -195,7 +195,7 @@ def main():
         #targetconfigfile = configdir + expconfig['rootdir'].split('/')[-1] + '.yaml'
         if not os.path.exists(targetconfigfile):
             parser.error("Target config file %s does not exist!" % targetconfigfile)
-        targetconfigs.append(yaml.load(open(targetconfigfile)))
+        targetconfigs.append(yaml.safe_load(open(targetconfigfile)))
     skiplastif = targetconfigs[0]['skiplastif']
     if numtargets > 1:
         for config in targetconfigs[1:]:

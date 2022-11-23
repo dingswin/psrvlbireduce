@@ -54,7 +54,7 @@ def stringToRad(posstr, was_hms):
         if was_hms:
             radval *= 180.0/12.0
     except ValueError:
-        print("Bad position string", posstr)
+        print "Bad position string", posstr
         radval = -999
     return radval
 
@@ -112,7 +112,7 @@ def name2approxradians(name):
     while len(strippedname) > 0 and strippedname[0].isalpha():
         strippedname = strippedname[1:]
     if len(strippedname) == 0:
-        print("Unparseable name ", name)
+        print "Unparseable name ", name
     decmultiplier = 1.0
     if '+' in strippedname:
         splitname = strippedname.split('+')
@@ -120,7 +120,7 @@ def name2approxradians(name):
         splitname = strippedname.split('-')
         decmultiplier = -1.0
     else:
-        print("Unparseable name ", name)
+        print "Unparseable name ", name
         sys.exit()
     
     hh = float(splitname[0][0:2])
