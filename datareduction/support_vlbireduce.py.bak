@@ -67,7 +67,7 @@ class support_vlbireduce(object):
                  (runlevel, clversion, maxclversion)
         prtstr2 = ", snversion is %d (from uvdata, maxsnversion is %d)" % \
                   (snversion, maxsnversion)
-        print(prtstr + prtstr2)
+        print prtstr + prtstr2
 
     def parsesourcefile(self, sourcefile, experiment, klass, uvsequence):
         """
@@ -79,11 +79,11 @@ class support_vlbireduce(object):
         sourcein.close()
 
         if not "GATED" in sourcelines[0]:
-            print("Error parsing source file, no GATED on first line")
+            print "Error parsing source file, no GATED on first line"
             sys.exit()
         gateduvfile = sourcelines[0].split(':')[1].strip()
         if not "UNGATED" in sourcelines[1]:
-            print("Error parsing source file, no UNGATED on second line")
+            print "Error parsing source file, no UNGATED on second line"
             sys.exit()
         ungateduvfile = sourcelines[1].split(':')[1].strip()
         numinbeams = 0
@@ -99,7 +99,7 @@ class support_vlbireduce(object):
             numinbeams += 1
             atline += 1
         if not "BANDPASS" in sourcelines[atline]:
-            print("Error parsing source file, no BANDPASS on line %d" % atline)
+            print "Error parsing source file, no BANDPASS on line %d" % atline
             sys.exit()
         ampcalsrc = sourcelines[atline].split(':')[-1].strip()
         atline += 1
@@ -200,15 +200,15 @@ class support_vlbireduce(object):
                          parenttarget = i
                          break
                 if parenttarget < 0:
-                    print(("Couldn't find a parent target for " + inbeamsrc + \
-                          " - this should never happen, aborting!"))
+                    print("Couldn't find a parent target for " + inbeamsrc + \
+                          " - this should never happen, aborting!")
                     sys.exit()
                 ## <<<
                 config = targetconfigs[parenttarget]
-                print(("Parenttarget is", parenttarget))
-                print(("Sumifs is", sumifs))
-                print(("Doampcal is", doampcal))
-                print(("Desecondary is", dosecondary))
+                print("Parenttarget is", parenttarget)
+                print("Sumifs is", sumifs)
+                print("Doampcal is", doampcal)
+                print("Desecondary is", dosecondary)
                 solmins = -1
                 if doampcal:
                     if not sumifs:
@@ -236,7 +236,7 @@ class support_vlbireduce(object):
                                 solmins = config['inbeamcalibpnmins']
                             except KeyError: pass
                 if solmins < 0:
-                    print(("Skipping " + inbeamsrc))
+                    print("Skipping " + inbeamsrc)
                     if sumifs:
                         if doampcal:
                             sntablepath = tabledir + inbeamsrc + '.icalib.ap1.sn'
@@ -257,7 +257,7 @@ class support_vlbireduce(object):
                         else:
                             sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
                             pspath  = tabledir + inbeamsrc + '.icalib.pn.ps'
-                    print(("Removing", sntablepath, " and ", pspath))
+                    print("Removing", sntablepath, " and ", pspath)
                     os.system("rm -f " + sntablepath)
                     os.system("rm -f " + pspath)
                     continue
@@ -286,7 +286,7 @@ class support_vlbireduce(object):
                 if expconfig['ampcalscan'] > 0:
                     haveampcal = True
                 ## >>> split out inbeam_uv_data=inbeamsrc.CALIB.1 from uvdata
-                print((inbeamsrc, uvdata))
+                print(inbeamsrc, uvdata)
                 vlbatasks.splittoseq(uvdata, clversion, 'CALIB', inbeamsrc, ## split to inbeam_uv_data
                                      1, domulti, haveampcal, beginif, 
                                      endif-subtractif, combineifs, leakagedopol)
@@ -296,12 +296,12 @@ class support_vlbireduce(object):
                     inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
                     rawuvoutputfile = directory + inbeamsrc + self.cmband + ".formodeling.uv.fits"
                     if not os.path.exists(inbeam_image_file):
-                        print(("Can't find " + modeltype + " inbeam model  " + inbeam_image_file))
+                        print("Can't find " + modeltype + " inbeam model  " + inbeam_image_file)
                         if modeltype == "preliminary":
-                            print(("I will write out a data file for this inbeam to " + rawuvoutputfile))
+                            print("I will write out a data file for this inbeam to " + rawuvoutputfile)
                             print("Please image it with your favourite tool")
                             print("(clean only if using difmap, no modelfitting)")
-                            print(("When complete, copy the image fits file to " + inbeam_image_file))
+                            print("When complete, copy the image fits file to " + inbeam_image_file)
                             vlbatasks.writedata(inbeam_uv_data, rawuvoutputfile, True)
                         else:
                             print("Aborting!!")
@@ -332,7 +332,7 @@ class support_vlbireduce(object):
                                 normdata.zap()
                             inbeam_image_file = "%s%s.IF%d%s.clean.fits" % (modeldir, inbeamsrc, i, self.cmband)
                             if not os.path.exists(inbeam_image_file):
-                                print("Can't find inbeam model file (multi-IF %d) %s" % (i, inbeam_image_file))
+                                print "Can't find inbeam model file (multi-IF %d) %s" % (i, inbeam_image_file)
                                 sys.exit()
                             inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, i)
                             if inbeam_image_data.exists():
@@ -389,7 +389,7 @@ class support_vlbireduce(object):
                         #tocaluvdata.append(normed[i][0])
                         normed[i][0].rename('CONCAT' + str(i), 'UVSRT', 1)
                     elif len(normed[i]) == 0:
-                        print("No need to do anything for " + targetnames[i])
+                        print "No need to do anything for " + targetnames[i]
                         continue
                     else:
                         for j in range(10,0,-1):
@@ -462,7 +462,7 @@ class support_vlbireduce(object):
                             weightit = 0
                 else:
                     if dosecondary:
-                        print("Can't do separate IFs secondary!")
+                        print "Can't do separate IFs secondary!"
                         sys.exit()
                     if doampcal:
                         sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
@@ -492,7 +492,7 @@ class support_vlbireduce(object):
                             dostokesi = config['inbeamcalibpnstokesi']
                         except KeyError:
                             dostokesi = False
-                print(("Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr)))
+                print("Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr))
                 try:
                     flagwheremodelbelow = expconfig['inbeamminmodelflux'] ## Jy
                 except KeyError:
@@ -531,7 +531,7 @@ class support_vlbireduce(object):
         """
         used when config['phscalseparateifmodel']==True (for phscal) or config['separateifmodel']==True (for inbeams), where config=targetconfig[i]
         """
-        print(('Normalise uvdata of %s against its separate_IF_models, then concatenate back together.' % srcname))
+        print('Normalise uvdata of %s against its separate_IF_models, then concatenate back together.' % srcname)
         normed_IF_datas = []
         subtractif = 0
         if config['skiplastif']:
@@ -562,7 +562,7 @@ class support_vlbireduce(object):
                 normdata.zap()
             IF_image_file = "%s%s.IF%d%s.clean.fits" % (modeldir, srcname, i, self.cmband)
             if not os.path.exists(IF_image_file):
-                print("Can't find inbeam model file (multi-IF %d) %s" % (i, IF_image_file))
+                print "Can't find inbeam model file (multi-IF %d) %s" % (i, IF_image_file)
                 sys.exit()
             IF_image_data = AIPSImage(shortname, "CLEAN", 1, i)
             if IF_image_data.exists():
@@ -598,7 +598,7 @@ class support_vlbireduce(object):
             expno = vexfile.split('/')[-2].strip()
         expconfigfile = configdir + expno + '.yaml'
         if not os.path.exists(expconfigfile):
-            print(('%s does not exist; aborting' % expconfigfile))
+            print('%s does not exist; aborting' % expconfigfile)
         expconfig = yaml.load(open(expconfigfile))
         return expconfig2cals(expconfig, expno)
     
@@ -698,7 +698,7 @@ class support_vlbireduce(object):
                         calibstring += '.dualphscal'
             else:
                 if dosecondary:
-                    print("Can't do separate IFs secondary cal!")
+                    print "Can't do separate IFs secondary cal!"
                     sys.exit()
                 if doampcal:
                     calibstring = 'apn'
@@ -716,7 +716,7 @@ class support_vlbireduce(object):
             #    calibtablepath = calibtablepath.replace('.dualphscal', '')
             ## <<<
 
-            print(("Applying table " + calibtablepath))
+            print("Applying table " + calibtablepath)
             if targetonly and (not os.path.exists(calibtablepath)):
                 print("For target-only, the SN file must exist already - aborting!")
                 print(calibtablepath)
@@ -754,7 +754,7 @@ class support_vlbireduce(object):
         ######################################################################################
         ## merge the new tables (for diffferent target group)
         ######################################################################################
-        print(("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1)))
+        print("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1))
         if any(targetfilenum >= 0 for targetfilenum in inbeamfilenums):
             if not targetonly:
                 for i in range(numinbeams):
@@ -787,7 +787,7 @@ class support_vlbireduce(object):
                     for j in tocalindices:
                         if i < len(inbeamnames[j]):
                             sourcelist.append(inbeamnames[j][i]) 
-                    print(("Applying inbeamsn for ", sourcelist, " to file ", i))
+                    print("Applying inbeamsn for ", sourcelist, " to file ", i)
                     vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
                                            clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
                 sourcelist = []
@@ -837,7 +837,7 @@ class support_vlbireduce(object):
                     for j in tocalindices:
                         if i < len(inbeamnames[j]):
                             sourcelist.append(inbeamnames[j][i]) 
-                    print("Applying inbeamsn for ", sourcelist, " to file ", i)
+                    print "Applying inbeamsn for ", sourcelist, " to file ", i
                     vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
                                            clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
         else:
@@ -887,7 +887,7 @@ class support_vlbireduce(object):
                         calibstring += '.dualphscal'
             else:
                 if dosecondary:
-                    print("Can't do separate IFs secondary cal!")
+                    print "Can't do separate IFs secondary cal!"
                     sys.exit()
                 if doampcal:
                     calibstring = 'apn'
@@ -895,7 +895,7 @@ class support_vlbireduce(object):
                     calibstring = 'pn'
                     if int(dualphscal_setup[0])>0:
                         calibstring += '.dualphscal'
-            print(inbeamsrc)
+            print inbeamsrc
             if "CONCAT" in inbeamsrc:
                 calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
             else:
@@ -904,10 +904,10 @@ class support_vlbireduce(object):
             if not os.path.exists(calibtablepath):
                 calibtablepath = calibtablepath.replace('.dualphscal', '')
 
-            print("Applying table " + calibtablepath)
+            print "Applying table " + calibtablepath
             if targetonly and (not os.path.exists(calibtablepath)):
-                print("For target-only, the SN file must exist already - aborting!")
-                print(calibtablepath)
+                print "For target-only, the SN file must exist already - aborting!"
+                print calibtablepath
                 sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
@@ -928,7 +928,7 @@ class support_vlbireduce(object):
         if not calonly:
             #vlbatasks.deletetable(gateduvdata, 'SN', snversion+sncount)
             #print "Deleted SN table version " + str(snversion+sncount)
-            print(("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1)))
+            print("Merging SN tables between " + str(snversion) + " and " + str(snversion + sncount -1))
             vlbatasks.mergesntables(gateduvdata, snversion, sncount, expconfig['refant'])
             if haveungated:
                 #vlbatasks.deletetable(ungateduvdata, 'SN', snversion+sncount)
@@ -941,7 +941,7 @@ class support_vlbireduce(object):
                 for j in tocalindices:
                     if i < len(inbeamnames[j]):
                         sourcelist.append(inbeamnames[j][i]) 
-                print("Applying inbeamsn for ", sourcelist, " to file ", i)
+                print "Applying inbeamsn for ", sourcelist, " to file ", i
                 vlbatasks.applysntable(inbeamuvdatas[i], snversion+sncount, '2PT', 
                                        clversion, expconfig['refant'], sourcelist, 'CALP') #does not necessarily go through the sourcelist
             sourcelist = []
@@ -955,7 +955,7 @@ class support_vlbireduce(object):
                 sourcelist.append(targetnames[i])
             for j in range(10):
                 vlbatasks.deletetable(gateduvdata, 'CL', clversion+j+1)
-            print(sourcelist)
+            print sourcelist
             vlbatasks.applysntable(gateduvdata, snversion+sncount, '2PT', clversion, 
                                    expconfig['refant'], sourcelist, 'CALP')
             if haveungated:

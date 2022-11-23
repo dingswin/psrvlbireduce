@@ -34,7 +34,7 @@ class vlbireduce(support_vlbireduce):
             inbeamfiles, inbeamuvdatas, calonly, targetonly, gateduvdata, ungateduvdata, 
             targetnames, haveungated, ungateduvfile, gateduvfile):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Loading UVDATA from disk")
+            print "Runlevel " + str(self.runlevel) + ": Loading UVDATA from disk"
             vexfile  = directory + '/' + experiment.lower() + '.vex'
             refdate = vlbatasks.getrefdate(vexfile)
             try:
@@ -62,7 +62,7 @@ class vlbireduce(support_vlbireduce):
                     os.system("ln -s %s %s/templink.fits" % (ungateduvfile, directory))
                     vlbatasks.fitld_vlba("%s/templink.fits" % directory, ungateduvdata, targetnames, 0.05, refdate, cltablemins)
         else:
-            print("Skipping UVDATA load")
+            print "Skipping UVDATA load"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     def increase_the_number_of_IFs_if_requested(self, targetonly, numinbeams, experiment, uvsequence, inbeamuvdatas,
@@ -72,7 +72,7 @@ class vlbireduce(support_vlbireduce):
         except KeyError:
             moriffactor = 0
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and moriffactor > 1:
-            print("Runlevel " + str(self.runlevel) + ": Splitting each IF " + str(moriffactor) + " ways")
+            print "Runlevel " + str(self.runlevel) + ": Splitting each IF " + str(moriffactor) + " ways"
             if not targetonly:
                 for i in range(numinbeams):
                     newinbeamdata = AIPSUVData(experiment.upper() + "_I" + str(i+1), "MORIF", 1, uvsequence)
@@ -96,14 +96,14 @@ class vlbireduce(support_vlbireduce):
                     ungateduvdata.zap()
                     newungateddata.rename(experiment.upper() + "_U", klass, uvsequence)
         else:
-            print("Not running MORIF")
+            print "Not running MORIF"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def unflag_Pie_Town_if_requested(self, expconfig, targetonly, numinbeams, inbeamuvdatas, calonly,
             ungateduvdata, gateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and expconfig['unflagpietown']:
-            print("Runlevel " + str(self.runlevel) + ": Unflagging Pie Town")
+            print "Runlevel " + str(self.runlevel) + ": Unflagging Pie Town"
             if not targetonly:
                 for i in range(numinbeams):
                     vlbatasks.unflagantenna(inbeamuvdatas[i], 1, 1, 9)
@@ -112,7 +112,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.unflagantenna(ungateduvdata, 1, 1, 9)
                 vlbatasks.unflagantenna(gateduvdata, 1, 1, 9)
         else:
-            print("Not unflagging Pie Town")
+            print "Not unflagging Pie Town"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
@@ -123,7 +123,7 @@ class vlbireduce(support_vlbireduce):
         the splitted uvfits file for phscal would also flag the additionaledit.inbeamname.flag
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Loading user flags")
+            print "Runlevel " + str(self.runlevel) + ": Loading user flags"
             userflagfiles = glob.glob(tabledir + '/*.flag')
             if not targetonly:
                 userflagfile = tabledir + "additionaledit.flag"
@@ -149,19 +149,19 @@ class vlbireduce(support_vlbireduce):
                         if haveungated:
                             vlbatasks.userflag(ungateduvdata, 1, extraflagfile)
             if len(userflagfiles) == 0:
-                print("No user flag file - skipping")
+                print "No user flag file - skipping"
             for userflagfile in userflagfiles:
                 if "target" in userflagfile:
-                    print("Warning: old-style additionaledit.target.flag file no longer supported!")
+                    print "Warning: old-style additionaledit.target.flag file no longer supported!"
         else:
-            print("Skipping flagging from user flag file")
+            print "Skipping flagging from user flag file"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_the_flagging_for_zero_fringe_rate_effects(self, targetconfigs, targetonly, inbeamuvdatas,
             haveungated, ungateduvdata, gateduvdata, calonly):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Running UVFLG for zero fringe rates")
+            print "Runlevel " + str(self.runlevel) + ": Running UVFLG for zero fringe rates"
             try:
                 suppressionfactor = targetconfigs[0]['fringerateflagsuppressionfactor']
             except KeyError:
@@ -174,18 +174,18 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.fringerateflag(ungateduvdata, 1, suppressionfactor)
                 vlbatasks.fringerateflag(gateduvdata, 1, suppressionfactor)
         else:
-            print("Skipping flagging times of zero fringe rate")
+            print "Skipping flagging times of zero fringe rate"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def run_the_autoflagger_if_requested(self, expconfig, tabledir, targetonly, numinbeams, inbeamuvdatas,
             calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and expconfig['autoflag']:
-            print("Runlevel " + str(self.runlevel) + ": Running autoflagger")
+            print "Runlevel " + str(self.runlevel) + ": Running autoflagger"
             autoflagfile = tabledir + "auto.rawuvdata.flag"
             if targetonly and (not os.path.exists(autoflagfile)):
-                print("For target-only, autoflag file %s must already exist!" % autoflagfile)
-                print("Aborting!")
+                print "For target-only, autoflag file %s must already exist!" % autoflagfile
+                print "Aborting!"
                 sys.exit(1)
             if not targetonly:
                 if not os.path.exists(autoflagfile) or \
@@ -203,7 +203,7 @@ class vlbireduce(support_vlbireduce):
                 if haveungated:
                     vlbatasks.userflag(ungateduvdata, 1, autoflagfile)
         else:
-            print("Skipping autoflagging")
+            print "Skipping autoflagging"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
@@ -213,7 +213,7 @@ class vlbireduce(support_vlbireduce):
         In cases where runlevel starts from 2, CL>=2 and SN>=2 are deleted here.
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Duplicating CL table 1")
+            print "Runlevel " + str(self.runlevel) + ": Duplicating CL table 1"
             if not targetonly:
                 for i in range(numinbeams):
                     for j in range(20):
@@ -231,7 +231,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.deletetable(ungateduvdata, 'CL', j+1+self.snversion)
                     vlbatasks.tacop(ungateduvdata, 'CL', 1, ungateduvdata, 2)
         else:
-            print("Skipping duplication of initial CL table")
+            print "Skipping duplication of initial CL table"
         self.runlevel += 1
         self.clversion += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
@@ -239,7 +239,7 @@ class vlbireduce(support_vlbireduce):
     def correct_positions(self, alluvdatas, targetonly, gateduvdata, haveungated, 
             ungateduvdata, calonly, inbeamuvdatas, expconfig):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Running CLCOR to shift sources")
+            print "Runlevel " + str(self.runlevel) + ": Running CLCOR to shift sources"
             uvdatas = alluvdatas
             if targetonly:
                 uvdatas = [gateduvdata]
@@ -257,35 +257,35 @@ class vlbireduce(support_vlbireduce):
                 srcname  = s.split(',')[0]
                 rashift  = float(s.split(',')[1])
                 decshift = float(s.split(',')[2])
-                print(("Shifting " + srcname + " by " + str(rashift) + "," + str(decshift)))
+                print("Shifting " + srcname + " by " + str(rashift) + "," + str(decshift))
                 foundone = False
                 for dataset in uvdatas:
                     present = False
                     for row in dataset.table('SU', 1):
-                        print(row.source.strip())
+                        print row.source.strip()
                         if row.source.strip() == srcname:
                             present = True
                             foundone = True
                     if present:
-                        print("About to operate on ", dataset, srcname, rashift, decshift, self.clversion)
+                        print "About to operate on ", dataset, srcname, rashift, decshift, self.clversion
                         vlbatasks.shift_source(dataset, srcname, rashift, decshift,
                                                self.clversion)
                 if not foundone:
-                    print("Didn't find source " + srcname + " in any datasets!")
+                    print "Didn't find source " + srcname + " in any datasets!"
                     sys.exit()
         else:
-            print("Skipping source shifting")
+            print "Skipping source shifting"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_TECOR(self, expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not expconfig['skiptecor']:
-            print("Runlevel " + str(self.runlevel) + ": Running TECOR to correct ionosphere")
+            print "Runlevel " + str(self.runlevel) + ": Running TECOR to correct ionosphere"
             try:
                 follow = expconfig['tecorfollow']
             except KeyError:
-                print("Follow not specified in expconfig file, defaulting to 0.2")
+                print "Follow not specified in expconfig file, defaulting to 0.2"
                 follow = 0.2
             if not targetonly:
                 for i in range(numinbeams):
@@ -295,7 +295,7 @@ class vlbireduce(support_vlbireduce):
                 if haveungated:
                     vlbatasks.correct_iono(ungateduvdata, logdir, self.clversion, follow)
         else:
-            print("Skipping ionospheric corrections")
+            print "Skipping ionospheric corrections"
         
         self.runlevel += 1
         if not expconfig['skiptecor']:
@@ -305,7 +305,7 @@ class vlbireduce(support_vlbireduce):
     def run_CLCOR_to_correct_EOPs(self, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Running CLCOR to correct for EOPs")
+            print "Runlevel " + str(self.runlevel) + ": Running CLCOR to correct for EOPs"
             if not targetonly:
                 for i in range(numinbeams):
                     vlbatasks.correct_eops(inbeamuvdatas[i], logdir, self.clversion)
@@ -314,7 +314,7 @@ class vlbireduce(support_vlbireduce):
                 if haveungated:
                     vlbatasks.correct_eops(ungateduvdata, logdir, self.clversion)
         else:
-            print("Skipping EOP corrections")
+            print "Skipping EOP corrections"
         self.runlevel += 1
         self.clversion += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
@@ -350,7 +350,7 @@ class vlbireduce(support_vlbireduce):
     def run_CLCOR_to_correct_PANG(self, targetonly, numinbeams,
             inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.leakagescan > 0:
-            print("Runlevel " + str(self.runlevel) + ": Running CLCOR to correct PANG")
+            print "Runlevel " + str(self.runlevel) + ": Running CLCOR to correct PANG"
             if not targetonly:
                 for i in range(numinbeams):
                     vlbatasks.clcor_pang(inbeamuvdatas[i], self.clversion)
@@ -359,7 +359,7 @@ class vlbireduce(support_vlbireduce):
                 if haveungated:
                     vlbatasks.clcor_pang(ungateduvdata, self.clversion)
         else:
-            print("Skipping PANG corrections")
+            print "Skipping PANG corrections"
         self.runlevel += 1
         if self.leakagescan > 0:
             self.clversion += 1
@@ -371,9 +371,9 @@ class vlbireduce(support_vlbireduce):
         gatedadelayfile = tabledir + 'aprioridelays.gated.txt'
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             if os.path.exists(adelayfile):
-                print("Runlevel " + str(self.runlevel) + ": Using CLCOR to correct measured delays")
+                print "Runlevel " + str(self.runlevel) + ": Using CLCOR to correct measured delays"
             else:
-                print("Runlevel " + str(self.runlevel) + ": Not correcting a priori delays, just duplicating CL table")
+                print "Runlevel " + str(self.runlevel) + ": Not correcting a priori delays, just duplicating CL table"
             uvdatas = alluvdatas
             if targetonly:
                 uvdatas = [gateduvdata]
@@ -391,7 +391,7 @@ class vlbireduce(support_vlbireduce):
                 if os.path.exists(thisfile):
                     vlbatasks.clcordelaysfromfile(uvdata, thisfile, self.clversion+1)
         else:
-            print("Skipping correction of a priori clock delays")
+            print "Skipping correction of a priori clock delays"
         self.runlevel += 1
         self.clversion += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
@@ -403,10 +403,10 @@ class vlbireduce(support_vlbireduce):
         except KeyError:
             skipapcalaccor = False
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not skipapcalaccor:
-            print("Runlevel " + str(self.runlevel) + ": Doing amplitude calibration")
+            print "Runlevel " + str(self.runlevel) + ": Doing amplitude calibration"
             if targetonly and (not os.path.exists(tabledir + 'accor.sn') or \
                                not os.path.exists(tabledir + 'apcal.sn')):
-                print("For target-only, the SN files must exist already - aborting!")
+                print "For target-only, the SN files must exist already - aborting!"
                 sys.exit(1)
             uvdatas = alluvdatas
             if targetonly:
@@ -447,7 +447,7 @@ class vlbireduce(support_vlbireduce):
                 except KeyError:
                     copytsys = ""
                 if copytsys != "" and dotsysfix:
-                    print("Can't do tsys fix and copytsys!")
+                    print "Can't do tsys fix and copytsys!"
                     sys.exit()
                 vlbatasks.accor(inbeamuvdatas[0], accorinterval)
                 if accorampsmo > 0:
@@ -465,20 +465,20 @@ class vlbireduce(support_vlbireduce):
                 else:
                     vlbatasks.tacop(inbeamuvdatas[0], 'SN', self.snversion+2, inbeamuvdatas[0], self.snversion+3)
                 if dotsysfix:
-                    print("Doing tsys fix")
+                    print "Doing tsys fix"
                     vlbatasks.fixtsys(inbeamuvdatas[0], self.snversion+3)
                 elif copytsys != "":
                     groups = copytsys.split(':')
                     for g in groups:
                         copytsyssplit = g.split(',')
                         if not len(copytsyssplit) == 3:
-                            print("Copytsys was " + copytsys + ", must be --copytsys=AN1,AN2,scalefactor")
+                            print "Copytsys was " + copytsys + ", must be --copytsys=AN1,AN2,scalefactor"
                             sys.exit()
                         if copytsyssplit[0] == copytsyssplit[1]:
                             ifsplit = copytsyssplit[2].split('@')
                             if len(ifsplit) != 2 or not ifsplit[0][:2] == "if" or not ifsplit[1][:2] == "if":
-                                print("If copying between IFs of the same antenna, must use")
-                                print("--copytsys=AN,AN,ifX@ifY where X and Y are input and output IFs respectively (-1 for all)")
+                                print "If copying between IFs of the same antenna, must use"
+                                print "--copytsys=AN,AN,ifX@ifY where X and Y are input and output IFs respectively (-1 for all)"
                             vlbatasks.copytsys(inbeamuvdatas[0], self.snversion+3, copytsyssplit[0],
                                                copytsyssplit[1], 1.0, int(ifsplit[0][2:]), int(ifsplit[1][2:]))
                         else:
@@ -513,7 +513,7 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.applysntable(uvdata, self.snversion, accorinterpol, self.clversion, expconfig['refant'])
                 vlbatasks.applysntable(uvdata, self.snversion+1, '2PT', self.clversion+1, expconfig['refant'])
         else:
-            print("Skipping amplitude calibration")
+            print "Skipping amplitude calibration"
         if not skipapcalaccor:
             self.clversion += 2
             self.snversion += 2
@@ -525,7 +525,7 @@ class vlbireduce(support_vlbireduce):
             ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
             targetnames, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not expconfig['skippbcor']:
-            print("Runlevel " + str(self.runlevel) + ": Doing primary beam correction")
+            print "Runlevel " + str(self.runlevel) + ": Doing primary beam correction"
             vexfile  = directory + '/' + experiment.lower() + '.vex'
             scanlist = vlbatasks.getvexscaninfo(vexfile)
             fieldsourcenames = {}
@@ -575,7 +575,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(uvdata, self.snversion, 'SELN', self.clversion, expconfig['refant'])
                 vlbatasks.plottops(gateduvdata, 'SN', self.snversion, 'AMP', 0, 2, 4, tabledir + 'pbcor.target.ps')
         else:
-            print("Skipping primary beam correction")
+            print "Skipping primary beam correction"
         self.runlevel  = self.runlevel + 1
         if not expconfig['skippbcor']:
             self.clversion = self.clversion + 1
@@ -586,9 +586,9 @@ class vlbireduce(support_vlbireduce):
             inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing pulse cal calibration")
+            print "Runlevel " + str(self.runlevel) + ": Doing pulse cal calibration"
             if targetonly and (not os.path.exists(tabledir + 'pccor.sn')):
-                print("For target-only, the PC file must exist already - aborting!")
+                print "For target-only, the PC file must exist already - aborting!"
                 sys.exit(1)
             if  not (targetonly or (os.path.exists(tabledir + 'pccor.sn') and \
                                     interaction.yesno("Do you wish to used saved SN table " + \
@@ -596,7 +596,7 @@ class vlbireduce(support_vlbireduce):
                 try:
                     inbeamuvdatas[0].table('SN', self.snversion).zap()
                 except IOError:
-                    print("No need to delete old SN table")
+                    print "No need to delete old SN table"
                 vlbatasks.pccor(inbeamuvdatas[0], ampcalsrc, self.snversion, expconfig['ampcalscan'], expconfig['refant'])
                 if os.path.exists(tabledir + 'pccor.sn'):
                     os.remove(tabledir + 'pccor.sn')
@@ -614,7 +614,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'pccor.sn', self.snversion)
                     vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, '2PT', self.clversion, expconfig['refant'])
         else:
-            print("Skipping pulse cal corrections")
+            print "Skipping pulse cal corrections"
         self.runlevel  = self.runlevel + 1
         if not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
             self.snversion = self.snversion + 1
@@ -627,7 +627,7 @@ class vlbireduce(support_vlbireduce):
             expconfig['ampcalscan'] > 0:
             if not os.path.exists(tabledir + 'ampcalfring.sn') or \
                    not interaction.yesno("Do you wish to used saved SN table for ampcal FRING?"):
-                print("Runlevel " + str(self.runlevel) + ": FRING'ing amplitude calibrator")
+                print "Runlevel " + str(self.runlevel) + ": FRING'ing amplitude calibrator"
                 sumifs = False
                 sumrrll = False
                 zerorates = True
@@ -645,7 +645,7 @@ class vlbireduce(support_vlbireduce):
                     aipscalname = ampcalsrc
                     if len(ampcalsrc) > 12:
                         aipscalname = ampcalsrc[:12]
-                    print("Using " + modeltype + " model for " + ampcalsrc)
+                    print "Using " + modeltype + " model for " + ampcalsrc
                     ampcalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
                     if ampcalmodeldata.exists():
                         ampcalmodeldata.zap()
@@ -675,7 +675,7 @@ class vlbireduce(support_vlbireduce):
                                 False, expconfig['bandpassfringsnr'], sumifs, ampcalmodeldata,
                                 sumrrll, bandpassuvrange, zerorates, delaywin, ratewin,
                                 doexhaustive, halfbandwidth, dispersivefit)
-                print("Still at runlevel " + str(self.runlevel) + ": editing FRING for ampcal calibrator")
+                print "Still at runlevel " + str(self.runlevel) + ": editing FRING for ampcal calibrator"
                 vlbatasks.snsmo(inbeamuvdatas[0], 'DELA', 20, 0.0, 0.0, 10.0, self.snversion,
                                 expconfig['refant'])
                 snoutver = self.snversion+1
@@ -692,16 +692,16 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+1)
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+2)
         else:
-            print("Skipping FRING and SNSMO/SNEDT of ampcal FRING results")
+            print "Skipping FRING and SNSMO/SNEDT of ampcal FRING results"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def copy_the_FRING_SN_table_around_and_apply_it(self, expconfig, targetonly,
             tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and expconfig['ampcalscan'] > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading ampcal FRING SN table & calibrating")
+            print "Runlevel " + str(self.runlevel) + ": Loading ampcal FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'ampcalfring.sn')):
-                print("For target-only, the SN file must exist already - aborting!")
+                print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
@@ -717,7 +717,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(ungateduvdata, self.snversion, '2PT', self.clversion, 
                                            expconfig['refant'], [], 'CALP')
         else:
-            print("Skipping calibration of ampcal FRING results")
+            print "Skipping calibration of ampcal FRING results"
         self.runlevel  = self.runlevel + 1
         if expconfig['ampcalscan'] > 0:
             self.snversion = self.snversion + 1
@@ -730,7 +730,7 @@ class vlbireduce(support_vlbireduce):
             self.xpolscan > 0:
             if not os.path.exists(xpolsnfilename) or \
                not interaction.yesno("Do you wish to used saved SN table for Xpol cal?"):
-                print("Runlevel " + str(self.runlevel) + ": Calculating XPOL delays")
+                print "Runlevel " + str(self.runlevel) + ": Calculating XPOL delays"
                 try:
                     inttimesecs = expconfig['inttimesecs']
                 except KeyError:
@@ -754,15 +754,15 @@ class vlbireduce(support_vlbireduce):
                     xpolmodel.zap()
                 xpolmodelfile = modeldir + '/' + self.xpolsource + ".clean.fits"
                 if not os.path.exists(xpolmodelfile):
-                    print(xpolmodelfile, "doesn't exit: must have model for xpol calibration")
+                    print xpolmodelfile, "doesn't exit: must have model for xpol calibration"
                     sys.exit()
                 vlbatasks.fitld_image(xpolmodelfile, xpolmodel)
-                print("int time in seconds is ", inttimesecs)
+                print "int time in seconds is ", inttimesecs
                 vlbatasks.xpoldelaycal(inbeamuvdatas[0], self.clversion, expconfig['refant'], 
                                        self.xpolsource, self.xpolscan, xpolmodel, xpolsolintmins, 
                                        inttimesecs, xpolsnfilename, delaywin, ratewin)
         else:
-            print("Skipping determining xpoldelays")
+            print "Skipping determining xpoldelays"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return xpolsnfilename
@@ -770,9 +770,9 @@ class vlbireduce(support_vlbireduce):
     def load_and_apply_xpoldelaycal(self, targetonly, numinbeams,
             inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.xpolscan > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading XPOL CAL FRING SN table & calibrating")
+            print "Runlevel " + str(self.runlevel) + ": Loading XPOL CAL FRING SN table & calibrating"
             if targetonly and (not os.path.exists(xpolsnfilename)):
-                print("For target-only, the SN file must exist already - aborting!")
+                print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
@@ -788,7 +788,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(ungateduvdata, self.snversion, '2PT', self.clversion,
                                            expconfig['refant'])
         else:
-            print("Skipping calibration of xpolcal cross-pol FRING results")
+            print "Skipping calibration of xpolcal cross-pol FRING results"
         self.runlevel  = self.runlevel + 1
         if self.xpolscan > 0:
             self.snversion += 1 
@@ -802,7 +802,7 @@ class vlbireduce(support_vlbireduce):
             self.leakagescan > 0:
             if not os.path.exists(leakagefilename) or \
                    not interaction.yesno("Do you wish to used saved AN table for leakage cal?"):
-                print("Runlevel " + str(self.runlevel) + ": Running leakage cal")
+                print "Runlevel " + str(self.runlevel) + ": Running leakage cal"
                 if os.path.exists(leakagefilename):
                     os.remove(leakagefilename)
                 leakagemodel = AIPSImage("LEAKSRC","CLNMOD",1,1)
@@ -811,7 +811,7 @@ class vlbireduce(support_vlbireduce):
                 leakagemodelfile = modeldir + '/' + self.leakagesource + ".clean.fits"
                 leakageoutputfile = directory + '/' + experiment + "_" + self.leakagesource + "_leakagecal_uv.fits"
                 if not os.path.exists(leakagemodelfile):
-                    print(leakagemodelfile, "doesn't exit: must have model for leakage calibration")
+                    print leakagemodelfile, "doesn't exit: must have model for leakage calibration"
                     sys.exit()
                 vlbatasks.fitld_image(leakagemodelfile, leakagemodel)
                 try:
@@ -827,7 +827,7 @@ class vlbireduce(support_vlbireduce):
                             expconfig['refant'], leakageacalmins, leakagepcalmins, self.leakagescan, self.clversion,
                             hasbptable, leakageoutputfile, self.leakageuvrange, self.leakageweightit)
         else:
-            print("Skipping calibration of leakage")
+            print "Skipping calibration of leakage"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return leakagefilename
@@ -835,9 +835,9 @@ class vlbireduce(support_vlbireduce):
     def load_up_the_leakage_calibrated_AN_table(self, targetonly, xpolsnfilename, numinbeams,
             inbeamuvdatas, leakagefilename, calonly, gateduvdata, ungateduvdata, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.leakagescan > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading leakage-calculated AN table")
+            print "Runlevel " + str(self.runlevel) + ": Loading leakage-calculated AN table"
             if targetonly and (not os.path.exists(xpolsnfilename)):
-                print("For target-only, the SN file must exist already - aborting!")
+                print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
@@ -850,7 +850,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.deletetable(ungateduvdata, "AN", 1)
                     vlbatasks.loadtable(ungateduvdata, leakagefilename, 1)
         else:
-            print("Skipping loading the leakage calibrated AN table")
+            print "Skipping loading the leakage calibrated AN table"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
@@ -858,7 +858,7 @@ class vlbireduce(support_vlbireduce):
             modeltype, inbeamuvdatas):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             expconfig['ampcalscan'] > 0:
-            print("Runlevel " + str(self.runlevel) + ": Generating bandpass corrections")
+            print "Runlevel " + str(self.runlevel) + ": Generating bandpass corrections"
             if not os.path.exists(tabledir + 'bpass.bp') or not \
                interaction.yesno("Do you wish to used saved BP table for bandpass?"):
                 ampcalmodeldata = None
@@ -867,7 +867,7 @@ class vlbireduce(support_vlbireduce):
                     aipscalname = ampcalsrc
                     if len(ampcalsrc) > 12:
                         aipscalname = ampcalsrc[:12]
-                    print("Using " + modeltype + " model for " + ampcalsrc)
+                    print "Using " + modeltype + " model for " + ampcalsrc
                     ampcalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
                     if ampcalmodeldata.exists():
                         ampcalmodeldata.zap()
@@ -879,7 +879,7 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.writetable(inbeamuvdatas[0], 'BP', 1, tabledir + 'bpass.bp')
                 vlbatasks.deletetable(inbeamuvdatas[0], 'BP', 1)
         else:
-            print("Skipping bandpass corrections")
+            print "Skipping bandpass corrections"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
@@ -887,9 +887,9 @@ class vlbireduce(support_vlbireduce):
             gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas, haveungated):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             expconfig['ampcalscan'] > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading bandpass corrections")
+            print "Runlevel " + str(self.runlevel) + ": Loading bandpass corrections"
             if not os.path.exists(tabledir + 'bpass.bp'):
-                print("Error - bandpass table " + tabledir + 'bpass.bp does not exist')
+                print "Error - bandpass table " + tabledir + 'bpass.bp does not exist'
                 sys.exit(1)
             if not calonly:
                 vlbatasks.loadtable(gateduvdata, tabledir + 'bpass.bp', 1)
@@ -899,7 +899,7 @@ class vlbireduce(support_vlbireduce):
                 for i in range(numinbeams):
                     vlbatasks.loadtable(inbeamuvdatas[i], tabledir + 'bpass.bp', 1)
         else:
-            print("Skipping loading of bandpass corrections")
+            print "Skipping loading of bandpass corrections"
         bandpassclversion = self.clversion
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
@@ -946,7 +946,7 @@ class vlbireduce(support_vlbireduce):
            self.maxphsreffringmins > 0:
             if not os.path.exists(tabledir + 'phsreffring.sn') or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
-                print("Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator")
+                print "Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     try:
                         phscalseparateifmodel = config['phscalseparateifmodel']
@@ -959,24 +959,24 @@ class vlbireduce(support_vlbireduce):
                             aipscalname = phscal
                             if len(phscal) > 12:
                                 aipscalname = phscal[:12]
-                            print("Using " + modeltype + " model for " + phscal)
+                            print "Using " + modeltype + " model for " + phscal
                             phscalmodeldata = AIPSImage(aipscalname, 'CLNMOD', 1, 1)
                             if phscalmodeldata.exists():
                                 phscalmodeldata.zap()
                             vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
                         else:
-                            print("Currently no " + modeltype + " model for " + phscal)
+                            print "Currently no " + modeltype + " model for " + phscal
                             if modeltype == "preliminary":
                                 try:
                                     allowphscalpointmodel = expconfig['allowphscalpointmodel']
                                     if not allowphscalpointmodel:
-                                        print("Using a point source, will dump output after FRING")
+                                        print "Using a point source, will dump output after FRING"
                                         dophscaldump = True
                                 except KeyError:
-                                    print("Using a point source, will dump output after FRING")
+                                    print "Using a point source, will dump output after FRING"
                                     dophscaldump = True
                             else:
-                                print("Aborting!")
+                                print "Aborting!"
                                 sys.exit()
                     doband = True
                     if expconfig['ampcalscan'] <= 0:
@@ -996,7 +996,7 @@ class vlbireduce(support_vlbireduce):
                     try:
                         sumifs = config['phsreffringsumifs']
                         if expconfig['ampcalscan'] <= 0 and "bd152" in experiment:
-                            print("Overriding sumifs because no amp cal fring was done")
+                            print "Overriding sumifs because no amp cal fring was done"
                             sumifs = False
                     except KeyError:
                         sumifs = False
@@ -1028,8 +1028,8 @@ class vlbireduce(support_vlbireduce):
                         doexhaustive = expconfig['exhaustivefring']
                     except KeyError:
                         doexhaustive = False
-                    print("Delay and rate windows: ", delaywin, ratewin)
-                    print("UV range: ", phsrefuvrange)
+                    print "Delay and rate windows: ", delaywin, ratewin
+                    print "UV range: ", phsrefuvrange
                     if phscalseparateifmodel:
                         tofringuvdata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscal, config, expconfig, inbeamuvdatas[0],\
                             modeldir, self.clversion)
@@ -1091,7 +1091,7 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+1)
                 vlbatasks.deletetable(inbeamuvdatas[0], 'SN', self.snversion+2)
         else:
-            print("Skipping FRING and SNSMO/SNEDT of FRING results")
+            print "Skipping FRING and SNSMO/SNEDT of FRING results"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return dophscaldump
@@ -1099,9 +1099,9 @@ class vlbireduce(support_vlbireduce):
     def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, targetonly, tabledir, expconfig,
             numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, directory, experiment, dophscaldump):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.maxphsreffringmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating")
+            print "Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating"
             if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
-                print("For target-only, the SN file must exist already - aborting!")
+                print "For target-only, the SN file must exist already - aborting!"
                 sys.exit(1)
             try:
                 interptype = expconfig['phsreffringinterp']
@@ -1121,12 +1121,12 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(ungateduvdata, self.snversion, interptype, self.clversion, 
                                            expconfig['refant'])
         else:
-            print("Skipping calibration of FRING results")
+            print "Skipping calibration of FRING results"
 
         if self.maxphsreffringmins > 0:
             self.snversion = self.snversion + 1
             self.clversion = self.clversion + 1
-        print(self.donephscalnames)
+        print self.donephscalnames
         
         if dophscaldump: # Need to dump out the phs cal sources so we can make models of them
             for phscal in self.donephscalnames:
@@ -1147,7 +1147,7 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
                                      doband, beginif, endif, combineifs, self.leakagedopol)
                 vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
-            print("UV datasets of the phase reference sources have been written out to model")
+            print "UV datasets of the phase reference sources have been written out to model"
             sys.exit()
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
@@ -1163,7 +1163,7 @@ class vlbireduce(support_vlbireduce):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to use saved SN table for phsref phase CALIB?")):
-                print("Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources")
+                print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     try:
                         phscalseparateifmodel = config['phscalseparateifmodel']
@@ -1195,7 +1195,7 @@ class vlbireduce(support_vlbireduce):
                     except KeyError:
                         phsrefweightit = 0
                     if os.path.exists(phscalmodelfile):
-                        print("Using " + modeltype + " model for " + phscal)
+                        print "Using " + modeltype + " model for " + phscal
                         aipscalname = phscal
                         if len(phscal) > 12:
                             aipscalname = phscal[:12]
@@ -1204,7 +1204,7 @@ class vlbireduce(support_vlbireduce):
                             phscalmodeldata.zap()
                         vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
                     else:
-                        print("Currently no " + modeltype + " model for " + phscal + '; aborting!')
+                        print "Currently no " + modeltype + " model for " + phscal + '; aborting!'
                         sys.exit()
                     calibsoltype = config['phsrefcalibpntype']
                     calibtablepath = tabledir + phscal + '.calibpn.sn'
@@ -1244,7 +1244,7 @@ class vlbireduce(support_vlbireduce):
                                        tabledir + phscal + '.calibpn.phs.ps')
                     phscal_uv_data.zap()
         else:
-            print("Skipping phase cal CALIB on the phase reference sources")
+            print "Skipping phase cal CALIB on the phase reference sources"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
@@ -1253,8 +1253,8 @@ class vlbireduce(support_vlbireduce):
             tabledir, expconfig):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibpnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading phs ref PN CALIB " + \
-                  "solutions and applying")
+            print "Runlevel " + str(self.runlevel) + ": Loading phs ref PN CALIB " + \
+                  "solutions and applying"
             sncount = 0
             for phscal in phscalnames:
                 if not targetonly:
@@ -1269,7 +1269,7 @@ class vlbireduce(support_vlbireduce):
             for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibpn.sn'
                 if targetonly and (not os.path.exists(calibtablepath)):
-                    print("For target-only, the SN file must exist already - aborting!")
+                    print "For target-only, the SN file must exist already - aborting!"
                     sys.exit(1)
                 if not targetonly:
                     for i in range(numinbeams):
@@ -1309,7 +1309,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(ungateduvdata, self.snversion+sncount, 'SELF', 
                                            self.clversion, expconfig['refant'])
         else:
-            print("Skipping loading/application of phase reference source phase CALIB solutions")
+            print "Skipping loading/application of phase reference source phase CALIB solutions"
             sncount = 0
             if self.maxphsrefcalibpnmins > 0:
                 sncount += len(self.donephscalnames)
@@ -1344,7 +1344,7 @@ class vlbireduce(support_vlbireduce):
                     haveall = False
             if not targetonly and (not haveall or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref amp CALIB?")):
-                print("Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources")
+                print "Runlevel " + str(self.runlevel) + ": Running CALIB on phsref sources"
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
                     for i in range(20): #Clear any old CALIB split catalog entries
                         phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
@@ -1376,7 +1376,7 @@ class vlbireduce(support_vlbireduce):
                     except KeyError:
                         flagwheremodelbelow = -1
                     if os.path.exists(phscalmodelfile):
-                        print("Using " + modeltype + " model for " + phscal)
+                        print "Using " + modeltype + " model for " + phscal
                         aipscalname = phscal
                         if len(phscal) > 12:
                             aipscalname = phscal[:12]
@@ -1385,7 +1385,7 @@ class vlbireduce(support_vlbireduce):
                             phscalmodeldata.zap()
                         vlbatasks.fitld_image(phscalmodelfile, phscalmodeldata)
                     else:
-                        print("Currently no " + modeltype + " model for " + phscal + '; aborting!')
+                        print "Currently no " + modeltype + " model for " + phscal + '; aborting!'
                         sys.exit()
                     calibsoltype = config['phsrefcalibapntype']
                     calibtablepath = tabledir + phscal + '.calibapn.sn'
@@ -1401,7 +1401,7 @@ class vlbireduce(support_vlbireduce):
                     try: 
                         tmpphsrefcalibapnclip = expconfig['phsrefcalibapnclip']
                         if phsrefcalibapnclip > 0:
-                           print("Overriding default value of phsrefcalibapnclip (", phsrefcalibapnclip, ") for this source with", tmpphsrefcalibapnclip)
+                           print "Overriding default value of phsrefcalibapnclip (", phsrefcalibapnclip, ") for this source with", tmpphsrefcalibapnclip
                         phsrefcalibapnclip = tmpphsrefcalibapnclip
                     except KeyError:
                         pass
@@ -1443,7 +1443,7 @@ class vlbireduce(support_vlbireduce):
                                        tabledir + phscal + '.calibapn.phs.ps')
                     phscal_uv_data.zap()
         else:
-            print("Skipping amp cal CALIB on the phase reference sources")
+            print "Skipping amp cal CALIB on the phase reference sources"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         #return self.donephscalnames
@@ -1453,8 +1453,8 @@ class vlbireduce(support_vlbireduce):
             tabledir, expconfig):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibapnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Loading phs ref APN CALIB " + \
-                  "solutions and applying")
+            print "Runlevel " + str(self.runlevel) + ": Loading phs ref APN CALIB " + \
+                  "solutions and applying"
             sncount = 0
             for phscal in phscalnames:
                 if not targetonly:
@@ -1469,7 +1469,7 @@ class vlbireduce(support_vlbireduce):
             for phscal in self.donephscalnames:
                 calibtablepath = tabledir + phscal + '.calibapn.sn'
                 if targetonly and (not os.path.exists(calibtablepath)):
-                    print("For target-only, the SN file must exist already - aborting!")
+                    print "For target-only, the SN file must exist already - aborting!"
                     sys.exit(1)
                 if not targetonly:
                     for i in range(numinbeams):
@@ -1509,7 +1509,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.applysntable(ungateduvdata, self.snversion+sncount, 'SELF',
                                            self.clversion, expconfig['refant'])
         else:
-            print("Skipping loading/application of phase reference source amp CALIB solutions")
+            print "Skipping loading/application of phase reference source amp CALIB solutions"
             sncount = 0
             if self.maxphsrefcalibapnmins > 0:
                 sncount += len(self.donephscalnames)
@@ -1555,22 +1555,22 @@ class vlbireduce(support_vlbireduce):
                 if config['inbeamcalibsp1mins'] > self.maxinbeamcalibsp1mins:
                     self.maxinbeamcalibsp1mins = config['inbeamcalibsp1mins']
             except KeyError:
-                print("No secondary inbeam calibrator...")
+                print "No secondary inbeam calibrator..."
             try:
                 if config['inbeamcalibpnmins'] > self.maxinbeamcalibpnmins:
                     self.maxinbeamcalibpnmins = config['inbeamcalibpnmins']
             except KeyError:
-                print("No separate IF inbeam selfcal...")
+                print "No separate IF inbeam selfcal..."
             try:
                 if config['inbeamcalibapnmins'] > self.maxinbeamcalibapnmins:
                     self.maxinbeamcalibapnmins = config['inbeamcalibapnmins']
             except KeyError:
-                print("No separate IF inbeam amp selfcal...")
-        print("maxinbeamcalibp1mins", self.maxinbeamcalibp1mins)
-        print("maxinbeamcalibpnmins", self.maxinbeamcalibpnmins)
-        print("maxinbeamcalibap1mins", self.maxinbeamcalibap1mins)
-        print("maxinbeamcalibapnmins", self.maxinbeamcalibapnmins)
-        print("maxinbeamcalibsp1mins", self.maxinbeamcalibsp1mins)
+                print "No separate IF inbeam amp selfcal..."
+        print "maxinbeamcalibp1mins", self.maxinbeamcalibp1mins
+        print "maxinbeamcalibpnmins", self.maxinbeamcalibpnmins
+        print "maxinbeamcalibap1mins", self.maxinbeamcalibap1mins
+        print "maxinbeamcalibapnmins", self.maxinbeamcalibapnmins
+        print "maxinbeamcalibsp1mins", self.maxinbeamcalibsp1mins
         for i in range(numtargets):
             primaryinbeams = targetconfigs[i]['primaryinbeam'].split(',')
             try:
@@ -1596,15 +1596,15 @@ class vlbireduce(support_vlbireduce):
                     ##################
         for primaryinbeam in primaryinbeams:
             if not primaryinbeam.strip() in self.doneinbeams:
-                print("Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!")
-                print(self.doneinbeams)
+                print "Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!"
+                print self.doneinbeams
                 sys.exit()
 
     def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
            expconfig['writerawinbeam']:
-            print("Runlevel " + str(self.runlevel) + ": Writing raw inbeam outputs")
+            print "Runlevel " + str(self.runlevel) + ": Writing raw inbeam outputs"
             if not targetonly: # Make a "raw" inbeam fileset if required
                 for i in range(numtargets):
                     count = 0
@@ -1632,7 +1632,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.writedata(splitdata, rawuvoutputfile, True)
                         count += 1
         else:
-            print("Skipping dump of raw inbeam data (pre-selfcal)")
+            print "Skipping dump of raw inbeam data (pre-selfcal)"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
@@ -1641,13 +1641,13 @@ class vlbireduce(support_vlbireduce):
             calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)")
+            print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
                                        calonly, self.beginif, self.endif, False, False, True, self.clversion, targetnames, numtargets, 
                                        inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping inbeam phase-only selfcal (combined IFs)")
+            print "Skipping inbeam phase-only selfcal (combined IFs)"
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1667,14 +1667,14 @@ class vlbireduce(support_vlbireduce):
             haveungated, ungateduvdata, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols")
+            print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, targetonly, calonly, False, False, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        ['-1','0'], tabledir, self.inbeamfilenums)
             ## sncount is used to point at SN table in post-phscal stage
         else:
-            print("Skipping application of inbeam phase-only selfcal (combined IFs)")
+            print "Skipping application of inbeam phase-only selfcal (combined IFs)"
             if self.maxinbeamcalibp1mins > 0:
                 sncount = len(tocalnames) + 1
             else:
@@ -1690,13 +1690,13 @@ class vlbireduce(support_vlbireduce):
             calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)")
+            print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, False, False, False, self.clversion+self.targetcl, 
                                        targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping inbeam phase-only selfcal (separate IFs)")
+            print "Skipping inbeam phase-only selfcal (separate IFs)"
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1792,7 +1792,7 @@ class vlbireduce(support_vlbireduce):
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB pn sols")
+            print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB pn sols"
             ## >>> dualphscal_setup==['-1','0']; sumifs==False
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, False, False,
@@ -1800,7 +1800,7 @@ class vlbireduce(support_vlbireduce):
                                        ['-1','0'], tabledir, self.inbeamfilenums)
             ## <<<
         else:
-            print("Skipping application of inbeam phase-only selfcal (separate IFs)")
+            print "Skipping application of inbeam phase-only selfcal (separate IFs)"
             if self.maxinbeamcalibpnmins > 0:
                 sncount = len(tocalnames) + 1
             else:
@@ -1866,13 +1866,13 @@ class vlbireduce(support_vlbireduce):
             modeltype, targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
+            print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, True, False, True, self.clversion+self.targetcl, 
                                        targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping inbeam amp+phase selfcal (combined IFs)")
+            print "Skipping inbeam amp+phase selfcal (combined IFs)"
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1893,13 +1893,13 @@ class vlbireduce(support_vlbireduce):
             dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB ap1 sols")
+            print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB ap1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
-            print("Skipping application of inbeam amp+phase selfcal (combined IFs)")
+            print "Skipping application of inbeam amp+phase selfcal (combined IFs)"
             if self.maxinbeamcalibap1mins > 0:
                 sncount = len(tocalnames) + 1
             else:
@@ -1916,13 +1916,13 @@ class vlbireduce(support_vlbireduce):
             targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
+            print "Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal"
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
                                        calonly, self.beginif, self.endif, True, False, False, self.clversion+self.targetcl,
                                        targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping inbeam amp+phase selfcal (separate IFs)")
+            print "Skipping inbeam amp+phase selfcal (separate IFs)"
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1946,13 +1946,13 @@ class vlbireduce(support_vlbireduce):
             dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB apn sols")
+            print "Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB apn sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, True, False, False,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
-            print("Skipping application of inbeam amp+phase selfcal (separate IFs)")
+            print "Skipping application of inbeam amp+phase selfcal (separate IFs)"
             if self.maxinbeamcalibapnmins > 0:
                 sncount = len(tocalnames) + 1
             else:
@@ -1969,7 +1969,7 @@ class vlbireduce(support_vlbireduce):
             targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam")
+            print "Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam"
             tocalnames, tocalindices = self.inbeamselfcal(self.secondaryinbeams, self.secondaryfilenums, 
                                        inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
                                        modeldir, modeltype, targetonly,
@@ -1977,7 +1977,7 @@ class vlbireduce(support_vlbireduce):
                                        self.clversion+self.targetcl, targetnames, numtargets, inbeamnames, directory, 
                                        tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping secondary inbeam phase-only selfcal (combined IFs)")
+            print "Skipping secondary inbeam phase-only selfcal (combined IFs)"
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1997,13 +1997,13 @@ class vlbireduce(support_vlbireduce):
             calonly, inbeamnames, targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying secondary inbeam CALIB sp1 sols")
+            print "Runlevel " + str(self.runlevel) + ": Applying secondary inbeam CALIB sp1 sols"
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
                                        targetconfigs, targetonly, calonly, False, True, True,
                                        self.clversion+self.targetcl, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        dualphscal_setup, tabledir, self.inbeamfilenums)
         else:
-            print("Skipping application of secondary inbeam phase-only selfcal (combined IFs)")
+            print "Skipping application of secondary inbeam phase-only selfcal (combined IFs)"
             if self.maxinbeamcalibsp1mins > 0:
                 sncount = len(tocalnames) + 1
             else:
@@ -2026,7 +2026,7 @@ class vlbireduce(support_vlbireduce):
                 maxscintcorrmins = targetconfigs[i]['scintcorrmins']
 
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and maxscintcorrmins > 0:
-            print("Doing scintillation correction")
+            print "Doing scintillation correction"
             for i in range(numtargets):
                 pspath = tabledir + targetnames[i]+ '.scintcorr.ps'
                 try:
@@ -2058,7 +2058,7 @@ class vlbireduce(support_vlbireduce):
                     os.system("rm -f " + pspath)
 
         else:
-            print("Skipping scintillation correction calculation")
+            print "Skipping scintillation correction calculation"
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
         return scinttablepaths, beginif, endif
@@ -2182,7 +2182,7 @@ class vlbireduce(support_vlbireduce):
             will be acquired for that extra fitsfile using vlbatasks.jmfit()
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Runlevel " + str(self.runlevel) + ": Splitting and writing final images")
+            print "Runlevel " + str(self.runlevel) + ": Splitting and writing final images"
             for i in range(numtargets):
                 config = targetconfigs[i]
                 try:
@@ -2245,8 +2245,8 @@ class vlbireduce(support_vlbireduce):
                                         splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                     phscal_image_file = modeldir + aipssrcname + self.cmband + ".clean.fits"
                                     if not os.path.exists(phscal_image_file):
-                                        print("Need a model for " + aipssrcname + " since --divideinbeammodel=True")
-                                        print("But " + phscal_image_file + " was not found.")
+                                        print "Need a model for " + aipssrcname + " since --divideinbeammodel=True"
+                                        print "But " + phscal_image_file + " was not found."
                                         sys.exit()
                                     modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
                                     if modeldata.exists():
@@ -2293,8 +2293,8 @@ class vlbireduce(support_vlbireduce):
                                 for j in range(beginif,endif+1):
                                     inbeam_image_file = modeldir + inbeamsrc + ".IF" + str(j) + self.cmband + ".clean.fits"
                                     if not os.path.exists(inbeam_image_file):
-                                        print("Need a frequency-dependent model for " + inbeamsrc + " since --divideinbeammodel=True and separateifmodel=True")
-                                        print("But " + inbeam_image_file + " was not found.")
+                                        print "Need a frequency-dependent model for " + inbeamsrc + " since --divideinbeammodel=True and separateifmodel=True"
+                                        print "But " + inbeam_image_file + " was not found."
                                         sys.exit()
                                     shortname = inbeamsrc
                                     if len(inbeamsrc) > 12:
@@ -2331,8 +2331,8 @@ class vlbireduce(support_vlbireduce):
                             else:
                                 inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
                                 if not os.path.exists(inbeam_image_file):
-                                    print("Need a model for " + inbeamsrc + " since --divideinbeammodel=True")
-                                    print("But " + inbeam_image_file + " was not found.")
+                                    print "Need a model for " + inbeamsrc + " since --divideinbeammodel=True"
+                                    print "But " + inbeam_image_file + " was not found."
                                     sys.exit()
                                 shortname = inbeamsrc
                                 if len(inbeamsrc) > 12:
@@ -2394,7 +2394,7 @@ class vlbireduce(support_vlbireduce):
                                 splitdata1 = splitdataS
                             self.ungatedpresent.append(True)
                         except RuntimeError:
-                            print("Guess there was no ungated for " + targetnames[i])
+                            print "Guess there was no ungated for " + targetnames[i]
                             self.ungatedpresent.append(False)
                     splitdata2 = AIPSUVData(targetnames[i], 'GFINL', 1, 1)
                     if splitdata2.exists():
@@ -2431,7 +2431,7 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.writedata(splitdata1, self.ungateduvfiles[i], True)
                     vlbatasks.writedata(splitdata2, self.gateduvfiles[i], True)
         else:
-            print("Skipping splitting/writing of final images")
+            print "Skipping splitting/writing of final images"
             for i in range(numtargets):
                 if os.path.exists(self.ungateduvfiles[i]):
                     self.ungatedpresent.append(True)
@@ -2448,7 +2448,7 @@ class vlbireduce(support_vlbireduce):
         #gaussiantarget = False
         #gaussianinbeam = True
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not calonly:
-            print("Runlevel " + str(self.runlevel) + ": Fitting target positions using difmap")
+            print "Runlevel " + str(self.runlevel) + ": Fitting target positions using difmap"
             for i in range(numtargets):
                 config = targetconfigs[i]
                 icount = 0
@@ -2591,14 +2591,14 @@ class vlbireduce(support_vlbireduce):
 
                     icount += 1
         else:
-            print("Skipping imaging/position fitting of target")
+            print "Skipping imaging/position fitting of target"
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def make_diagnostic_plots(self, directory, codedir):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
-            print("Making final diagnostic plots")
+            print "Making final diagnostic plots"
             os.chdir(directory)
             os.system("%s/make_final_diagnostic.py" % codedir)
         else:
-            print("Skipping making of diagnostic plots")
+            print "Skipping making of diagnostic plots"

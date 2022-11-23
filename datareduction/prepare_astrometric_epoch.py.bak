@@ -39,7 +39,7 @@ def main():
     """
     usage = "prepare_astrometric_epoch.py <.vex file>"
     if len(sys.argv) != 2:
-        print(usage)
+        print usage
         sys.exit()
 
     gsfc_url = "gdc.cddis.eosdis.nasa.gov"
@@ -52,13 +52,13 @@ def main():
     sumfile = experiment + '.sum'
 
     if not os.path.exists(vexfile):
-        print(("\n%s doesn't exists. trying to download one...\n" % vexfile))
+        print("\n%s doesn't exists. trying to download one...\n" % vexfile)
         obsmonth = find_idifits_file__and__get_obsmonth()
         #obsmonth = raw_input("What's the observation month (in mmmyy format, e.g. mar19)\n")
         VLBAkeyfileftpdir = VLBAkeyfileftproot + obsmonth + '/' + experiment + '/'
         os.system('wget -T 5 %s%s' % (VLBAkeyfileftpdir, vexfile))
     if not os.path.exists(vexfile):
-        print(("%s not found on ftp server; aborting\n" % vexfile))
+        print("%s not found on ftp server; aborting\n" % vexfile)
         sys.exit()
     
     vexin = open(sys.argv[1])
@@ -72,7 +72,7 @@ def main():
             obsdate  = line.split(':')[-1].split(' ')
             obsmonth = obsdate[-2].strip().lower()
             obsmonth = obsmonth + obsdate[-1].strip()[2:4]
-            print(obsmonth)
+            print obsmonth
         if 'MJD' in line:
             MJD = int(line.split(':')[-1])
         if "exper_nominal_start" in line:
@@ -91,11 +91,11 @@ def main():
             break
 
     if not (startfound and stopfound):
-        print("Couldn't find start and/or stop date! Aborting.")
+        print "Couldn't find start and/or stop date! Aborting."
         sys.exit()
 
     if not os.path.exists(sumfile):
-        print(("try to download %s.sum...\n" % experiment))
+        print("try to download %s.sum...\n" % experiment)
         VLBAkeyfileftpdir = VLBAkeyfileftproot + obsmonth + '/' + experiment + '/'
         os.system('wget -T 5 %s%s.sum' % (VLBAkeyfileftpdir, experiment))
 
@@ -103,7 +103,7 @@ def main():
     os.system("mkdir tables")
     os.system("mkdir images")
     os.chdir("logs")
-    print("\ndeleting logfiles...\n")
+    print "\ndeleting logfiles...\n"
     try:
         os.system("rm *")
     except OSError:
@@ -112,10 +112,10 @@ def main():
     #eop_page = ftpget(gsfc_url, eop_dir, eop_filename)
     os.system("curl -u anonymous:daip@nrao.edu --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp > usno_finals.erp")
     if not os.path.exists("usno_finals.erp"):
-        print("\ndownload usno_finals.erp from another route\n")
+        print "\ndownload usno_finals.erp from another route\n"
         today=Time.now()
         if today.mjd-MJD<30:
-            print("\nchoose the newer erp file\n")
+            print "\nchoose the newer erp file\n"
             os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno500_finals.erp")
             os.rename("usno500_finals.erp","usno_finals.erp")
         else:

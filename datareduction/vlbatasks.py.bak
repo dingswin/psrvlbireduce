@@ -296,7 +296,7 @@ class Scan:
         if self.source[i].name.strip() == "SCAN_GAP":
             return -1
         else:
-            print("Couldn't find source " + sourcename.strip() + " - my pointing centre was " + self.source[0].name.strip())
+            print "Couldn't find source " + sourcename.strip() + " - my pointing centre was " + self.source[0].name.strip()
             return -999
 
     def containsTime(self, mjd, sec):
@@ -314,21 +314,21 @@ class Scan:
                 polyentry = i
                 break
         if polyentry < 0:
-            print("Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
-                  str(second) + " in this scan - aborting!")
+            print "Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
+                  str(second) + " in this scan - aborting!"
             polyoffset = 0
         return polyentry, polyoffset
 
     def getUVW(self, mjd, second, antenna1index, antenna2index, sourceindex):
         toreturn = [0.0, 0.0, 0.0]
         if sourceindex > self.numphasecentres:
-            print("Trying to get source index " + str(sourceindex) + " when this " + \
-                  "scan only has " + str(self.numphasecentres) + " phase centres")
+            print "Trying to get source index " + str(sourceindex) + " when this " + \
+                  "scan only has " + str(self.numphasecentres) + " phase centres"
             return toreturn
         polyentry, polyoffset = self.getPolyEntryAndOffset(mjd, second)
         if polyentry < 0:
-            print("Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
-                  str(second) + " in this scan")
+            print "Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
+                  str(second) + " in this scan"
             return toreturn
         xval = 1.0
         for i in range(self.polyorder+1):
@@ -348,13 +348,13 @@ class Scan:
 
     def getDelayAndRate(self, mjd, second, antennaindex, sourceindex):
         if sourceindex > self.numphasecentres:
-            print("Trying to get source index " + str(sourceindex) + " when this " + \
-                  "scan only has " + str(self.numphasecentres) + " phase centres")
+            print "Trying to get source index " + str(sourceindex) + " when this " + \
+                  "scan only has " + str(self.numphasecentres) + " phase centres"
             return 0.0, 0.0
         polyentry, polyoffset = self.getPolyEntryAndOffset(mjd, second)
         if polyentry < 0:
-            print("Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
-                  str(second) + " in this scan")
+            print "Couldn't find a poly entry for time " + str(mjd) + ", sec " + \
+                  str(second) + " in this scan"
             return 0.0, 0.0
         correction = 0.0
         delay = 0.0
@@ -374,15 +374,15 @@ class Model:
     def __init__(self, calcfile, delayfile=None, uvwfile=None):
         if calcfile == None:
             if not os.path.exists(delayfile):
-                print("Delay file (compatibility mode) does not exist- aborting!")
+                print "Delay file (compatibility mode) does not exist- aborting!"
                 sys.exit()
             if not os.path.exists(uvwfile):
-                print("UVW file (compatibility mode) does not exist- aborting!")
+                print "UVW file (compatibility mode) does not exist- aborting!"
                 sys.exit()
             self.initialiseCompatibility(delayfile, uvwfile)
             return
         if not os.path.exists(calcfile):
-            print("Calc file " + calcfile + " does not exist - aborting")
+            print "Calc file " + calcfile + " does not exist - aborting"
             sys.exit()
         self.compatibilityMode = False
         calcin = open(calcfile)
@@ -418,7 +418,7 @@ class Model:
         clinenum = 0
         clinenum, numtelstr = getToLine("NUM TELESCOPES", calclines, clinenum)
         if self.numantennas != int(numtelstr):
-            print("Number of telescopes doesn't match between calc and IM files!")
+            print "Number of telescopes doesn't match between calc and IM files!"
             sys.exit()
         self.antennas = []
         self.antennamap = {}
@@ -451,7 +451,7 @@ class Model:
         self.numscans = int(val)
         ilinenum, val = getToLine("NUM SCANS", imlines, ilinenum)
         if not self.numscans == int(val):
-            print("Error - .im and .calc file disagree on number of scans!")
+            print "Error - .im and .calc file disagree on number of scans!"
             sys.exit(1)
         clinenum += 1
         ilinenum += 1
@@ -508,7 +508,7 @@ class Model:
         self.numscans = int(val)
         ulinenum, val = getToLine("NUM SCANS", uvwlines, ulinenum)
         if not self.numscans == int(val):
-            print("Error - .delay and .uvw file disagree on number of scans!")
+            print "Error - .delay and .uvw file disagree on number of scans!"
             sys.exit(1)
         dlinenum += 1
         ulinenum += 1
@@ -536,7 +536,7 @@ class Model:
                 self.lastscannum += 1
                 self.changed = True
             if self.lastscannum == self.numscans:
-                print("Couldn't find scan for time %d/%f" % (mjd, second))
+                print "Couldn't find scan for time %d/%f" % (mjd, second)
                 return -9e99,-9e99
         if self.changed:
             #if self.compatibilityMode:
@@ -544,25 +544,25 @@ class Model:
             #print "Looking for a source at time " + str(mjd) + "/" + str(second)
             self.sourceindex = self.scans[self.lastscannum].getSourceIndex(sourcename)
             if self.sourceindex < -1: #Couldn't find a source and should have been able to
-                print("Was looking for a source at time " + str(mjd) + "/" + str(second))
-                print("Current scan runs from " + str(self.scans[self.lastscannum].startmjd) + " + " + str(self.scans[self.lastscannum].scanstart) + \
-                      " to " +  str(self.scans[self.lastscannum].scanstart + self.scans[self.lastscannum].scandur))
+                print "Was looking for a source at time " + str(mjd) + "/" + str(second)
+                print "Current scan runs from " + str(self.scans[self.lastscannum].startmjd) + " + " + str(self.scans[self.lastscannum].scanstart) + \
+                      " to " +  str(self.scans[self.lastscannum].scanstart + self.scans[self.lastscannum].scandur)
                 self.lastscannum += 1
                 if self.scans[self.lastscannum].containsTime(mjd, second):
                     self.sourceindex = self.scans[self.lastscannum].getSourceIndex(sourcename)
                     if self.sourceindex < -1: #Still couldn't find a source and should have been able to
-                        print("Still can't find right source - aborting")
+                        print "Still can't find right source - aborting"
                         sys.exit()
                 else:
-                    print("The next scan ran from " + str(self.scans[self.lastscannum].startmjd) + " + " + str(self.scans[self.lastscannum].scanstart) + \
-                      " to " +  str(self.scans[self.lastscannum].scanstart + self.scans[self.lastscannum].scandur))
+                    print "The next scan ran from " + str(self.scans[self.lastscannum].startmjd) + " + " + str(self.scans[self.lastscannum].scanstart) + \
+                      " to " +  str(self.scans[self.lastscannum].scanstart + self.scans[self.lastscannum].scandur)
                     sys.exit()
             self.changed = False
         try:
             antennaindex = self.antennamap[antennaname.strip()]
         except KeyError:
-            print("Could not find antenna " + antennaname.strip() + \
-                  " in the antenna map from file " + self.filename)
+            print "Could not find antenna " + antennaname.strip() + \
+                  " in the antenna map from file " + self.filename
             sys.exit()
         if self.sourceindex < 0:
             return -9e99,-9e99
@@ -580,7 +580,7 @@ class Model:
                 self.lastscannum += 1
                 self.changed = True
             if self.lastscannum == self.numscans:
-                print("Couldn't find scan for time %d/%f" % (mjd, second))
+                print "Couldn't find scan for time %d/%f" % (mjd, second)
                 return [-9e99,-9e99,-9e99]
         if self.changed:
             self.sourceindex = self.scans[self.lastscannum].getSourceIndex(sourcename)
@@ -605,7 +605,7 @@ def wizCorrectScintAdvanced(uvdatafile, outputsntable, solmins, rashiftmas,
     if uvdata2.exists():
         uvdata2.zap()
     if not os.path.exists(examplesntable):
-        print("Couldn't find example dataset " + examplesntable + " - aborting")
+        print "Couldn't find example dataset " + examplesntable + " - aborting"
         sys.exit()
     if os.path.exists(outputsntable):
         if yesno("Can I delete " + outputsntable + " (no will abort)? "):
@@ -646,7 +646,7 @@ def wizCorrectScintAdvanced(uvdatafile, outputsntable, solmins, rashiftmas,
             vis.update()
             nflagged += 1
         ntotal += 1
-    print("Flagged " + str(nflagged) + " out of " + str(ntotal) + " visibilities due to uvrange")
+    print "Flagged " + str(nflagged) + " out of " + str(ntotal) + " visibilities due to uvrange"
 
     # Add new SN table to the loaded uv dataset
     newsntable = wizuvdata.attach_table('SN', 2, no_term=num_snterms)
@@ -899,7 +899,7 @@ def getvexscaninfo(vexfile):
     while atline < numlines and not '$SOURCE;' in vexlines[atline]:
         atline += 1
     if atline == numlines:
-        print("Couldn't find source block in vex file")
+        print "Couldn't find source block in vex file"
         sys.exit()
 
     atline += 1
@@ -910,14 +910,14 @@ def getvexscaninfo(vexfile):
             while atline < numlines and not 'source_name' in vexlines[atline]:
                 atline += 1
             if atline == numlines:
-                print("Got lost in vex source block")
+                print "Got lost in vex source block"
                 sys.exit()
             srcname = vexlines[atline].split()[-1][:-1]
             atline += 1
             while atline < numlines and not 'J2000' in vexlines[atline]:
                 atline += 1
             if atline == numlines:
-                print("Got lost in vex source block")
+                print "Got lost in vex source block"
                 sys.exit()
             splitline = vexlines[atline].split()
             ra  = splitline[2][:-1]
@@ -939,12 +939,12 @@ def getvexscaninfo(vexfile):
             decrad = multiplier*(dd + mm/60.0 + ss/3600.0)*math.pi/180.0
             srclist.append(Source(srcname, rarad, decrad))
         atline += 1
-    print("Found " + str(len(srclist)) + " sources")
+    print "Found " + str(len(srclist)) + " sources"
 
     while atline < numlines and not '$SCHED;' in vexlines[atline]:
         atline += 1
     if atline == numlines:
-        print("Couldn't find scan block in vex file")
+        print "Couldn't find scan block in vex file"
         sys.exit()
 
     lastsec = 0
@@ -976,7 +976,7 @@ def getvexscaninfo(vexfile):
                 source = src
                 break
         if source == None:
-            print("Couldn't find source " + scansourcename + " in source list!")
+            print "Couldn't find source " + scansourcename + " in source list!"
             sys.exit()
         scanlist.append(VexScan(scanname, starttime, stoptime, source, scanmodename, vlaautophasedetermine))
         atline += 1
@@ -987,7 +987,7 @@ def getvexscaninfo(vexfile):
         for source in srclist:
             if source.name[-2:] == "AP":
                 source.name = source.name + "T"
-    print("Found " + str(len(scanlist)) + " scans in vex file " + vexfile)
+    print "Found " + str(len(scanlist)) + " scans in vex file " + vexfile
     return scanlist
 
 ####### COMPUTE THE MEDIAN ABSOLUTE DIFFERENCE OF AN ARRAY #####################
@@ -1001,8 +1001,8 @@ def time2hms(seconds):
     h=int(seconds/3600)
     m=int(seconds % 3600)/60
     s=seconds-(h*3600)-(m*60)
-    h=repr(h)
-    m=repr(m)
+    h=`h`
+    m=`m`
     s="%4.2f" % s
     hms=h.zfill(2)+":"+m.zfill(2)+":"+s.zfill(4)
     return hms
@@ -1021,7 +1021,7 @@ def getToLine(key, imlines, linenum):
     while linenum < len(imlines) and not imlines[linenum].split(':')[0] == key:
         linenum += 1
     if linenum == len(imlines):
-        print("Couldn't find key " + key + " - aborting!")
+        print "Couldn't find key " + key + " - aborting!"
         sys.exit(1)
     return linenum, imlines[linenum].split(':')[1]
 
@@ -1076,7 +1076,7 @@ def norm_snamplitudes(sntable):
             numimfound += 1
         lineno += 1
     if lineno == numlines:
-        print("Couldn't find all weight/im/re row_noss - aborting!")
+        print "Couldn't find all weight/im/re row_noss - aborting!"
         sys.exit()
     wtcolindex = [-1,-1]
     recolindex = [-1,-1]
@@ -1092,7 +1092,7 @@ def norm_snamplitudes(sntable):
             break
         lineno += 1
     if lineno == numlines:
-        print("Couldn't find start of table - aborting!")
+        print "Couldn't find start of table - aborting!"
         sys.exit()
     wtdone = [False, False]
     redone = [False, False]
@@ -1129,10 +1129,10 @@ def norm_snamplitudes(sntable):
                 im[i].append(float(splitline[imcolindex[i]]))
         lineno += 1
     if not redone[0] or not redone[1] or not imdone[0] or not imdone[1]:
-        print("Couldn't find reals and imags in the table")
+        print "Couldn't find reals and imags in the table"
         sys.exit()
     if len(re[0]) != len(im[0]) or len(re[1]) != len(im[1]) or len(re[0]) != len(re[1]):
-        print("Ended up with different length real and imag")
+        print "Ended up with different length real and imag"
         sys.exit()
     count = 0
     ampsqsum = 0
@@ -1225,11 +1225,11 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
         if table[1] == 'AIPS CL' and table[0] == inputclversion:
             cltablefound = True
         if table[1] == 'AIPS CL' and table[0] == inputclversion+1:
-            print("Output CL table version number " + str(inputclversion+1) + \
-                  "already exists - aborting!")
+            print "Output CL table version number " + str(inputclversion+1) + \
+                  "already exists - aborting!"
             sys.exit()
     if not cltablefound:
-        print("Couldn't find input CL table " + str(inputclversion) - " aborting!")
+        print "Couldn't find input CL table " + str(inputclversion) - " aborting!"
         sys.exit()
 
     #Make a list of sources and antennas
@@ -1253,7 +1253,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
         sunames[row.id__no-1] = row.source.strip()
     for row in antable:
         annames[row.nosta-1] = row.anname.strip()
-        print("Row " + str(row.nosta-1) + " of the annames has been set to " + row.anname.strip())
+        print "Row " + str(row.nosta-1) + " of the annames has been set to " + row.anname.strip()
 
     #Work out the reference frequencies
     reffreqs = []
@@ -1267,7 +1267,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
                 freqentry = float(row.if_freq) + float(uvdata.header.crval[2])
                 reffreqs.append(float(row.if_freq) + float(uvdata.header.crval[2]))
     refwavelength = 299792458.0/reffreqs[0]
-    print("Reference wavelength is " + str(refwavelength))
+    print "Reference wavelength is " + str(refwavelength)
 
     # Make new CL table
     inputcltable = wizuvdata.table('CL', inputclversion)
@@ -1343,7 +1343,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
             row.imag2 = newimag2
         newcltable.append(row)
     newcltable.close()
-    print("Finished creating new CL table")
+    print "Finished creating new CL table"
 
     #Fix the antenna table
     antable = wizuvdata.table('AN', 1)
@@ -1362,7 +1362,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
     count = 0
     for row in antable:
         if not antennas_updated[count]:
-            print("Antenna " + row.anname.strip() + " not updated!")
+            print "Antenna " + row.anname.strip() + " not updated!"
             sys.exit()
     antable.close()
 
@@ -1383,7 +1383,7 @@ def fixmodel(uvdata, inputclversion, refant, calcfile1, calcfile2start, startmjd
                     row.update()
                     break
         if not found:
-            print("Warning - source " + row.source.strip() + " not found in model file!")
+            print "Warning - source " + row.source.strip() + " not found in model file!"
     sutable.close()
 
     #Update the actual uvw values
@@ -1406,14 +1406,14 @@ def estimateimagerms(uvdata, inttime, bwhz):
     fqtable = uvdata.table('FQ', 1)
     for row in fqtable:
         try:
-            print(row)
+            print row
             for iffreq in row.if_freq:
                 numifs += 1
         except (AttributeError, TypeError):
             numifs += 1
-    print("Number of IFs is " + str(numifs))
+    print "Number of IFs is " + str(numifs)
     numstokes = len(uvdata.stokes)
-    print("Number of stokes products is " + str(numstokes))
+    print "Number of stokes products is " + str(numstokes)
     for visibility in wizuvdata:
         for i in range(numifs):
             for j in range(numstokes):
@@ -1450,10 +1450,10 @@ def copytsys(uvdata, inputsnversion, inantname, outantname, scalefactor, inif=-1
             outid = row.nosta
         annames[row.nosta-1] = row.anname.strip()
     if inid < 0:
-        print("Couldn't find input antenna " + inantname)
+        print "Couldn't find input antenna " + inantname
         sys.exit()
     if outid < 0:
-        print("Couldn't find output antenna " + outantname)
+        print "Couldn't find output antenna " + outantname
         sys.exit()                                                  
 
     newsntable = wizuvdata.attach_table('SN', inputsnversion+1, no_term=num_snterms)
@@ -1466,7 +1466,7 @@ def copytsys(uvdata, inputsnversion, inantname, outantname, scalefactor, inif=-1
     if inid != outid:
         for row in examplesntable:
             if row.antenna_no == outid:
-                print("Skipping existing entry for " + outantname)
+                print "Skipping existing entry for " + outantname
                 continue
             if row.antenna_no == inid:
                 newsntable.append(row) # First copy this row as is
@@ -1492,7 +1492,7 @@ def copytsys(uvdata, inputsnversion, inantname, outantname, scalefactor, inif=-1
                 newsntable.append(row)
     else:
         if inif < 0:
-            print("To copy to the same antenna, you must set inif and outif!")
+            print "To copy to the same antenna, you must set inif and outif!"
             sys.exit()
         for row in examplesntable:
             if row.antenna_no == inid:
@@ -1549,7 +1549,7 @@ def fixtsys(uvdata, snversion):
             hnid = row.antenna_no
             break
     if examplehnrow == None:
-        print("Couldn't find an example HN row!")
+        print "Couldn't find an example HN row!"
         sys.exit()
     newreal1 = []
     newreal2 = []
@@ -1787,21 +1787,21 @@ def ant_response(now, antcode, cephem, tephem, wavelength, verbose):
         junk, ellcpstr = astro_utils.posradians2string(El_LCP, El_LCP)
         junk, azrcpstr = astro_utils.posradians2string(Az_RCP, Az_RCP)
         junk, elrcpstr = astro_utils.posradians2string(El_RCP, El_RCP)
-        print("\nTime                : %s" % date)
-        print("Station             : %s  Long: %s  Lat: %s  Elev: %im  Press: %.1f" % (antcode, obs.long, obs.lat, obs.elevation, obs.pressure))
-        print("Pointing centre     : ra=%s  dec=%s  az=%s  el=%s" % (cephem.ra, cephem.dec, cephem.az, cephem.alt))
-        print("LCP pointing centre :                                az=%s  el=%s" % (Az_LCP, El_LCP))
-        print("RCP pointing centre :                                az=%s  el=%s" % (Az_RCP, El_RCP))
-        print("Target              : ra=%s  dec=%s  az=%s  el=%s" % (tephem.ra, tephem.dec, tephem.az, tephem.alt))
-        print("Scaling factor      : %.4f" % beamcorr)
-        print("Beam offsets        : %.4f'  %.4f'" % (beam[0], beam[1]))
-        print("Scaled beam offsets : %.4f'  %.4f'" % (beam[0]*beamcorr, beam[1]*beamcorr))
-        print("Beam sizes          : %.4f'  %.4f'  %.4f'  %.4f'" % (beam[2], beam[3], beam[4], beam[5]))
-        print("Scaled beam sizes   : %.4f'  %.4f'  %.4f'  %.4f'" % (beam[2]*beamcorr, beam[3]*beamcorr, beam[4]*beamcorr, beam[5]*beamcorr))
-        print("LCP-Target          : %.4f'" % (sep_LCP*180*60/math.pi))
-        print("RCP-Target          : %.4f'" % (sep_RCP*180*60/math.pi))
-        print("LCP response        : %.5f" % LCP)
-        print("RCP response        : %.5f" % RCP)
+        print "\nTime                : %s" % date
+        print "Station             : %s  Long: %s  Lat: %s  Elev: %im  Press: %.1f" % (antcode, obs.long, obs.lat, obs.elevation, obs.pressure)
+        print "Pointing centre     : ra=%s  dec=%s  az=%s  el=%s" % (cephem.ra, cephem.dec, cephem.az, cephem.alt)
+        print "LCP pointing centre :                                az=%s  el=%s" % (Az_LCP, El_LCP)
+        print "RCP pointing centre :                                az=%s  el=%s" % (Az_RCP, El_RCP)
+        print "Target              : ra=%s  dec=%s  az=%s  el=%s" % (tephem.ra, tephem.dec, tephem.az, tephem.alt)
+        print "Scaling factor      : %.4f" % beamcorr
+        print "Beam offsets        : %.4f'  %.4f'" % (beam[0], beam[1])
+        print "Scaled beam offsets : %.4f'  %.4f'" % (beam[0]*beamcorr, beam[1]*beamcorr)
+        print "Beam sizes          : %.4f'  %.4f'  %.4f'  %.4f'" % (beam[2], beam[3], beam[4], beam[5])
+        print "Scaled beam sizes   : %.4f'  %.4f'  %.4f'  %.4f'" % (beam[2]*beamcorr, beam[3]*beamcorr, beam[4]*beamcorr, beam[5]*beamcorr)
+        print "LCP-Target          : %.4f'" % (sep_LCP*180*60/math.pi)
+        print "RCP-Target          : %.4f'" % (sep_RCP*180*60/math.pi)
+        print "LCP response        : %.5f" % LCP
+        print "RCP response        : %.5f" % RCP
 
     # Return the results
     return (RCP, LCP)
@@ -1901,7 +1901,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         #    pbcor.append([])
         sutablerow = None
         scansource = scan.source
-        print("Looking for match to vexname ", scansource.name)
+        print "Looking for match to vexname ", scansource.name
         if iscal:
             #for i in range(num_if):
             #    pbcor.append(1.0)
@@ -1917,7 +1917,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                     sutablerow = srow
                     break
             if sutablerow == None:
-                print("Couldn't find source " + localname + " in SU table!")
+                print "Couldn't find source " + localname + " in SU table!"
                 if skipmissingsources:
                     continue
                 else:
@@ -1925,7 +1925,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         else:
             if issearch:
                 if not scansource.name[-2] == '-' and not "-PT" in scansource.name[-4:-1] and not isonepointing: #A calibrator
-                    print("Skipping source " + scansource.name)
+                    print "Skipping source " + scansource.name
                     continue
                 #print "Looking at source " + scansource.name
                 #print "Ra is %f, dec is %f" % (scansource.ra, scansource.dec)
@@ -1943,17 +1943,17 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                             break
                         tcount += 1
                     if tcount == len(fieldsourcenames):
-                        print("Couldn't find source " + scansource.name + " (was looking for " + ssname + ")")
+                        print "Couldn't find source " + scansource.name + " (was looking for " + ssname + ")"
                         if skipmissingsources:
                             continue
                         else:
                             sys.exit()
                 else:
-                    print("There is only one target, ssname is " + ssname)
+                    print "There is only one target, ssname is " + ssname
                 fcount = int(scansource.name[-1]) - 1
-                print(fcount)
+                print fcount
                 if phasecentrenum >= len(fieldsourcenames[tcount][fcount]):
-                    print("No phase centre %d for pointing %s" % (phasecentrenum, scansource.name))
+                    print "No phase centre %d for pointing %s" % (phasecentrenum, scansource.name)
                     continue
                 localname = fieldsourcenames[tcount][fcount][phasecentrenum]
             else:
@@ -1961,15 +1961,15 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                     localname = fieldsourcenames[scan.source.name]
                     #print "scanname is %s, localname is %s" % (scan.source.name, localname)
                 except KeyError:
-                    print("No inbeam for source " + scan.source.name + " for this pass")
+                    print "No inbeam for source " + scan.source.name + " for this pass"
                     continue
             for srow in sutable:
-                print(srow.source.strip())
+                print srow.source.strip()
                 if srow.source.strip() == localname:
                     sutablerow = srow
                     break
             if sutablerow == None:
-                print("Couldn't find source " + localname + " in SU table!")
+                print "Couldn't find source " + localname + " in SU table!"
                 if issearch:
                     sys.exit()
                 else:
@@ -2035,7 +2035,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                 row.real2 = newreal2
                 row.weight_1 = newweight1
                 row.weight_2 = newweight2
-                print("Doing time %f for antenna %d" % (scanpoint, i+1))
+                print "Doing time %f for antenna %d" % (scanpoint, i+1)
                 if not onlygettimes:
                     newsntable.append(row)
         try:
@@ -2045,8 +2045,8 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         scanlen = (scan.stopmjd - scan.startmjd)*86400.0
         meancorr /= meancorrcount
         equivtimeonsource[localname] += scanlen*meancorr*meancorr
-        print("Adding %f seconds (weighted to %f) to %s onsourcetime, it is now %f, meancorr was %f" % \
-              (scanlen, scanlen*meancorr*meancorr, localname, equivtimeonsource[localname], meancorr))
+        print "Adding %f seconds (weighted to %f) to %s onsourcetime, it is now %f, meancorr was %f" % \
+              (scanlen, scanlen*meancorr*meancorr, localname, equivtimeonsource[localname], meancorr)
     if not onlygettimes:
         newsntable.close()
     return equivtimeonsource
@@ -2056,7 +2056,7 @@ def run_sextractor(filename):
     sextractor_bin='/usr/bin/sextractor'
     conf_file='~/packages/src/python_scripts/s_extractor.conf'
     command='%s %s -c %s' % (sextractor_bin, filename, conf_file)
-    print(command)
+    print command
     os.system(command)
 
 ####### RUN BLOBCAT TO ESTIMATE INTEGRATED FLUX ################################
@@ -2067,7 +2067,7 @@ def blobcat_intflux(cleanfits, statsfile, doplot=False, dsnr=6.5, fsnr=5.0, edge
         plotstring = "--plot "
     command='blobcat.py %s --rmsmap rms.fits %s --fSNR=%.3f --dSNR=%.3f --ppe=0.01 --pasbe=0.15 --cpeRA=0.0001 --cpeDec=0.0001 --edgemin=%d' % \
             (cleanfits, plotstring, fsnr, dsnr, edgepixels)
-    print(command)
+    print command
     os.system(command)
     blobcatoutfile = cleanfits[:-5] + '_blobs.txt'
     cleanfitsdir = blobcatoutfile[:blobcatoutfile.rfind('/')-1]
@@ -2105,10 +2105,10 @@ def blobcat_intflux(cleanfits, statsfile, doplot=False, dsnr=6.5, fsnr=5.0, edge
         decerrs.append(float(splitline[7]))
     if not os.path.exists(statsfile): 
         # We want to start with a JMFIT file and replace some segments
-        print("Stats file " + statsfile + " does not exist!")
+        print "Stats file " + statsfile + " does not exist!"
         sys.exit()
     if len(ras) == 0:
-        print("No blobcat detection")
+        print "No blobcat detection"
         return 0, 0 # Note exit here - we leave stats file unchanged
     statslines = open(statsfile).readlines()
     statsout = open(statsfile, 'w')
@@ -2117,7 +2117,7 @@ def blobcat_intflux(cleanfits, statsfile, doplot=False, dsnr=6.5, fsnr=5.0, edge
     statsout.write("Blob int flux (mJy):  %.3f +/- %.3f\n" % (intfluxsum, interrsum))
     statsout.write(statslines[3])
     statsout.write("S/N:                  %.3f\n" % math.sqrt(snrsquaresum))
-    print("Replacing S/N of " + statslines[4].split()[-1] + " with " + str(math.sqrt(snrsquaresum)))
+    print "Replacing S/N of " + statslines[4].split()[-1] + " with " + str(math.sqrt(snrsquaresum))
     #rarad = ras[0]*math.pi/180
     #decrad = decs[0]*math.pi/180
     #rastr, decstr = astro_utils.posradians2string(rarad, decrad)
@@ -2142,12 +2142,12 @@ def blobcat_intflux(cleanfits, statsfile, doplot=False, dsnr=6.5, fsnr=5.0, edge
 def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
     # First check that the files match acceptably
     if len(brightsrcuvdata.antennas) != len(targetuvdata.antennas):
-        print("Antenna tables do not match! Aborting.")
+        print "Antenna tables do not match! Aborting."
         return -1.0
     maxantennano = 0
     antable = brightsrcuvdata.table("AIPS AN", 1)
     for row in antable:
-       print(row)
+       print row
        if row.nosta > maxantennano:
            maxantennano = row.nosta
     antennas = []
@@ -2157,11 +2157,11 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
         antennas[row.nosta-1] = row.anname.strip()
     for a1, a2 in zip(brightsrcuvdata.antennas, targetuvdata.antennas):
         if not a1==a2:
-            print("Antenna tables do not match! Aborting.")
+            print "Antenna tables do not match! Aborting."
             return -1.0
     fqtable1 = brightsrcuvdata.table("AIPS FQ", 1)
     for row in fqtable1:
-        print(brightsrcuvdata.header)
+        print brightsrcuvdata.header
         try:
             matchfreq = row.if_freq[0] + float(brightsrcuvdata.header.crval[2]) - brightsrcuvdata.header.crpix[2]*brightsrcuvdata.header.cdelt[2]
             reffreq = row.if_freq[0] + float(brightsrcuvdata.header.crval[2])
@@ -2181,12 +2181,12 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
         break
     refwavelength2 = speedOfLight / reffreq2
     if math.fabs(matchfreq2 - matchfreq) > 10:
-        print("Mismatched frequencies? %.1f, %.1f; Aborting." % (reffreq, reffreq2))
+        print "Mismatched frequencies? %.1f, %.1f; Aborting." % (reffreq, reffreq2)
         return -1.0
     refbw = getchannelbandwidthhz(brightsrcuvdata)
-    print("Refbw is " + str(refbw))
+    print "Refbw is " + str(refbw)
     if math.fabs(getchannelbandwidthhz(targetuvdata) - refbw) > 10:
-        print("Mismatched bandwidths? Aborting.")
+        print "Mismatched bandwidths? Aborting."
         return -1.0
     # Now loop through checking the decorrelation at 5 minute intervals
     # SHOULD ALSO CHECK THAT IT IS A SINGLE SOURCE FILE...
@@ -2245,10 +2245,10 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
             baselinenum = 256*a + b
             baselinestr = antennas[a-1] + '-' + antennas[b-1]
             if len(times1[baselinestr]) == 0 or len(times2[baselinestr]) == 0:
-                print("Skipping baseline " + baselinestr + " (not enough times)")
+                print "Skipping baseline " + baselinestr + " (not enough times)"
                 skipbaselines.append(baselinestr)
             else:
-                print("%s: times1 spans %f to %f, times2 spans %f to %f" % (baselinestr, times1[baselinestr][0], times1[baselinestr][-1], times2[baselinestr][0], times2[baselinestr][-1]))
+                print "%s: times1 spans %f to %f, times2 spans %f to %f" % (baselinestr, times1[baselinestr][0], times1[baselinestr][-1], times2[baselinestr][0], times2[baselinestr][-1])
                 if times1[baselinestr][0] < mintime:
                     mintime = times1[baselinestr][0]
                 if times2[baselinestr][0] < mintime:
@@ -2278,7 +2278,7 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
             checktime = mintime + 1.0/1440.0
             #print "Starting at time " + str(checktime) + ", maxtime is " + str(maxtime)
             while checktime < maxtime - 1.0/1440.0:
-                print("time " + str(checktime) + ", maxtime is " + str(maxtime))
+                print "time " + str(checktime) + ", maxtime is " + str(maxtime)
                 while currentindex1 < len(times1[baselinestr]) and times1[baselinestr][currentindex1] < checktime - 0.05/86400.0:
                     #print str(times1[baselinestr][currentindex1]) + ", " + str(checktime)
                     currentindex1 += 1
@@ -2300,13 +2300,13 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
                     #print "File 2 ran out of times too early for baseline " + baselinestr + ", continuing..."
                     checktime += 5.0/1440.0
                     continue
-                print(currentindex2, currentindex1, len(times1[baselinestr]), len(times2[baselinestr]))
+                print currentindex2, currentindex1, len(times1[baselinestr]), len(times2[baselinestr])
                 if math.fabs(times1[baselinestr][currentindex1] - times2[baselinestr][currentindex2])*86400 > 0.5:
-                    print("This time doesn't match well enough (%.2f, %.2f) - moving forward half a minute" % (times1[baselinestr][currentindex1]*86400, times2[baselinestr][currentindex2]*86400))
+                    print "This time doesn't match well enough (%.2f, %.2f) - moving forward half a minute" % (times1[baselinestr][currentindex1]*86400, times2[baselinestr][currentindex2]*86400)
                     checktime += 0.5/1440.0
                     continue
                 delaydiff = (refwavelength2*wvals2[baselinestr][currentindex2]-refwavelength1*wvals1[baselinestr][currentindex1])/speedOfLight
-                print("%s: at checktime %.6f, delay diff is %.10f" % (baselinestr, checktime, delaydiff))
+                print "%s: at checktime %.6f, delay diff is %.10f" % (baselinestr, checktime, delaydiff)
                 if lasttime < -999:
                     lasttime = times1[baselinestr][currentindex1]
                     lastdelaydiff = delaydiff
@@ -2329,8 +2329,8 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
                 maxcorrelation = mintimedecorr * minbanddecorr
                 totalturns = math.sqrt(nbandturns*nbandturns + ntimeturns*ntimeturns)
                 doflag = False
-                print("For baseline %s at time %.6f, delay was %.3f microseconds, rate was %.3g s/s" % (baselinestr, checktime, measureddelaydiff*1e6, measuredratediff))
-                print("  ntimeturns was %.3f and nbandturns was %.3f, so maximum remaining correlated signal fraction is %.3f" % (ntimeturns, nbandturns, maxcorrelation))
+                print "For baseline %s at time %.6f, delay was %.3f microseconds, rate was %.3g s/s" % (baselinestr, checktime, measureddelaydiff*1e6, measuredratediff)
+                print "  ntimeturns was %.3f and nbandturns was %.3f, so maximum remaining correlated signal fraction is %.3f" % (ntimeturns, nbandturns, maxcorrelation)
                 if maxcorrelation > correlationlimit:
                     doflag = True
                     #print "For baseline %s at time %.6f, delay was %.3f microseconds, rate was %.3g s/s" % (baselinestr, checktime, measureddelaydiff*1e6, measuredratediff)
@@ -2346,7 +2346,7 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
                 flagtime = f[0]
                 flagval = f[1]
                 if flagval or lastflagval:
-                    print("FLAGGING " + baselinestr)
+                    print "FLAGGING " + baselinestr
                     uvflg.antenna[1] = a
                     uvflg.baseline[1] = b
                     uvflg.timerang[1:5] = fracdayToAIPSTime(lastflagtime)
@@ -2362,10 +2362,10 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
 ####### CALCULATE SOURCE POSITION CHANGE BASED ON PMPAR FIT FILE ###############
 def calcPosOffsetVsPmpar(vexfile, source, fitfile):
     if not os.path.exists(vexfile):
-        print(vexfile + " does not exist!")
+        print vexfile + " does not exist!"
         sys.exit()
     if not os.path.exists(fitfile):
-        print(fitfile + " does not exist!")
+        print fitfile + " does not exist!"
         sys.exit()
     mjd = -1
     orgdecrad = -99
@@ -2389,7 +2389,7 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
             orgdecrad = astro_utils.stringToRad(decstr, False)
             break
     if mjd < 0 or orgrarad < 0:
-        print("Vex file " + vexfile + " not parsed properly")
+        print "Vex file " + vexfile + " not parsed properly"
         sys.exit()
     startdayfrac = float(nominalstart[:2])/24.0 + float(nominalstart[3:5])/1440.0 + \
                    float(nominalstart[6:8])/86400.0
@@ -2424,7 +2424,7 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
     os.system("pmpar tmpfit.in")
     elines = open("pmpar_e").readlines()
     if not len(elines) == 1:
-        print("Some problem with pmpar - pmpar_e is too long!")
+        print "Some problem with pmpar - pmpar_e is too long!"
         sys.exit()
     rastr = raline.split('=')[-1].split()[0]
     decstr = decline.split('=')[-1].split()[0]
@@ -2477,7 +2477,7 @@ def fitld_uvfits(uvfitsfile, aipsdata, sources):
         else:
             sys.exit()
     if not os.path.exists(uvfitsfile):
-        print(uvfitsfile + " does not exist! Aborting.")
+        print uvfitsfile + " does not exist! Aborting."
         sys.exit()
     tempinfits = os.getcwd() + "/templink.uvfits"
     os.system("rm -f " + tempinfits)
@@ -2524,7 +2524,7 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
     fitld.doconcat = 0
     if len(splitfile) > 1:
         fitld.doconcat = 1
-    print(fitld.doconcat)
+    print fitld.doconcat
     fitld.optype = ''
     fitld.ncount = 0
     fitld.dotable = 1
@@ -2638,7 +2638,7 @@ def renumber_vlba(uvdata):
     unknowncount = 0
     antable = uvdata.table('AN', 1)
     for row in antable:
-        print(row)
+        print row
         a = row.anname.strip()
         antnum = row.nosta
         reseq.baseline[count+1] = antnum
@@ -2650,8 +2650,8 @@ def renumber_vlba(uvdata):
                  found = True
         if not found:
             unknowncount += 1
-            print("Didn't know how to renumber %s! Setting it to %d" % \
-                  (a, unknowncount))
+            print "Didn't know how to renumber %s! Setting it to %d" % \
+                  (a, unknowncount)
             reseq.antennas[count+1] = len(antennas) + unknowncount
 
         count += 1
@@ -2666,9 +2666,9 @@ def renumber_vlba(uvdata):
     #print reseq.baseline
     #print reseq.antennas
     reseq()
-    print("uvdata has been resequenced - now:")
+    print "uvdata has been resequenced - now:"
     for row in antable:
-        print(row)
+        print row
 
 ####### DBCON N CATALOG ENTRIES ################################################
 def dbcon(inputuvdatas, outputuvdata):
@@ -2693,7 +2693,7 @@ def dbcon(inputuvdatas, outputuvdata):
             antable1 = WizAIPSUVData(inputuvdatas[i]).table('AN', 1)
             antable2 = WizAIPSUVData(inputuvdatas[j]).table('AN', 1)
             if len(inputuvdatas[i].antennas) < len(inputuvdatas[j].antennas):
-                print(errormsg)
+                print errormsg
                 sys.exit()
             for a in inputuvdatas[j].antennas:
                 index1 = -1
@@ -2709,15 +2709,15 @@ def dbcon(inputuvdatas, outputuvdata):
                 if index1 < 0:
                     missingan1.append(a)
                 if index1 != index2 and index1 >= 0 and index2 >= 0:
-                    print(a)
-                    print(index1, index2)
-                    print(inputuvdatas[i].antennas)
+                    print a
+                    print index1, index2
+                    print inputuvdatas[i].antennas
                     for row in antable1:
-                        print(row)
-                    print(inputuvdatas[j].antennas)
+                        print row
+                    print inputuvdatas[j].antennas
                     for row in antable2:
-                        print(row)
-                    print(errormsg)
+                        print row
+                    print errormsg
                     sys.exit()
                 if index1 >= 0 and index2 >= 0:
                     for row1 in antable1:
@@ -2729,16 +2729,16 @@ def dbcon(inputuvdatas, outputuvdata):
                             break
                     for row in antable2:
                         if row.anname.strip() == a.strip():
-                            print("UPDATING " + a)
+                            print "UPDATING " + a
                             staxdiff = row.staxof - staxof
                             xdiff = row.stabxyz[0] - x
                             ydiff = row.stabxyz[1] - y
                             zdiff = row.stabxyz[2] - z
                             if math.fabs(staxdiff) > 0.5 or math.fabs(xdiff) > 0.5 or \
                                math.fabs(ydiff) > 0.5 or math.fabs(zdiff) > 0.5:
-                                print(row)
-                                print(row1)
-                                print(errormsg)
+                                print row
+                                print row1
+                                print errormsg
                                 sys.exit()
                             row.staxof = staxof
                             row.stabxyz[0] = x
@@ -2754,22 +2754,22 @@ def dbcon(inputuvdatas, outputuvdata):
     # Merge the two antenna tables manually
     dbcon.indata  = inputuvdatas[0]
     dbcon.in2data = inputuvdatas[1]
-    print(inputuvdatas[0].antennas)
-    print(inputuvdatas[1].antennas)
+    print inputuvdatas[0].antennas
+    print inputuvdatas[1].antennas
     dbcon.outdata = junko
     dbcon()
     for uvdata in inputuvdatas[2:]:
         ocount += 1
         dbcon.indata  = junko
         dbcon.in2data = uvdata
-        print(junko.antennas)
-        print(uvdata.antennas)
+        print junko.antennas
+        print uvdata.antennas
         junko = AIPSUVData('JUNKO','JUNKO',1,ocount)
         if junko.exists():
             junko.zap()
         dbcon.outdata = junko
         dbcon()
-    print(junko.antennas)
+    print junko.antennas
     uvsrt = AIPSTask('UVSRT', version = aipsver)
     uvsrt.indata = junko
     uvsrt.outdata = outputuvdata
@@ -2945,7 +2945,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
             break
     tecor.indata = uvdataset
     files = sorted(os.listdir(tecordirectory))
-    print(files)
+    print files
     ionextypes = ["jplg","esag","codg","upcg","igsg","c1pg","c2pg","u2pg","e1pg"]
     selectedionextype = ""
     for ionextype in ionextypes:
@@ -2956,7 +2956,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
         if selectedionextype != "":
             break
     if selectedionextype == "":
-        print("Couldn't find a suitable unzipped ionex file - aborting!")
+        print "Couldn't find a suitable unzipped ionex file - aborting!"
         sys.exit()
     numfiles = 0
     for filename in files:
@@ -2978,11 +2978,11 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     tecor.aparm[1] = 1
     tecor.aparm[2] = follow
     if numfiles > 0:
-        print('Running TECOR with ' + str(numfiles) + ' files - first one is ' + tecor.infile)
-        print("Follow is " + str(follow))
+        print 'Running TECOR with ' + str(numfiles) + ' files - first one is ' + tecor.infile
+        print "Follow is " + str(follow)
         tecor() #Do it!
     else:
-        print('Could not find any suitable ionex files - aborting!!!')
+        print 'Could not find any suitable ionex files - aborting!!!'
         sys.exit()
 
 ####### GENERATE DIFFERENTIAL TECOR CORRECTIONS FROM CL TABLES AND COPY IN  ####
@@ -2996,11 +2996,11 @@ def insert_differential_iono(calibsuvdata, calinver, targetuvdata, targetinver,
     cdisp2 = []
     tdisp1 = []
     tdisp2 = []
-    print("Storing iono corrections for calibrator")
+    print "Storing iono corrections for calibrator"
     for row in cltable1:
         cdisp1.append(row.disp_1)
         cdisp2.append(row.disp_2)
-    print("Storing iono corrections for target")
+    print "Storing iono corrections for target"
     for row in cltable2:
         tdisp1.append(row.disp_1)
         tdisp2.append(row.disp_2)
@@ -3009,7 +3009,7 @@ def insert_differential_iono(calibsuvdata, calinver, targetuvdata, targetinver,
     count = 0
     for row in wizcltable:
         if count % increment == 0:
-            print(str((10*count)/increment) + "% done")
+            print str((10*count)/increment) + "% done"
         row.disp_1 = tdisp1[count] - cdisp1[count]
         row.disp_2 = tdisp2[count] - cdisp2[count]
         row.update()
@@ -3117,7 +3117,7 @@ def correct_eops(uvdataset, eopsdirectory, clversion):
     clcor.opcode = 'EOPS'
     clcor.clcorprm[1] = 1
     clcor.clcorprm[2] = 5
-    print("About to run clcor on gainver %d, gainuse %d" % (clcor.gainver, clcor.gainuse))
+    print "About to run clcor on gainver %d, gainuse %d" % (clcor.gainver, clcor.gainuse)
     clcor()
 
 ####### FINDING THE MAXIMUM TABLE NUMBER #######################################
@@ -3161,8 +3161,8 @@ def deletetable(uvdataset, tabletype, tableversion):
         uvdataset.table(tabletype, tableversion).zap()
         return True
     except IOError:
-        print("Apparently " + tabletype + " version " + str(tableversion) + \
-              " didn't exist...")
+        print "Apparently " + tabletype + " version " + str(tableversion) + \
+              " didn't exist..."
         return False
 
 ####### SPLIT OFF ALL TARGETS, DBCON TOGETHER AS NEEDED ########################
@@ -3191,12 +3191,12 @@ def splitanddbcon(uvdatasets, numtargets, numfields, numfieldsources,
                         aipsname = target[:12]
                         if not aipsname in alreadycleared:
                             if c == 1:
-                                print("About to delete " + aipsname + " version " + str(c))
+                                print "About to delete " + aipsname + " version " + str(c)
                             splitdata = AIPSUVData(aipsname, aipsclass, 1, c)
                             if splitdata.exists():
                                 splitdata.zap()
                             elif c == 1:
-                                print("Doesn't exist")
+                                print "Doesn't exist"
                             if len(target) >= 16: # Crappy old style name
                                 aipsname = target[4:16]
                             splitdata = AIPSUVData(aipsname, aipsclass, 1, c)
@@ -3226,18 +3226,18 @@ def splitanddbcon(uvdatasets, numtargets, numfields, numfieldsources,
                                                    targetcount[targetindex])
                             splitdata.rename(aipsname, aipsclass, targetcount[targetindex])
                     except RuntimeError:
-                        print("No valid visibilities for " + fieldsourcenames[i][j][k])
+                        print "No valid visibilities for " + fieldsourcenames[i][j][k]
                         targetcount[targetindex] -= 1
     alreadyconcatted = []
     for i in range(len(targetnames)):
-        print("Doing " + targetnames[i] + " which has a count of " + str(targetcount[i]))
+        print "Doing " + targetnames[i] + " which has a count of " + str(targetcount[i])
         if targetcount[i] > 1 and doconcat and not skipping:
             aipsname = targetnames[i][:12]
             if len(targetnames[i]) >= 16: # Crappy old style name
                 aipsname = targetnames[i][4:16]
             inputuvdatas = []
             if not aipsname in alreadyconcatted:
-                print("Concatenating " + aipsname)
+                print "Concatenating " + aipsname
                 for j in range(targetcount[i]):
                     inputuvdatas.append(AIPSUVData(aipsname, aipsclass, 1, j+1))
                 outputuvdata = AIPSUVData(aipsname, aipsclass, 1, targetcount[i]+1)
@@ -3425,7 +3425,7 @@ def multipageps2tiledpng(directory, psfile, ncolumns):
     os.chdir(directory)
     pnmfiles = glob.glob("*.pnm")
     if len(pnmfiles) > 0:
-        print("There exist pnm files in this directory (%s); can't make tiled png!" % directory)
+        print "There exist pnm files in this directory (%s); can't make tiled png!" % directory
     os.system("pstopnm %s" % psfile)
     pnmfiles = glob.glob("*.ppm")
     pngfiles = []
@@ -3439,7 +3439,7 @@ def multipageps2tiledpng(directory, psfile, ncolumns):
         for pngfile in pngfiles:
             runline += pngfile + " "
         runline += outputfile
-        print(runline)
+        print runline
         os.system(runline)
         for pngfile in pngfiles:
             os.system("rm -f " + pngfile)
@@ -3470,7 +3470,7 @@ def get_dataset_mjd_midpoint(uvdataset):
             # This is a line with a timerange
             timerangelines.append(line)
     if len(timerangelines) == 0:
-        print("Didn't find any timerange lines!")
+        print "Didn't find any timerange lines!"
         sys.exit()
     starttimer = timerangelines[0].strip().split()[5]
     endtimer   = timerangelines[-1].strip().split()[7]
@@ -3511,7 +3511,7 @@ def get_pulsar_scangroup_timer(uvdataset, srcname, returnscanlist=False):
     validrange = False
     timerangelines = []
     for line in listrmsgs:
-        if srcname in line: print(line)
+        if srcname in line: print line
         if "Scan" in line and "Source" in line and "Qual" in line:
             validrange = True
         elif "Source summary" in line:
@@ -3520,7 +3520,7 @@ def get_pulsar_scangroup_timer(uvdataset, srcname, returnscanlist=False):
             # This is a line with a timerange
             timerangelines.append(line)
     if len(timerangelines) == 0:
-        print("Didn't find any timerange lines!")
+        print "Didn't find any timerange lines!"
         sys.exit()
 
     if returnscanlist:
@@ -3584,21 +3584,21 @@ def get_ampcal_timer(uvdataset, srcname, scanno):
                 atline += 1
             else:
                 if listrmsgs[atline].split()[1] == srcname:
-                     print("Found " + srcname + " for scan " + \
-                           str(i+1) + "/" + str(scanno))
+                     print "Found " + srcname + " for scan " + \
+                           str(i+1) + "/" + str(scanno)
                      break
                 #print "Source was " + listrmsgs[atline].split()[1]
                 #print listrmsgs[atline+1]
                 atline += 1
     if atline >= len(listrmsgs):
-        print("Couldn't find scan " + str(scanno) + " on source " + srcname)
-        print("Sorry, but I'll have to abort the pipeline")
+        print "Couldn't find scan " + str(scanno) + " on source " + srcname
+        print "Sorry, but I'll have to abort the pipeline"
         sys.exit()
-    print(listrmsgs[atline])
+    print listrmsgs[atline]
     starttime = listrmsgs[atline][41:51]
     endtime = listrmsgs[atline][56:66]
-    print("Starttime of ampcal scan is " + starttime)
-    print("Endtime of ampcal scan is " + endtime)
+    print "Starttime of ampcal scan is " + starttime
+    print "Endtime of ampcal scan is " + endtime
 
     startday  = int(starttime[0])
     starthour = int(starttime[2:4])
@@ -3663,8 +3663,8 @@ def pccor(uvdataset, srcname, snversion, ampcalscanno, refant):
     pccor = AIPSTask('pccor', version = aipsver)
     pccor.indata = uvdataset
     pccor.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
-    print("Running PCCOR over timerange:")
-    print(pccor.timerang[1:])
+    print "Running PCCOR over timerange:"
+    print pccor.timerang[1:]
     pccor.snver = snversion
     pccor.inver = 0
     pccor.refant = refant
@@ -3774,7 +3774,7 @@ def fringerateflag(uvdataset, outflagver, suppressionfactor):
 ##### Read a list of times to quack from a file and do it ######################
 def quackfromfile(uvdata, quackfile):
     if not os.path.exists(quackfile):
-        print("Quack file listing " + quackfile + " does not exist - aborting!")
+        print "Quack file listing " + quackfile + " does not exist - aborting!"
         sys.exit()
     input = open(quackfile)
     lines = input.readlines()
@@ -3782,7 +3782,7 @@ def quackfromfile(uvdata, quackfile):
     for line in lines:
         splitline = line.split()
         if not len(splitline) == 3:
-            print("Bad quack line " + line + " - will ignore!")
+            print "Bad quack line " + line + " - will ignore!"
         count = 1
         found = False
         for a in uvdata.antennas:
@@ -3793,7 +3793,7 @@ def quackfromfile(uvdata, quackfile):
         if found:
             quack(uvdata, [count], splitline[1], float(splitline[2]))
         else:
-            print("Bad quack antenna " + splitline[0] + " - will ignore!")
+            print "Bad quack antenna " + splitline[0] + " - will ignore!"
 
 ##### Run quack on the specified antennas for the specified time range #########
 def quack(uvdata, antennas, type, seconds):
@@ -3828,10 +3828,10 @@ def fring_noweights(uvdataset, snversion, clversion, solintmins, inttimesecs,
     fring.refant = refant
     fring.aparm[1:] = [3,0,0,0,0,2,snr,0,1,0]
     fring.dparm[1:] = [0,600,40,inttimesecs,0,0,0,0]
-    print("Inttime in seconds is " + str(inttimesecs))
+    print "Inttime in seconds is " + str(inttimesecs)
     fring.solint = solintmins
     fring.snver = snversion
-    print("Just set snver to " + str(fring.snver))
+    print "Just set snver to " + str(fring.snver)
     fring()
 
 ##### Leakage calculation #################################################
@@ -3875,7 +3875,7 @@ def leakagecalc(uvdataset, lpcalsource, modelimage, lpcaltablefilename, \
     # Then run a bandpass cal on the leakage source, if none has been applied yet
     if dolocalband:
         if tableexists(uvdataset, "BP", -1):
-            print("Not allowed to do local bandpasscal if a BP table already exists!")
+            print "Not allowed to do local bandpasscal if a BP table already exists!"
             sys.exit()
         bpass(uvdataset, lpcalsource, clversion, leakagecalscan, modelimage, 0) # 0 = No dopol yet
 
@@ -3993,7 +3993,7 @@ def xpoldelaycal(uvdataset, clversion, refant, xpolsource, xpolscanno, xpolmodel
     # Clear the SN tables in this dataset
     tempdata.zap_table("SN", -1)
 
-    print(tempdata.tables)
+    print tempdata.tables
     # Run fring on this dataset
     fring = AIPSTask('fring', version = aipsver)
     fring.indata = tempdata
@@ -4023,7 +4023,7 @@ def xpoldelaycal(uvdataset, clversion, refant, xpolsource, xpolscanno, xpolmodel
     tacop(tempdata, "NX", 1, tempswapdata, 1)
 
     # Run FRING on the Xpol data
-    print(tempswapdata.tables)
+    print tempswapdata.tables
     fring.indata = tempswapdata
     fring.gainuse = clversion + 1
     fring.snver = 2
@@ -4100,7 +4100,7 @@ def fring(uvdataset, snversion, clversion, solintmins, inttimesecs, srcname,
             fring.aparm[5] = 1
     else:
         if halfbandwidth:
-            print("Can't have halfbandwidth without also having sumIFs")
+            print "Can't have halfbandwidth without also having sumIFs"
             sys.exit()
     if doexhaustive:
         fring.aparm[9] = 1
@@ -4109,13 +4109,13 @@ def fring(uvdataset, snversion, clversion, solintmins, inttimesecs, srcname,
     fring.dparm[1:] = [0,delaywin,ratewin,inttimesecs,0,0,0,0]
     if zerorates:
         fring.dparm[8] = 1
-    print("Delay window is " + str(delaywin))
-    print("Rate window is " + str(ratewin))
-    print(fring.dparm[3])
-    print("Inttime in seconds is " + str(inttimesecs))
+    print "Delay window is " + str(delaywin)
+    print "Rate window is " + str(ratewin)
+    print fring.dparm[3]
+    print "Inttime in seconds is " + str(inttimesecs)
     fring.solint = solintmins
     fring.snver = snversion
-    print("Just set snver to " + str(fring.snver))
+    print "Just set snver to " + str(fring.snver)
     fring()
 
 ##### Fringe fit on an in-beam calibrator #######################################
@@ -4165,8 +4165,8 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
     bpass.bpassprm[5] = 1
     bpass.bpassprm[9] = 1
     bpass.bpassprm[10] = 1
-    print("CL version is " + str(clversion) + ", calsour is " + \
-          str(bpass.calsour[1]) + ", timer is " + str(bpass.timerang))
+    print "CL version is " + str(clversion) + ", calsour is " + \
+          str(bpass.calsour[1]) + ", timer is " + str(bpass.timerang)
     bpass()
 
 ##### Polynomial-based bandpass correction #####################################
@@ -4212,7 +4212,7 @@ def getNumChannels(uvdata):
         if numchannels < 0:
             numchannels = thisnumchannels
         elif thisnumchannels != numchannels:
-            print("Different num channels for different IFs! Returning -1")
+            print "Different num channels for different IFs! Returning -1"
             return -1
     return numchannels
 
@@ -4228,7 +4228,7 @@ def getchannelbandwidthhz(uvdata):
         if chanbw < 0:
             chanbw = thischanbw
         elif thischanbw != chanbw:
-            print("Different channel widths for different IFs! Returning -1")
+            print "Different channel widths for different IFs! Returning -1"
             return -1
     return chanbw
 
@@ -4256,7 +4256,7 @@ def getIFbandwidthhz(uvdata):
         if totalbw < 0:
             totalbw = thistotalbw
         elif thistotalbw != totalbw:
-            print("Different IFs have different widths! Returning -1")
+            print "Different IFs have different widths! Returning -1"
             return -1
     return totalbw
 
@@ -4278,7 +4278,7 @@ def getintegrationtime(uvdata):
             splitline = line.split('=')
             inttime = float(splitline[1].strip())
     if inttime < 0:
-        print("Couldn't find the integration time!")
+        print "Couldn't find the integration time!"
     return inttime
 
 ##### Split some data to multiple channels, applying calibration ###############
@@ -4466,8 +4466,8 @@ def getimagestats(image, cutofffrac): # [peak, rms, peakx, peaky]
     imean.indata = image
     xguardpix = int(image.header.naxis[0]*cutofffrac)
     yguardpix = int(image.header.naxis[1]*cutofffrac)
-    print("Avoiding a guard band of %dx%d pixels around edge of image..." % \
-          (xguardpix, yguardpix))
+    print "Avoiding a guard band of %dx%d pixels around edge of image..." % \
+          (xguardpix, yguardpix)
     imean.blc[1:] = [xguardpix, yguardpix]
     imean.trc[1:] = [image.header.naxis[0]-xguardpix,image.header.naxis[1]-yguardpix]
     imean.dohist = -1
@@ -4478,7 +4478,7 @@ def getimagestats(image, cutofffrac): # [peak, rms, peakx, peaky]
     try:
         imean()
     except RuntimeError:
-        print("IMEAN failed - this image must be bogus!")
+        print "IMEAN failed - this image must be bogus!"
         return [0.0, 1.0, image.header.naxis[0]/2, image.header.naxis[1]/2, "", ""]
     imeanlines = imean.message()
     numlines = len(imeanlines)
@@ -4617,21 +4617,21 @@ def clcordelaysfromfile(uvdata, filename, clversion):
             continue
         splitline = line.split()
         if not len(splitline) == 6:
-            print("Badly formed line " + line + " in " + filename)
+            print "Badly formed line " + line + " in " + filename
             sys.exit()
         try:
             antindex = anrow_noss[splitline[0]]
         except KeyError:
-            print("Couldn't find " + splitline[0] + " in the AN table!")
+            print "Couldn't find " + splitline[0] + " in the AN table!"
             sys.exit()
         clcor.antennas[1] = antindex
-        print("Correcting " + splitline[0] + ", which is index " + str(antindex))
+        print "Correcting " + splitline[0] + ", which is index " + str(antindex)
         clcor.bif = int(splitline[1])
         clcor.eif = int(splitline[1])
         clcor.stokes = splitline[2]
         reftime = splitline[4].split(',')
         if len(reftime) != 4:
-            print("Bad reftime " + splitline[3])
+            print "Bad reftime " + splitline[3]
         clcor.clcorprm[1] = float(splitline[5])*24.0
         clcor.clcorprm[2] = float(splitline[3])
         clcor.clcorprm[3] = int(reftime[0])
@@ -4670,7 +4670,7 @@ def clcordelays(uvdataset, snversion, clversion, refant, numifs, numstokes):
                         clcor()
                 break
         if not found:
-            print("Couldn't find solution for antenna " + str(i+1))
+            print "Couldn't find solution for antenna " + str(i+1)
 
 ##### Create a flag table for a dataset for when a model will be too resolved ##
 def createmodelflagtable(uvdataset, modelimage, minflux, flagver):
@@ -4718,20 +4718,20 @@ def singlesource_calib(uvdataset, modelimage, snver, refant, doamp, solmins,
         calib.smodel[1] = 1.0
         calib.smodel[2:] = [0]
     elif isinstance(modelimage, float):
-        print("Calibrating with a delta function of amp " + str(modelimage))
+        print "Calibrating with a delta function of amp " + str(modelimage)
         calib.smodel[1] = modelimage
         calib.smodel[2:] = [0]
     else:
         calib.in2data = modelimage
     if flagwheremodelbelow > 0.0: 
         if modelimage == None or isinstance(modelimage, float):
-            print("Can't flag with no image model!")
+            print "Can't flag with no image model!"
             sys.exit()
         createmodelflagtable(uvdataset, modelimage, flagwheremodelbelow, 1)
         calib.flagver = 1
     calib.uvrange[1] = uvrange[0]
     calib.uvrange[2] = uvrange[1]
-    print("UV range is " + str(calib.uvrange))
+    print "UV range is " + str(calib.uvrange)
     calib.cmethod = 'DFT'
 #    calib.cmethod = 'FFT'
 #    calib.cmodel = 'IMAG'
@@ -4739,7 +4739,7 @@ def singlesource_calib(uvdataset, modelimage, snver, refant, doamp, solmins,
     calib.solint = solmins
     calib.weightit = weightit
     if solmins < 0:
-        print("I got a solution interval of " + str(solmins) + " - aborting!")
+        print "I got a solution interval of " + str(solmins) + " - aborting!"
         sys.exit()
     calib.aparm[1:] = [0]
     calib.aparm[1] = 3
@@ -4756,7 +4756,7 @@ def singlesource_calib(uvdataset, modelimage, snver, refant, doamp, solmins,
     else:
         calib.solmode = 'P'
         if normalise:
-            print("You can't normalise phase-only solutions")
+            print "You can't normalise phase-only solutions"
     calib.snver = snver
     calib()
 
@@ -4764,10 +4764,10 @@ def singlesource_calib(uvdataset, modelimage, snver, refant, doamp, solmins,
 def tbavg(uvdatain, uvdataout, solmins, rashiftmas=0.0, decshiftmas=0.0):
     tbavg = AIPSTask("tbavg", version = aipsver)
     if not uvdatain.exists():
-        print("TBAVG: Input uv data doesn't exist!")
+        print "TBAVG: Input uv data doesn't exist!"
         sys.exist()
     if uvdataout.exists():
-        print("TBAVG: Output uv data already exists!")
+        print "TBAVG: Output uv data already exists!"
         sys.exit()
     tbavg.indata = uvdatain
     tbavg.outdata = uvdataout
@@ -4848,9 +4848,9 @@ def fixclocks(clockfile, uvdata, clversion):
                 for i in range(8):
                     clcor.timeran[i+1] = int(splitline[i+6])
             else:
-                print("Dodgy clock line:")
-                print("  " + line)
-                print("Aborting!")
+                print "Dodgy clock line:"
+                print "  " + line
+                print "Aborting!"
                 sys.exit()
         clcor()
 
@@ -4859,8 +4859,8 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
                 numchan, numif, baselinestr, pol, ifnum, channel, prefix, plottype, 
                 label1, label2, notitle, iserr, dogray):
     if len(amparray1) != len(amparray2) or len(amparray1) != len(timearray):
-        print("Len(amparray1) is %d, len(amparray2) is %d, len(timearray) is %d" % \
-              (len(amparray1), len(amparray2), len(timearray)))
+        print "Len(amparray1) is %d, len(amparray2) is %d, len(timearray) is %d" % \
+              (len(amparray1), len(amparray2), len(timearray))
         return False
    
     if dogray:
@@ -4871,7 +4871,7 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
         line1type = "g-+"
         line2type = "r-x"
     if not plottype == "ps" and not plottype == "png":
-        print("Unknown plottype " + plottype + " - changing to png!")
+        print "Unknown plottype " + plottype + " - changing to png!"
         plottype = "png"
     toff = []
     for time in timearray:
@@ -4916,7 +4916,7 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
         minphsdiff = min(phsdiff)
         if -minphsdiff > maxphsdiff:
              maxphsdiff = -minphsdiff
-        print("Maximum phase difference for IF " + str(ifnum) + ' chan' + str(channel) + " " + pol + " on baseline " + baselinestr + " was " + str(maxphsdiff))
+        print "Maximum phase difference for IF " + str(ifnum) + ' chan' + str(channel) + " " + pol + " on baseline " + baselinestr + " was " + str(maxphsdiff)
         pylab.savefig(prefix + ".IF" + str(ifnum) + '.chan' + str(channel) + "-" + pol + "." + baselinestr + ".phsdifference." + plottype)
     pylab.clf()
     return True
@@ -4926,20 +4926,20 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
     possm = AIPSTask('possm', version = aipsver)
     possm.indata = uvdata
     possm.stokes = stokes
-    if isinstance(ifs, list) and len(ifs) == 2:
+    if isinstance(ifs, (list,)) and len(ifs) == 2:
         possm.bif = ifs[0]
         possm.eif = ifs[1]
-    elif isinstance(ifs, int):
+    elif isinstance(ifs, (int,)):
         possm.bif = ifs
         poss.eif = ifs
     else:
-        print("IFs parameter must be either a len(2) list for bif and eif, or else a single integer, is", ifs)
+        print "IFs parameter must be either a len(2) list for bif and eif, or else a single integer, is", ifs
         sys.exit()
-    if isinstance(chans, list) and len(chans) == 2:
+    if isinstance(chans, (list,)) and len(chans) == 2:
         possm.bchan = chans[0]
         possm.echan = chans[1]
     else:
-        print("Chans parameter must be a len(2) list for bchan and echan, was", chans)
+        print "Chans parameter must be a len(2) list for bchan and echan, was", chans
         sys.exit()
     if clversion > 0:
         possm.docalib = 1
@@ -4948,7 +4948,7 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
         possm.docalib = 0
     if plotbptable:
         if bpver <= 0:
-            print("bpver must be >= 1 in order to plot BP table")
+            print "bpver must be >= 1 in order to plot BP table"
             sys.exit()
         possm.bpver = bpver
         possm.aparm[8] = 2
@@ -5030,7 +5030,7 @@ def plotpossmresults(lines1, lines2, numstokes, numchan, ifnum, baselinestr, pre
         line1type = "g-+"
         line2type = "r-x"
     if not plottype == "ps" and not plottype == "png":
-        print("Unknown plottype " + plottype + " - changing to png!")
+        print "Unknown plottype " + plottype + " - changing to png!"
         plottype = "png"
     at = 0
     for i in range(numstokes):
@@ -5055,9 +5055,9 @@ def plotpossmresults(lines1, lines2, numstokes, numchan, ifnum, baselinestr, pre
             pol = split1line[2]
             freq.append(float(split1line[3]))
             if split1line[2] != split2line[2]:
-                print("Warning - STOKES does not agree: " + pol + ", " + split2line[2])
+                print "Warning - STOKES does not agree: " + pol + ", " + split2line[2]
             if split1line[3] != split2line[3]:
-                print("Warning - frequency does not agree: " + split1line[3]+ ", " + split2line[3])
+                print "Warning - frequency does not agree: " + split1line[3]+ ", " + split2line[3]
             re1 = float(split1line[5])*math.cos(float(split1line[6])*math.pi/180.0)
             im1 = float(split1line[5])*math.sin(float(split1line[6])*math.pi/180.0)
             re2 = float(split2line[5])*math.cos(float(split2line[6])*math.pi/180.0)
@@ -5124,45 +5124,45 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
     loopresponse = ''
     for i in range(20):
         loopresponse = loopresponse + 'modelfit 20\nselfcal true,true,2.5\n'
-    print("First make a model you are happy with - enter to dump that model." + \
-          "  I suggest selfcal'ing at 2.5 min solution intervals")
-    response = input("Enter a difmap command - enter to go on to wmod")
+    print "First make a model you are happy with - enter to dump that model." + \
+          "  I suggest selfcal'ing at 2.5 min solution intervals"
+    response = raw_input("Enter a difmap command - enter to go on to wmod")
     if response == 'loop': response = loopresponse
     while response != "":
         if response[:6] == 'uvaver':
-            print("Averaging is not allowed!!!")
+            print "Averaging is not allowed!!!"
         else:
             difmap.stdin.write(response + "\n")
-        response = input("Enter a difmap command - enter to go on to wmod")
+        response = raw_input("Enter a difmap command - enter to go on to wmod")
         if response == 'loop': response = loopresponse
     difmap.stdin.write("wmod " + expmodelfile + "\n")
     difmap.stdin.write("select rr\n")
     loopresponse = ''
     for i in range(20):
         loopresponse = loopresponse + 'selfcal true,true,2.5\n'
-    print("Selfcal RR (I recommend solution intervals of 2.5 minutes) until " + \
-          "chi-squared is ok. NO MODEL-FITTING!!!")
-    response = input("Enter a difmap command - enter to go on to cordump: ")
+    print "Selfcal RR (I recommend solution intervals of 2.5 minutes) until " + \
+          "chi-squared is ok. NO MODEL-FITTING!!!"
+    response = raw_input("Enter a difmap command - enter to go on to cordump: ")
     if response == 'loop': response = loopresponse
     while response != "":
         if response[:6] == 'uvaver':
-            print("Averaging is not allowed!!!")
+            print "Averaging is not allowed!!!"
         else:
             difmap.stdin.write(response + "\n")
-        response = input("Enter a difmap command - enter to dump solutions")
+        response = raw_input("Enter a difmap command - enter to dump solutions")
         if response == 'loop': response = loopresponse
     difmap.stdin.write("cordump " + rrsnfile + "\n")
     difmap.stdin.write("select ll\n")
-    print("Now selfcal for LL (I recommend solution intervals of 2.5 minutes)" + \
-          " until chi-squared is ok. NO MODEL-FITTING!!!")
-    response = input("Enter a difmap command - enter to go on to cordump: ")
+    print "Now selfcal for LL (I recommend solution intervals of 2.5 minutes)" + \
+          " until chi-squared is ok. NO MODEL-FITTING!!!"
+    response = raw_input("Enter a difmap command - enter to go on to cordump: ")
     if response == 'loop': response = loopresponse
     while response != "":
         if response[:6] == 'uvaver':
-            print("Averaging is not allowed!!!")
+            print "Averaging is not allowed!!!"
         else:
             difmap.stdin.write(response + "\n")
-        response = input("Enter a difmap command - enter to dump solutions")
+        response = raw_input("Enter a difmap command - enter to dump solutions")
         if response == 'loop': response = loopresponse
     difmap.stdin.write("cordump " + llsnfile + "\n")
     difmap.stdin.write("exit\n\n")
@@ -5248,23 +5248,23 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     if not nointeraction:
         if stokesi:
             difmap.stdin.write("select i\n")
-            response = input(inputmsg)
+            response = raw_input(inputmsg)
             while response != "":
                 difmap.stdin.write(response + "\n")
-                response = input(inputmsg)
+                response = raw_input(inputmsg)
         else:
             difmap.stdin.write("select ll\n")
-            response = input(inputmsg)
+            response = raw_input(inputmsg)
             while response != "":
                 difmap.stdin.write(response + "\n")
-                response = input(inputmsg)
+                response = raw_input(inputmsg)
             difmap.stdin.write("select rr\n")
             inputmsg = "Enter a difmap command for the RR data - " + \
                        "enter to go to fitting"
-            response = input(inputmsg)
+            response = raw_input(inputmsg)
             while response != "":
                 difmap.stdin.write(response + "\n")
-                response = input(inputmsg)
+                response = raw_input(inputmsg)
     difmap.stdin.write("select i\n")      
     difmap.stdin.write("save " + uvfile + ".junk\n")
     difmap.stdin.write("select i\n")
@@ -5280,14 +5280,14 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
         pols = ['rr','ll']
     for p in pols:
         for i in range(beginif, endif+1):
-            print("Doing IF " + str(i) + ", pol " + p)
+            print "Doing IF " + str(i) + ", pol " + p
             difmap.stdin.write("select " + p + "," + str(i) + "\n")
             if dogaussian:
                 write_difmapmapscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
             else:
                 write_difmappsrscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
         if not p == "i":
-            print("Doing IF " + str(beginif) + "-" + str(endif) + ", pol " + p)
+            print "Doing IF " + str(beginif) + "-" + str(endif) + ", pol " + p
             difmap.stdin.write("select " + p + "," + str(beginif) + "," + str(endif) + '\n')
             write_difmapmapscript(imagefile, p + ".a", difmap,pixsize,finepix)
     if endif > 0:
@@ -5568,9 +5568,9 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
         cctable = imagedata.table('CC', 1)
         for row in cctable:
             ccflux += row.flux
-        print("CC table flux is " + str(ccflux))
+        print "CC table flux is " + str(ccflux)
     except ValueError:
-        print("No CC table: leaving CC flux as 0 mJy")
+        print "No CC table: leaving CC flux as 0 mJy"
 
     obsdate = imagedata.header.date_obs
     year = int(obsdate[0:4])
@@ -5601,12 +5601,12 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     if centrerapixel < 0:
         centrerapixel = int(imagedata.header.naxis[0])/2
     if imagedata.header.naxis[0] < 128:
-        print("Image too small in RA axis (%d) - increase size!" % (imagedata.header.naxis[0]))
+        print "Image too small in RA axis (%d) - increase size!" % (imagedata.header.naxis[0])
         sys.exit()
     if centredecpixel < 0:
         centredecpixel = int(imagedata.header.naxis[1])/2
     if imagedata.header.naxis[1] < 128:
-        print("Image too small in Dec axis (%d) - increase size!" % (imagedata.header.naxis[1]))
+        print "Image too small in Dec axis (%d) - increase size!" % (imagedata.header.naxis[1])
         sys.exit()
     ralo  = centrerapixel-pixwindow/2
     rahi  = centrerapixel+pixwindow/2
@@ -5641,7 +5641,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
               msgindex < len(jmfitmessage):
         msgindex = msgindex + 1
     if msgindex >= len(jmfitmessage):
-        print("Did not find JMFIT solution!")
+        print "Did not find JMFIT solution!"
         targetstatsout.close()
         os.remove(targetstatsout)
         return
@@ -5651,20 +5651,20 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     decpixsize = math.fabs(float(centredecsplit[-1])*1000.0)
     pixsize = rapixsize
     if rapixsize != decpixsize:
-        print("*****WARNING*****: Different pixel sizes in RA and dec")
-        print("*****WARNING*****: Beam size measurement will be approximate")
+        print "*****WARNING*****: Different pixel sizes in RA and dec"
+        print "*****WARNING*****: Beam size measurement will be approximate"
         pixsize = (rapixsize + decpixsize)/2.0
     msgindex = msgindex + 2
     while not "Beam=" in jmfitmessage[msgindex] and msgindex < len(jmfitmessage):
         msgindex = msgindex + 1
     if msgindex >= len(jmfitmessage):
-        print("Did not find intrinsic beam for " + imagefile)
+        print "Did not find intrinsic beam for " + imagefile
         targetstatsout.close()
         os.remove(targetstatsout)
         return
     beamsplit = jmfitmessage[msgindex].split()
     if not len(beamsplit) == 10:
-        print("*****WARNING*****: Poorly formatted beam string!")
+        print "*****WARNING*****: Poorly formatted beam string!"
         if "=" in beamsplit[-8]:
             beammaj = float(beamsplit[-8].split('=')[-1])
         else:
@@ -5678,7 +5678,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
               and msgindex < len(jmfitmessage):
         msgindex = msgindex + 1
     if msgindex >= len(jmfitmessage):
-        print("Did not find JMFIT solution!")
+        print "Did not find JMFIT solution!"
         targetstatsout.close()
         os.remove(targetstatsout)
         return
@@ -5707,8 +5707,8 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
         fitmaj = float(fitmajsplit[4])
         fitmin = float(fitminsplit[4])
     except ValueError:
-        print("Bad value for one or more of major axis " +  fitmajsplit[4] + \
-              ", minor axis " + fitminsplit[4] + ", both will be set to zero")
+        print "Bad value for one or more of major axis " +  fitmajsplit[4] + \
+              ", minor axis " + fitminsplit[4] + ", both will be set to zero"
         fitmaj = 0.0
         fitmin = 0.0
     try:
@@ -5719,11 +5719,11 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
         dfitminminmax = [float(dfitminsplit[4]), float(dfitminsplit[5])]
         dfitpaminmax  = [float(dfitpasplit[4]), float(dfitpasplit[5])]
     except ValueError:
-        print("Bad value for one or more of deconvolved axis/pa")
-        print(dfitmajsplit)
-        print(dfitminsplit)
-        print(dfitpasplit)
-        print("All will be set to 0.0")
+        print "Bad value for one or more of deconvolved axis/pa"
+        print dfitmajsplit
+        print dfitminsplit
+        print dfitpasplit
+        print "All will be set to 0.0"
         dfitmaj = 0.0
         dfitmin = 0.0
         dfitpa  = 0.0
@@ -5747,7 +5747,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
        or xpospixels < int(imagedata.header.naxis[0])/2 - 48 \
        or ypospixels > int(imagedata.header.naxis[1])/2 + 48 \
        or ypospixels < int(imagedata.header.naxis[1])/2 - 48:
-        print("Fitted position was outside boundary - setting flux to zero")
+        print "Fitted position was outside boundary - setting flux to zero"
         flux = 0.0
     if rms < 0.00000000000000000001:
         rms = 999999999999999999999
@@ -5829,10 +5829,10 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         targetstatout = open(jmfitfile + ".stats", "w")
     for ifpol in todo:
         if not os.path.exists(imagefile + '.' + ifpol):
-            print("*******************************************")
-            print("Could not find file " + imagefile + '.' + ifpol)
-            print("Setting S/N to 0")
-            print("*******************************************")
+            print "*******************************************"
+            print "Could not find file " + imagefile + '.' + ifpol
+            print "Setting S/N to 0"
+            print "*******************************************"
             targetstatout.write("Pulsar " + target + ": MJD " + str(mjd) + \
                                 ": Frequency " + ifpol[-1] + \
                                 ", pol " + ifpol[:2].upper() + ":\n")
@@ -5891,13 +5891,13 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
                 splitline = line.split()
                 xpix = float(splitline[4])
                 ypix = float(splitline[5])
-        print(xpix, ypix)
+        print xpix, ypix
         blc = [None,0,0]
         trc = [None,0,0]
         blc[1:] = [xpix-pixwindow/2, ypix-pixwindow/2]
         trc[1:] = [xpix+pixwindow/2, ypix+pixwindow/2]
-        print(blc)
-        print(trc)
+        print blc
+        print trc
         if blc[1] < 0: blc[1] = 1
         if blc[2] < 0: blc[2] = 1
         if trc[1] > int(imagedata.header.naxis[0]): trc[1] = int(imagedata.header.naxis[0])-1
@@ -5937,7 +5937,7 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
                   msgindex < len(jmfitmessage):
             msgindex = msgindex + 1
         if msgindex >= len(jmfitmessage):
-            print("Did not find solution for " + imagefile + ", band " + ifpol)
+            print "Did not find solution for " + imagefile + ", band " + ifpol
             continue
         centrerasplit = jmfitmessage[msgindex].split()
         centredecsplit = jmfitmessage[msgindex+1].split()
@@ -5945,18 +5945,18 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         decpixsize = math.fabs(float(centredecsplit[-1])*1000.0)
         pixsize = rapixsize
         if rapixsize != decpixsize:
-            print("*****WARNING*****: Different pixel sizes in RA and dec")
-            print("*****WARNING*****: Beam size measurement will be approximate")
+            print "*****WARNING*****: Different pixel sizes in RA and dec"
+            print "*****WARNING*****: Beam size measurement will be approximate"
             pixsize = (rapixsize + decpixsize)/2.0
         msgindex = msgindex + 2
         while not "Beam=" in jmfitmessage[msgindex] and msgindex < len(jmfitmessage):
             msgindex = msgindex + 1
         if msgindex >= len(jmfitmessage):
-            print("Did not find solution for " + imagefile + ", band " + ifpol)
+            print "Did not find solution for " + imagefile + ", band " + ifpol
             continue
         beamsplit = jmfitmessage[msgindex].split()
         if not len(beamsplit) == 10:
-            print("*****WARNING*****: Poorly formatted beam string!")
+            print "*****WARNING*****: Poorly formatted beam string!"
             if len(beamsplit) == 9:
                 beammaj = float(beamsplit[1].split('=')[-1])*pixsize
                 beammin = float(beamsplit[3])*pixsize
@@ -5970,7 +5970,7 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
                   and msgindex < len(jmfitmessage):
             msgindex = msgindex + 1
         if msgindex >= len(jmfitmessage):
-            print("Did not find solution for " + imagefile + ", band " + ifpol)
+            print "Did not find solution for " + imagefile + ", band " + ifpol
             continue
         sourcerasplit = jmfitmessage[msgindex+7].split()
         sourcedecsplit = jmfitmessage[msgindex+8].split()
@@ -5982,8 +5982,8 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
             fitmaj = float(fitmajsplit[4])
             fitmin = float(fitminsplit[4])
         except ValueError:
-            print("Bad value for one or more of fit major axis " +  fitmajsplit[4] + \
-                  ", minor axis " + fitminsplit[4] + ", both will be set to zero")
+            print "Bad value for one or more of fit major axis " +  fitmajsplit[4] + \
+                  ", minor axis " + fitminsplit[4] + ", both will be set to zero"
             fitmaj = 0.0
             fitmin = 0.0
         targetstatout.write("Pulsar " + target + ": MJD " + str(mjd) + \
@@ -6139,13 +6139,13 @@ class calibrate_target_phase_with_two_colinear_phscals:
             phi_rad = np.arctan2(imag1, real1)
             phi_deg = phi_rad/math.pi*180
             phi_degs.append(phi_deg)
-        print(phi_degs, len(phi_degs))
+        print phi_degs, len(phi_degs)
         return phi_degs
     def compile_into_table(s):
         from astropy.table import Table
         [row_nos, antenna_nos, times, phi_degs] = s.read_inbeamselfcalp1_solutions()
         s.t = Table([row_nos, antenna_nos, times, phi_degs], names=['row_no', 'antenna_no', 'time', 'phi'])
-        print(s.t)
+        print s.t
     def edit_inbeamselfcalpn_in_AIPS_and_write_out(s, correction_factor, snver, outputsntable):
         phi_degs = s.read_inbeamselfcalpn_solutions()
         wizuvdata = WizAIPSUVData(s.inbeamuvdata)
@@ -6209,12 +6209,12 @@ class calibrate_target_phase_with_two_colinear_phscals:
                         elif N2>-10 and N2<-4:
                             eachAnt.remove_row(N1)
                         else:
-                            eachAnt.remove_rows(list(range(N1,len(eachAnt))))
+                            eachAnt.remove_rows(range(N1,len(eachAnt)))
                     
             for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
                 exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
-        print((s.t1))
+        print(s.t1)
         final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
         writefile = open(final_saved_phase_edit, 'w')
         pickle.dump(s.t1, writefile)
@@ -6230,14 +6230,14 @@ class calibrate_target_phase_with_two_colinear_phscals:
         saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
         t = s.t
         if os.path.exists(saved_phase_edit):
-            choise = input('Do you want to use saved phase edit and continue the edit? Press y if affirmative: ')
+            choise = raw_input('Do you want to use saved phase edit and continue the edit? Press y if affirmative: ')
             if choise == 'y' or choise=='yes':
-                print("Continue on the saved phase edit.")
+                print "Continue on the saved phase edit."
                 readfile = open(saved_phase_edit, 'r')
                 t = pickle.load(readfile)
                 readfile.close()
             else:
-                print("Start new phase edit.")
+                print "Start new phase edit."
         
         phase_shifts = []
         NAT = non_ambiguity_threshold = 90 ## in deg
@@ -6251,30 +6251,30 @@ class calibrate_target_phase_with_two_colinear_phscals:
                     exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
                 continue
             if max(eachAnt['phi'])>=NAT or min(eachAnt['phi'])<= -NAT:
-                print(eachAnt['row_no'])
+                print eachAnt['row_no']
                 print("Here is the diagnostic plot for phase edit on a new antenna.\n")
                 phase_shifts = []
                 while not phase_shifts in ['s', 'n']:
                     s.plot_diagnostic_phi_versus_time_for_each_antenna1(eachAnt, i)
-                    phase_shifts = input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*360 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
+                    phase_shifts = raw_input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*360 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
                     try: 
                         N1 = int(phase_shifts.split(',')[0].strip())
                         N2 = int(phase_shifts.split(',')[1].strip())
                     except ValueError:
                         if not phase_shifts in ['s', 'n']:  
-                            print("Input format does not match the requirement. Start over again.")
+                            print "Input format does not match the requirement. Start over again."
                         continue
                     if N2>-5:
                         eachAnt['phi'][N1:len(eachAnt)] += N2*360
                     elif N2>-10 and N2<-4:
                         eachAnt.remove_row(N1)
                     else:
-                        eachAnt.remove_rows(list(range(N1,len(eachAnt))))
+                        eachAnt.remove_rows(range(N1,len(eachAnt)))
             for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
                 exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
-            print(row_nos)
+            print row_nos
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
-        print(s.t1)
+        print s.t1
         writefile = open(saved_phase_edit, 'w')
         pickle.dump(s.t1, writefile)
         writefile.close()
@@ -6293,14 +6293,14 @@ class calibrate_target_phase_with_two_colinear_phscals:
         imags = np.sin(phis*math.pi/180)
         s.t2 = Table([t['row_no'], t['antenna_no'], t['time'], reals, imags], 
                                 names=['row_no', 'antenna_no', 'time', 'real', 'imag'])
-        print(s.t2)
+        print s.t2
     def edit_AIPS_sntable_and_write_out(s, snver, outputsntable):
         wizuvdata = WizAIPSUVData(s.inbeamuvdata)
         sntable = wizuvdata.table('SN', snver)
         num_if  = int(sntable.keywords['NO_IF'])
         j = 0
         for row in sntable:
-            print(j in s.t2['row_no'])
+            print j in s.t2['row_no']
             if j in s.t2['row_no']:
                 index_in_t2 = s.t2['row_no']==j
                 for k in [1,2]:
@@ -6350,7 +6350,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
             if len(t[index])==0:
                 continue
             #print(t['time'][index], t['phi'][index])
-            print((matplotlib.rcParams['backend']))
+            print(matplotlib.rcParams['backend'])
             plt.scatter(t['time'][index], t['phi'][index], marker='.')
             if before_phase_correction:
                 plt.ylim(-180,180)

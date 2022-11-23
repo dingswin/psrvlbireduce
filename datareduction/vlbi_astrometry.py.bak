@@ -149,12 +149,12 @@ def main():
     try:
         auxdir = os.environ['PSRVLBAUXDIR']
     except KeyError:
-        print("PSRVLBAUXDIR is not defined - aborting!")
+        print "PSRVLBAUXDIR is not defined - aborting!"
         sys.exit(1)
     try:
         codedir = os.environ['PSRVLBICODEDIR']
     except KeyError:
-        print("PSRVLBICODEDIR is not defined - aborting!")
+        print "PSRVLBICODEDIR is not defined - aborting!"
         sys.exit(1)
     configdir     = auxdir + '/configs/'
     finalmodeldir = auxdir + '/sourcemodels/final/'
@@ -200,7 +200,7 @@ def main():
     if numtargets > 1:
         for config in targetconfigs[1:]:
             if skiplastif != targetconfigs[i]['skiplastif']:
-                print("All targets must have the same value for skiplastif! Aborting")
+                print "All targets must have the same value for skiplastif! Aborting"
                 sys.exit()
     if os.path.exists(logfile) and runfromlevel == 1:
         os.system("rm -f " + logfile)
@@ -284,7 +284,7 @@ def main():
         print("some of the expconfig variables are missing, try to find it in source file as an alternative")
         sourcefile = directory + experiment.lower() + ".source"
         if not os.path.exists(sourcefile):
-            print(("%s does not exist; aborting" % sourcefile))
+            print("%s does not exist; aborting" % sourcefile)
             sys.exit()
         else:
             gateduvfile, ungateduvfile, numinbeams, inbeamfiles, inbeamuvdatas, \
@@ -341,18 +341,18 @@ def main():
     ## Zap the existing cal tables if requested
     ################################################################################
     if zapallcaltables and runfromlevel > 1:
-        print("Zapping all SN, BP, and CL tables (except CL 1)!")
+        print "Zapping all SN, BP, and CL tables (except CL 1)!"
         for uvdata in alluvdatas:
             tables = uvdata.tables
             for table in tables:
                 if table[1][-2:] == "SN":
-                    print("Zapping SN " + str(table[0]) + " from " + uvdata.name)
+                    print "Zapping SN " + str(table[0]) + " from " + uvdata.name
                     uvdata.table('SN', table[0]).zap()
                 elif table[1][-2:] == "BP":
-                    print("Zapping BP " + str(table[0]) + " from " + uvdata.name)
+                    print "Zapping BP " + str(table[0]) + " from " + uvdata.name
                     uvdata.table('BP', table[0]).zap()
                 elif table[1][-2:] == "CL" and table[0] > 1:
-                    print("Zapping CL " + str(table[0]) + " from " + uvdata.name)
+                    print "Zapping CL " + str(table[0]) + " from " + uvdata.name
                     uvdata.table('CL', table[0]).zap()
 
     ################################################################################
