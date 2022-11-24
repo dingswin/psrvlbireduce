@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import math, os, sys
+from astropy.time import Time
 
 def getParallaxExtrema(ra, dec):
     os.system("rm -f pxextremajunk*.txt")
@@ -194,28 +195,31 @@ def ymd2mjd(year, month, day):
            int(275*month/9) + day - 678987
 
 def mjd2ymdhms(mjd):
+    '''
     imjd = int(mjd)
     fmjd = mjd - imjd
 
     j = imjd + 32044 + 2400001
-    g = j / 146097
+    g = j / 146097.
     dg = j % 146097
-    c = ((dg/36524 + 1)*3)/4
+    c = ((dg/36524. + 1)*3)/4.
     dc = dg - c*36524
-    b = dc / 1461
+    b = dc / 1461.
     db = dc % 1461
-    a = ((db/365 + 1)*3)/4
-    da = db - a*365
+    a = ((db/365. + 1)*3)/4.
+    da = db - a*365.
     y = g*400 + c*100 + b*4 + a
-    m = (da*5 + 308)/153 - 2
-    d = da - ((m + 4)*153)/5 + 122
+    m = (da*5 + 308)/153. - 2
+    d = da - ((m + 4)*153)/5. + 122
 
-    year = y - 4800 + (m + 2)/12;
-    month = (m + 2)%12 + 1;
-    day = d + 1;
+    year = y - 4800 + (m + 2)/12.
+    month = (m + 2)%12 + 1
+    day = d + 1
 
     hour = int(24*fmjd)
     minute = int(1440*fmjd - 60*hour)
     second = 86400*fmjd - (3600*hour + 60*minute)
-
-    return year, month, day, hour, minute, second 
+    '''
+    t = Time(mjd, format='mjd')
+    T = t.datetime
+    return T.year, T.month, T.day, T.hour, T.minute, T.second 

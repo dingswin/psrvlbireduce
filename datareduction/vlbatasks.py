@@ -879,7 +879,7 @@ def getrefdate(vexfile):
     for line in vexlines:
         if "exper_nominal_start" in line:
             splitline = line.split('=')
-            vexmjd = getVexMJD(splitline[-1][:-1])
+            vexmjd = getVexMJD(splitline[-1][:-1]) ## float output
             year, month, day, hour, minute, second = astro_utils.mjd2ymdhms(vexmjd)
             refdate = "%04d%02d%02d" % (year, month, day)
             break

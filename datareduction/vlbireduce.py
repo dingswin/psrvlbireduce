@@ -48,10 +48,7 @@ class vlbireduce(support_vlbireduce):
                               (inbeamfiles[i], directory))
                     if expconfig['clearcatalog'] and inbeamuvdatas[i].exists():
                         inbeamuvdatas[i].zap()
-                    print(inbeamfiles[i], inbeamuvdatas[i], directory, refdate,
-                          cltablemins)
                     vlbatasks.fitld_vlba("%s/templink.fits" % directory, inbeamuvdatas[i], [], 0.05, refdate, cltablemins)
-                    sys.exit()
             if not calonly:
                 if (expconfig['clearcatalog'] or targetonly) and gateduvdata.exists():
                     gateduvdata.zap(True)
