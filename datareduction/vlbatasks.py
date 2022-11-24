@@ -3391,7 +3391,11 @@ def applysntable(uvdataset, snversion, interpol, clversion, refant,
                  sourcelist=[], opcode = 'CALI', cutoff=0):
     clcal = AIPSTask('clcal', version = aipsver)
     clcal.indata = uvdataset
-    clcal.sources[1:] = clcal.soucode = clcal.calsour[1:] = ''
+    clcal.soucode = ''
+    for i in range(1, len(clcal.calsour)):
+        clcal.calsour[i] = ''
+    for i in range(1, len(clcal.sources)):
+        clcal.sources[i] = ''
     for i in range(len(sourcelist)):
         clcal.sources[i+1] = sourcelist[i]
     clcal.opcode = opcode
