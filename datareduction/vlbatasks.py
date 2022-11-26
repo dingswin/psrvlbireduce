@@ -5116,15 +5116,15 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
     isnfile         = tabledir + '/' + source + '.selfcal.sn'
 
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
-    difmap.stdin.write("obs " + inputfile + "\n")
-    difmap.stdin.write("uvaver 10\n")
-    difmap.stdin.write("mapsize 1024,1\n")
-    difmap.stdin.write("uvweight 0\n")
-    difmap.stdin.write("device /xs\n")
-    difmap.stdin.write("select i\n")
-    difmap.stdin.write("rmod " + mastermodelfile + "\n")
-    difmap.stdin.write("vplot\n")
-    difmap.stdin.write("radplot\n")
+    difmap.stdin.write(str.encode("obs " + inputfile + "\n"))
+    difmap.stdin.write(str.encode("uvaver 10\n"))
+    difmap.stdin.write(str.encode("mapsize 1024,1\n"))
+    difmap.stdin.write(str.encode("uvweight 0\n"))
+    difmap.stdin.write(str.encode("device /xs\n"))
+    difmap.stdin.write(str.encode("select i\n"))
+    difmap.stdin.write(str.encode("rmod " + mastermodelfile + "\n"))
+    difmap.stdin.write(str.encode("vplot\n"))
+    difmap.stdin.write(str.encode("radplot\n"))
     loopresponse = ''
     for i in range(20):
         loopresponse = loopresponse + 'modelfit 20\nselfcal true,true,2.5\n'
@@ -5136,11 +5136,11 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
         if response[:6] == 'uvaver':
             print("Averaging is not allowed!!!")
         else:
-            difmap.stdin.write(response + "\n")
+            difmap.stdin.write(str.encode(response + "\n"))
         response = input("Enter a difmap command - enter to go on to wmod")
         if response == 'loop': response = loopresponse
-    difmap.stdin.write("wmod " + expmodelfile + "\n")
-    difmap.stdin.write("select rr\n")
+    difmap.stdin.write(str.encode("wmod " + expmodelfile + "\n"))
+    difmap.stdin.write(str.encode("select rr\n"))
     loopresponse = ''
     for i in range(20):
         loopresponse = loopresponse + 'selfcal true,true,2.5\n'
@@ -5152,11 +5152,11 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
         if response[:6] == 'uvaver':
             print("Averaging is not allowed!!!")
         else:
-            difmap.stdin.write(response + "\n")
+            difmap.stdin.write(str.encode(response + "\n"))
         response = input("Enter a difmap command - enter to dump solutions")
         if response == 'loop': response = loopresponse
-    difmap.stdin.write("cordump " + rrsnfile + "\n")
-    difmap.stdin.write("select ll\n")
+    difmap.stdin.write(str.encode("cordump " + rrsnfile + "\n"))
+    difmap.stdin.write(str.encode("select ll\n"))
     print("Now selfcal for LL (I recommend solution intervals of 2.5 minutes)" + \
           " until chi-squared is ok. NO MODEL-FITTING!!!")
     response = input("Enter a difmap command - enter to go on to cordump: ")
@@ -5168,20 +5168,20 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
             difmap.stdin.write(response + "\n")
         response = input("Enter a difmap command - enter to dump solutions")
         if response == 'loop': response = loopresponse
-    difmap.stdin.write("cordump " + llsnfile + "\n")
-    difmap.stdin.write("exit\n\n")
+    difmap.stdin.write(str.encode("cordump " + llsnfile + "\n"))
+    difmap.stdin.write(str.encode("exit\n\n"))
     difmap.wait()
     os.system("dasncon " + rrsnfile + " " + llsnfile + " " + isnfile + "\n")
 
 def getimagerms(source, uvfitsfile, resultsfile):
     tempout = open("junkresults.txt", "w")
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, stdout=tempout)
-    difmap.stdin.write('obs ' + uvfitsfile + '\n')
-    difmap.stdin.write('select i\n')
-    difmap.stdin.write('uvweight 0,-1\n')
-    difmap.stdin.write('mapsize 2048,1\n')
-    difmap.stdin.write('print "imagermsguess", imstat(rms)\n')
-    difmap.stdin.write('exit\n\n')
+    difmap.stdin.write(str.encode('obs ' + uvfitsfile + '\n'))
+    difmap.stdin.write(str.encode('select i\n'))
+    difmap.stdin.write(str.encode('uvweight 0,-1\n'))
+    difmap.stdin.write(str.encode('mapsize 2048,1\n'))
+    difmap.stdin.write(str.encode('print "imagermsguess", imstat(rms)\n'))
+    difmap.stdin.write(str.encode('exit\n\n'))
     difmap.wait()
     tempin = open("junkresults.txt")
     for line in tempin:
@@ -5194,31 +5194,32 @@ def getimagerms(source, uvfitsfile, resultsfile):
 ##### Write a script to map one band of a pulsar ###############################
 def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=1024):
     imagename = imagename + "." + bands
-    difmap.stdin.write("clrmod true\n")
-    difmap.stdin.write("unshift\n")
-    difmap.stdin.write("shift -peakx,-peaky\n")
-    difmap.stdin.write("mapsize " + str(npixels) + "," + str(finepix) + "\n")
-    difmap.stdin.write("pkflux = peak(flux,abs)\n")
-    difmap.stdin.write("addcmp pkflux, true, finepeakx, finepeaky, true, 0, " + \
-                       "false, 1, false, 0, false, 0, 0, 0\n")
-    difmap.stdin.write("mapsize " + str(npixels) + "," + str(pixsize) + "\n")
-    difmap.stdin.write("modelfit 50\n")
-    difmap.stdin.write("rmsflux = imstat(rms)\n")
-    difmap.stdin.write("restore\n")
-    difmap.stdin.write("pkflux = peak(flux,abs)\n")
-    difmap.stdin.write("ilevs = pkflux/rmsflux\n")
-    difmap.stdin.write("lowlev = 300.0/ilevs\n")
-    difmap.stdin.write("loglevs lowlev\n")
-    #difmap.stdin.write("device " + imagename + ".clean.ps/PS\n")
+    difmap.stdin.write(str.encode("clrmod true\n"))
+    difmap.stdin.write(str.encode("unshift\n"))
+    difmap.stdin.write(str.encode("shift -peakx,-peaky\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(npixels) + "," +
+                                  str(finepix) + "\n"))
+    difmap.stdin.write(str.encode("pkflux = peak(flux,abs)\n"))
+    difmap.stdin.write(str.encode("addcmp pkflux, true, finepeakx, finepeaky, true, 0, " + "false, 1, false, 0, false, 0, 0, 0\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(npixels) + "," +
+                                  str(pixsize) + "\n"))
+    difmap.stdin.write(str.encode("modelfit 50\n"))
+    difmap.stdin.write(str.encode("rmsflux = imstat(rms)\n"))
+    difmap.stdin.write(str.encode("restore\n"))
+    difmap.stdin.write(str.encode("pkflux = peak(flux,abs)\n"))
+    difmap.stdin.write(str.encode("ilevs = pkflux/rmsflux\n"))
+    difmap.stdin.write(str.encode("lowlev = 300.0/ilevs\n"))
+    difmap.stdin.write(str.encode("loglevs lowlev\n"))
+    #difmap.stdin.write(str.encode("device " + imagename + ".clean.ps/PS\n"))
     psfile = imagename.split('/')[-1] +  ".clean.ps"
     os.system("rm -f " + psfile)
-    difmap.stdin.write("device %s/PS\n" % psfile)
-    difmap.stdin.write("mappl cln\n")
+    difmap.stdin.write(str.encode("device %s/PS\n" % psfile))
+    difmap.stdin.write(str.encode("mappl cln\n"))
     if os.path.exists(imagename):
         os.system("rm -f " + imagename)
-    difmap.stdin.write("wmap " + imagename + "\n")
-    difmap.stdin.write("wmod " + imagename + "mod\n")
-    difmap.stdin.write("unshift\n")
+    difmap.stdin.write(str.encode("wmap " + imagename + "\n"))
+    difmap.stdin.write(str.encode("wmod " + imagename + "mod\n"))
+    difmap.stdin.write(str.encode("unshift\n"))
 
 ##### Use difmap to map a target ###############################################
 def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
@@ -5231,53 +5232,60 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
-    difmap.stdin.write("float pkflux\n")
-    difmap.stdin.write("float peakx\n")
-    difmap.stdin.write("float peaky\n")
-    difmap.stdin.write("float finepeakx\n")
-    difmap.stdin.write("float finepeaky\n")
-    difmap.stdin.write("float rmsflux\n")
-    difmap.stdin.write("integer ilevs\n")
-    difmap.stdin.write("float lowlev\n")
-    difmap.stdin.write("obs " + uvfile + "\n")
-    difmap.stdin.write("mapsize " + str(mapsize) + "," + str(pixsize) + "\n")
-    difmap.stdin.write("uvweight " + uvweightstr + "\n")
-    difmap.stdin.write("uvaver " + uvaverstr + "\n")
-    difmap.stdin.write("uvtaper " + uvtaperstr + "\n")
-    difmap.stdin.write("mapcolor none\n")
+    difmap.stdin.write(str.encode("float pkflux\n"))
+    difmap.stdin.write(str.encode("float peakx\n"))
+    difmap.stdin.write(str.encode("float peaky\n"))
+    difmap.stdin.write(str.encode("float finepeakx\n"))
+    difmap.stdin.write(str.encode("float finepeaky\n"))
+    difmap.stdin.write(str.encode("float rmsflux\n"))
+    difmap.stdin.write(str.encode("integer ilevs\n"))
+    difmap.stdin.write(str.encode("float lowlev\n"))
+    difmap.stdin.write(str.encode("obs " + uvfile + "\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(mapsize) + "," +
+                                  str(pixsize) + "\n"))
+    difmap.stdin.write(str.encode("uvweight " + uvweightstr + "\n"))
+    difmap.stdin.write(str.encode("uvaver " + uvaverstr + "\n"))
+    difmap.stdin.write(str.encode("uvtaper " + uvtaperstr + "\n"))
+    difmap.stdin.write(str.encode("mapcolor none\n"))
+    
+    #difmap.stdin.write(str.encode("exit\n\n"))
+    #difmap.stdin.close()
+    #print('\n\ncheck check\n\n')
+    #sys.exit()
+    
     if nointeraction:
-        difmap.stdin.write("device /null\n")
+        difmap.stdin.write(str.encode("device /null\n"))
     else:
-        difmap.stdin.write("device /xs\n")
+        difmap.stdin.write(str.encode("device /xs\n"))
     if not nointeraction:
         if stokesi:
-            difmap.stdin.write("select i\n")
+            difmap.stdin.write(str.encode("select i\n"))
             response = input(inputmsg)
             while response != "":
-                difmap.stdin.write(response + "\n")
+                difmap.stdin.write(str.encode(response + "\n"))
                 response = input(inputmsg)
         else:
-            difmap.stdin.write("select ll\n")
+            difmap.stdin.write(str.encode("select ll\n"))
             response = input(inputmsg)
             while response != "":
-                difmap.stdin.write(response + "\n")
+                difmap.stdin.write(str.encode(response + "\n"))
                 response = input(inputmsg)
-            difmap.stdin.write("select rr\n")
+            difmap.stdin.write(str.encode("select rr\n"))
             inputmsg = "Enter a difmap command for the RR data - " + \
                        "enter to go to fitting"
             response = input(inputmsg)
             while response != "":
-                difmap.stdin.write(response + "\n")
+                difmap.stdin.write(str.encode(response + "\n"))
                 response = input(inputmsg)
-    difmap.stdin.write("select i\n")      
-    difmap.stdin.write("save " + uvfile + ".junk\n")
-    difmap.stdin.write("select i\n")
-    difmap.stdin.write("peakx = peak(x,abs)\n")
-    difmap.stdin.write("peaky = peak(y,abs)\n")
-    difmap.stdin.write("shift -peakx,-peaky\n")
-    difmap.stdin.write("mapsize 1024," + str(finepix) + "\n")
-    difmap.stdin.write("finepeakx = peak(x,abs)\n")
-    difmap.stdin.write("finepeaky = peak(y,abs)\n")
+    difmap.stdin.write(str.encode("select i\n"))      
+    difmap.stdin.write(str.encode("save " + uvfile + ".junk\n"))
+    difmap.stdin.write(str.encode("select i\n"))
+    difmap.stdin.write(str.encode("peakx = peak(x,abs)\n"))
+    difmap.stdin.write(str.encode("peaky = peak(y,abs)\n"))
+    difmap.stdin.write(str.encode("shift -peakx,-peaky\n"))
+    difmap.stdin.write(str.encode("mapsize 1024," + str(finepix) + "\n"))
+    difmap.stdin.write(str.encode("finepeakx = peak(x,abs)\n"))
+    difmap.stdin.write(str.encode("finepeaky = peak(y,abs)\n"))
     if stokesi:
         pols = ['i']
     else:
@@ -5285,14 +5293,15 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     for p in pols:
         for i in range(beginif, endif+1):
             print("Doing IF " + str(i) + ", pol " + p)
-            difmap.stdin.write("select " + p + "," + str(i) + "\n")
+            difmap.stdin.write(str.encode("select " + p + "," + str(i) + "\n"))
             if dogaussian:
                 write_difmapmapscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
             else:
                 write_difmappsrscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
         if not p == "i":
             print("Doing IF " + str(beginif) + "-" + str(endif) + ", pol " + p)
-            difmap.stdin.write("select " + p + "," + str(beginif) + "," + str(endif) + '\n')
+            difmap.stdin.write(str.encode("select " + p + "," + str(beginif) +
+                                          "," + str(endif) + '\n'))
             write_difmapmapscript(imagefile, p + ".a", difmap,pixsize,finepix)
     if endif > 0:
         selectstring = "select i," + str(beginif) + "," + str(endif)
@@ -5300,16 +5309,16 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
         selectstring = "select i," + ifrange
     else:
         selectstring = "select"
-    difmap.stdin.write(selectstring + "\n")
+    difmap.stdin.write(str.encode(selectstring + "\n"))
     if dogaussian:
         write_difmapmapscript(imagefile, "ii.a", difmap,pixsize,finepix,finalmapsize)
         write_difmapradplotscript(imagefile, "ii.a", difmap)
     else:
         write_difmappsrscript(imagefile, "ii.a", difmap,pixsize,finepix,finalmapsize)
-    #difmap.stdin.write("device %s.ps/PS\n" % imagefile)
-    #difmap.stdin.write("mappl cln\n")
-    difmap.stdin.write("exit\n\n")
-    difmap.wait()
+    #difmap.stdin.write(str.encode("device %s.ps/PS\n" % imagefile))
+    #difmap.stdin.write(str.encode("mappl cln\n"))
+    difmap.stdin.write(str.encode("exit\n\n"))
+    #difmap.wait()
     imagefilesplit = imagefile.split('/')
     if len(imagefilesplit) > 1:
         localimagefile = imagefile.split('/')[-1]
@@ -5319,36 +5328,38 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
 ##### Write a script to map one band of a target ###############################
 def write_difmapmapscript(imagename, bands, difmap, pixsize, finepix,npixels=1024):
     imagename = imagename + "." + bands
-    difmap.stdin.write("clrmod true\n")
-    difmap.stdin.write("unshift\n")
-    difmap.stdin.write("shift -peakx,-peaky\n")
-    difmap.stdin.write("mapsize " + str(npixels) + "," + str(finepix) + "\n")
-    difmap.stdin.write("pkflux = peak(flux,abs)\n")
-    difmap.stdin.write("addcmp pkflux, true, finepeakx, finepeaky, true, 0.5, " + \
-                       "true, 1, true, 0, true\n")
-    difmap.stdin.write("mapsize " + str(npixels) + "," + str(pixsize) + "\n")
-    difmap.stdin.write("modelfit 50\n")
-    difmap.stdin.write("rmsflux = imstat(rms)\n")
-    difmap.stdin.write("restore\n")
-    difmap.stdin.write("pkflux = peak(flux,abs)\n")
-    difmap.stdin.write("ilevs = pkflux/rmsflux\n")
-    difmap.stdin.write("lowlev = 300.0/ilevs\n")
-    difmap.stdin.write("loglevs lowlev\n")
-    #difmap.stdin.write("device " + imagename + ".clean.ps/PS\n")
+    difmap.stdin.write(str.encode("clrmod true\n"))
+    difmap.stdin.write(str.encode("unshift\n"))
+    difmap.stdin.write(str.encode("shift -peakx,-peaky\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(npixels) + "," +
+                                  str(finepix) + "\n"))
+    difmap.stdin.write(str.encode("pkflux = peak(flux,abs)\n"))
+    difmap.stdin.write(str.encode("addcmp pkflux, true, finepeakx, finepeaky, true, 0.5, " + \
+                       "true, 1, true, 0, true\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(npixels) + "," +
+                                  str(pixsize) + "\n"))
+    difmap.stdin.write(str.encode("modelfit 50\n"))
+    difmap.stdin.write(str.encode("rmsflux = imstat(rms)\n"))
+    difmap.stdin.write(str.encode("restore\n"))
+    difmap.stdin.write(str.encode("pkflux = peak(flux,abs)\n"))
+    difmap.stdin.write(str.encode("ilevs = pkflux/rmsflux\n"))
+    difmap.stdin.write(str.encode("lowlev = 300.0/ilevs\n"))
+    difmap.stdin.write(str.encode("loglevs lowlev\n"))
+    #difmap.stdin.write(str.encode("device " + imagename + ".clean.ps/PS\n"))
     psfile = imagename.split('/')[-1] +  ".clean.ps"
     os.system("rm -f " + psfile)
-    difmap.stdin.write("device %s/PS\n" % psfile)
-    difmap.stdin.write("mappl cln\n")
+    difmap.stdin.write(str.encode("device %s/PS\n" % psfile))
+    difmap.stdin.write(str.encode("mappl cln\n"))
     if os.path.exists(imagename):
         os.system("rm -f " + imagename)
-    difmap.stdin.write("wmap " + imagename + "\n")
-    difmap.stdin.write("unshift\n")
+    difmap.stdin.write(str.encode("wmap " + imagename + "\n"))
+    difmap.stdin.write(str.encode("unshift\n"))
 
 ##### Write a script to make a radplot showing how good the target was #########
 def write_difmapradplotscript(imagename, bands, difmap):
-    difmap.stdin.write("clrmod true\n")
-    difmap.stdin.write("unshift\n")
-    difmap.stdin.write("shift -peakx,-peaky\n")
+    difmap.stdin.write(str.encode("clrmod true\n"))
+    difmap.stdin.write(str.encode("unshift\n"))
+    difmap.stdin.write(str.encode("shift -peakx,-peaky\n"))
     # Add a clean window in roughly the right place
 
 
@@ -5359,28 +5370,29 @@ def difmap_mapsource(uvfile, imagefile, pixsize, mapsize, coarsepixsize):
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
-    difmap.stdin.write("float pkflux\n")
-    difmap.stdin.write("float peakx\n")
-    difmap.stdin.write("float peaky\n")
-    difmap.stdin.write("float finepeakx\n")
-    difmap.stdin.write("float finepeaky\n")
-    difmap.stdin.write("float rmsflux\n")
-    difmap.stdin.write("integer ilevs\n")
-    difmap.stdin.write("float lowlev\n")
-    difmap.stdin.write("obs " + uvfile + "\n")
-    difmap.stdin.write("select i\n")
-    difmap.stdin.write("mapsize " + str(mapsize) + "," + str(coarsepixsize) + "\n")
-    difmap.stdin.write("uvweight 0,-1\n")
-    difmap.stdin.write("mapcolor none\n")
-    difmap.stdin.write("device /none\n")
-    difmap.stdin.write("peakx = peak(x,abs)\n")
-    difmap.stdin.write("peaky = peak(y,abs)\n")
-    difmap.stdin.write("shift -peakx,-peaky\n")
-    difmap.stdin.write("mapsize 1024," + str(finepix) + "\n")
-    difmap.stdin.write("finepeakx = peak(x,abs)\n")
-    difmap.stdin.write("finepeaky = peak(y,abs)\n")
+    difmap.stdin.write(str.encode("float pkflux\n"))
+    difmap.stdin.write(str.encode("float peakx\n"))
+    difmap.stdin.write(str.encode("float peaky\n"))
+    difmap.stdin.write(str.encode("float finepeakx\n"))
+    difmap.stdin.write(str.encode("float finepeaky\n"))
+    difmap.stdin.write(str.encode("float rmsflux\n"))
+    difmap.stdin.write(str.encode("integer ilevs\n"))
+    difmap.stdin.write(str.encode("float lowlev\n"))
+    difmap.stdin.write(str.encode("obs " + uvfile + "\n"))
+    difmap.stdin.write(str.encode("select i\n"))
+    difmap.stdin.write(str.encode("mapsize " + str(mapsize) + "," +
+                                  str(coarsepixsize) + "\n"))
+    difmap.stdin.write(str.encode("uvweight 0,-1\n"))
+    difmap.stdin.write(str.encode("mapcolor none\n"))
+    difmap.stdin.write(str.encode("device /none\n"))
+    difmap.stdin.write(str.encode("peakx = peak(x,abs)\n"))
+    difmap.stdin.write(str.encode("peaky = peak(y,abs)\n"))
+    difmap.stdin.write(str.encode("shift -peakx,-peaky\n"))
+    difmap.stdin.write(str.encode("mapsize 1024," + str(finepix) + "\n"))
+    difmap.stdin.write(str.encode("finepeakx = peak(x,abs)\n"))
+    difmap.stdin.write(str.encode("finepeaky = peak(y,abs)\n"))
     write_difmapmapscript(imagefile, difmap, pixsize, finepix)
-    difmap.stdin.write("exit\n\n")
+    difmap.stdin.write(str.encode("exit\n\n"))
     difmap.wait()
 
 ##### Use JMFIT to get position/error estimate for a loaded AIPS image #########

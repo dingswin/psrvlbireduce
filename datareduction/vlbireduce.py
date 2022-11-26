@@ -14,7 +14,7 @@ from AIPSTV import AIPSTV
 ################################################################################
 ## General python imports
 ################################################################################
-import sys, os, string, math, warnings, subprocess, yaml, glob
+import sys, os, string, math, warnings, yaml, glob
 import interaction, vlbatasks
 from support_vlbireduce import support_vlbireduce
 from time import gmtime, strftime
