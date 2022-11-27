@@ -1,0 +1,12 @@
+! Started logfile: difmap.log_6 on Sun Nov 27 13:16:07 2022
+![@/Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot]
+! Obeying initialization file: /Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot
+device /xwindow
+! Attempting to open device: '/xwindow'
+![Exited script file: /Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot]
+! <Aborted by Interrupt>
+float pkflux
+float peakx
+exit
+! Exiting program
+! Log file difmap.log_6 closed on Sun Nov 27 13:16:12 2022

@@ -1,0 +1,11 @@
+! Started logfile: difmap.log on Sun Nov 27 12:27:38 2022
+![@/Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot]
+! Obeying initialization file: /Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot
+device /xwindow
+! Attempting to open device: '/xwindow'
+![Exited script file: /Users/haoding/packages/uvf_difmap_2.5p/uvf_difmap_2.5p/difmap.boot]
+float pkflux
+float peakx
+exit
+! Exiting program
+! Log file difmap.log closed on Sun Nov 27 12:27:38 2022

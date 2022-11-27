@@ -5170,6 +5170,7 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
         if response == 'loop': response = loopresponse
     difmap.stdin.write("cordump " + llsnfile + "\n")
     difmap.stdin.write("exit\n\n")
+    difmap.stdin.close()
     difmap.wait()
     os.system("dasncon " + rrsnfile + " " + llsnfile + " " + isnfile + "\n")
 
@@ -5182,6 +5183,7 @@ def getimagerms(source, uvfitsfile, resultsfile):
     difmap.stdin.write('mapsize 2048,1\n')
     difmap.stdin.write('print "imagermsguess", imstat(rms)\n')
     difmap.stdin.write('exit\n\n')
+    difmap.stdin.close()
     difmap.wait()
     tempin = open("junkresults.txt")
     for line in tempin:
@@ -5231,6 +5233,9 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
+    #difmap.communicate(input='obs' + uvfile +'\n' + 'select i\nfloat pkflux\nexit\n')
+    #difmap.communicate(input='float peakx\n')
+    #difmap.terminate()
     difmap.stdin.write("float pkflux\n")
     difmap.stdin.write("float peakx\n")
     difmap.stdin.write("float peaky\n")
@@ -5309,6 +5314,7 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     #difmap.stdin.write("device %s.ps/PS\n" % imagefile)
     #difmap.stdin.write("mappl cln\n")
     difmap.stdin.write("exit\n\n")
+    difmap.stdin.close()
     difmap.wait()
     imagefilesplit = imagefile.split('/')
     if len(imagefilesplit) > 1:
@@ -5381,6 +5387,7 @@ def difmap_mapsource(uvfile, imagefile, pixsize, mapsize, coarsepixsize):
     difmap.stdin.write("finepeaky = peak(y,abs)\n")
     write_difmapmapscript(imagefile, difmap, pixsize, finepix)
     difmap.stdin.write("exit\n\n")
+    difmap.stdin.close()
     difmap.wait()
 
 ##### Use JMFIT to get position/error estimate for a loaded AIPS image #########
