@@ -137,7 +137,7 @@ def parse_log(code):
 #
 if __name__ == "__main__":
 
-    print("Making diagnostic plots ...")
+    print "Making diagnostic plots ..."
     #
     # Basic stuff
     #
@@ -334,4 +334,4 @@ if __name__ == "__main__":
     #        
     # Print out HTML.
     #
-    print(diag, file=open("Diagnostic.html", 'w'))
+    print >>open("Diagnostic.html", 'w'), diag
