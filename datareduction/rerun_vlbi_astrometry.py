@@ -97,6 +97,7 @@ targetdir = auxdir + '/processing/' + targetname
 if ((experiment=='') and (targetname=='')) or ((experiment!='') and (targetname!='')):
     print(usage)
     sys.exit()
+## only run on one experiment
 if experiment!='' and targetname=='':
     prepare_given_exp(experiment)
     if prepareonly:
@@ -104,6 +105,7 @@ if experiment!='' and targetname=='':
     run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots)
     sys.exit()
 
+## run through multiple epochs of one target
 # if experiment=='' and targetname!=''
 targetdir = auxdir + '/processing/' + targetname
 if not os.path.exists(targetdir):

@@ -75,13 +75,13 @@ class Logger(object):
     def __init__(self, loghandle):
         self.terminal = sys.stdout
         self.log = loghandle
-
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)  
-
     def isatty(self):
         return False
+    def flush(self):
+        pass
 
 def main():
     """
