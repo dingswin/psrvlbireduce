@@ -1,5 +1,5 @@
 #!/usr/bin/env ParselTongue
-"""
+__doc__ = """
 Functionality
 -------------
 A ParselTongue script for phase referencing VLBA data and getting positions 

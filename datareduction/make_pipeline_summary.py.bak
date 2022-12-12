@@ -2,7 +2,7 @@
 import os, sys
 
 if not len(sys.argv) == 3:
-    print("Usage: %s <observation> <rootdir>" % sys.argv[0])
+    print "Usage: %s <observation> <rootdir>" % sys.argv[0]
     sys.exit()
 
 observation = sys.argv[1]
@@ -10,12 +10,12 @@ rootdir = sys.argv[2]
 directory = rootdir + '/' + observation + '/'
 logfile = directory + observation + '.datacheck.log'
 if not os.path.exists(logfile):
-    print(logfile + " does not exist!")
+    print logfile + " does not exist!"
     sys.exit()
 try:
     auxdir = os.environ['PSRVLBAUXDIR']
 except KeyError:
-    print('Environment variable PSRVLBAUXDIR must be defined')
+    print 'Environment variable PSRVLBAUXDIR must be defined'
     exit(0)
 
 lines = open(logfile).readlines()
