@@ -5,17 +5,17 @@
 import os, glob, re, pwd
 import subprocess
 import datetime
-import markup
+from MarkupPy import markup
 
 months = { 1:'January',  2:'February',  3:'March',
            4:'April',    5:'May',       6:'June',
            7:'July',     8:'August',    9:'September',
           10:'October', 11:'November', 12:'December'}
 
-convert  = '/usr/bin/convert'
-psselect = '/usr/bin/psselect'
-difmap   = 'difmap'
-mv       = '/bin/mv'
+#convert  = '/usr/bin/convert'
+#psselect = '/usr/bin/psselect'
+#difmap   = 'difmap'
+#mv       = '/bin/mv'
 
 ##############################
 
@@ -48,12 +48,12 @@ def plt_uvdata(code):
         dfile.close()
 
         dfile = open('diagnostic_tmp.par', 'r')
-        status = subprocess.call(difmap,
+        status = subprocess.call('difmap',
                                  stdin=dfile, stdout=subprocess.PIPE)
         dfile.close()
 
-        status = subprocess.call([mv, plotfile[-2], 'images'])
-        status = subprocess.call([mv, plotfile[-1], 'images'])
+        status = subprocess.call(['mv', plotfile[-2], 'images'])
+        status = subprocess.call(['mv', plotfile[-1], 'images'])
         os.unlink('diagnostic_tmp.par')
         os.unlink('difmap.log')
 
@@ -82,9 +82,10 @@ def plt_auto():
         f.close()
         
         for ipage in range(int(pages[1])):
-            status = subprocess.call([psselect, '-p%d'%(ipage+1), fl, 'junk.ps'])
+            status = subprocess.run(['psselect', '-p%d'%(ipage+1), fl, 'junk.ps'])
             outfile = 'images/%s-%02d.png'%(basefile, ipage+1)
-            status = subprocess.call([convert, 'junk.ps', outfile])
+            status = subprocess.run(['convert', 'junk.ps', '-colorspace',
+                                     'RGB', outfile]) 
     
     os.unlink('junk.ps')
 
