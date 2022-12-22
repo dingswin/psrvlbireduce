@@ -15,8 +15,8 @@ def ftpget(url, directory, filename):
     return contents
 
 def find_obs_date_from_idifits(idifitsfile):
-    header = open(idifitsfile).readline()
-    msgs = header.split('   ')
+    header = open(idifitsfile, 'rb').readline()[:14408]
+    msgs = header.decode().split('   ')
     for msg in msgs:
         if 'DATE-OBS' in msg:
             date_obs = msg.strip().split('=')[-1].strip()
@@ -79,13 +79,15 @@ def main():
             splitline = line.split('=')
             syear     = int(splitline[1][:4])
             sdoy      = int(splitline[1][5:8])
-            syy       = syear - 100*(syear/100)
+            #syy       = syear - 100*(syear/100)
+            syy       = syear % 100 
             startfound = True
         elif "exper_nominal_stop" in line:
             splitline = line.split('=')
             eyear     = int(splitline[1][:4])
             edoy      = int(splitline[1][5:8])
-            eyy       = eyear - 100*(eyear/100)
+            #eyy       = eyear - 100*(eyear/100)
+            eyy       = eyear % 100
             stopfound = True
         if startfound and stopfound:
             break
