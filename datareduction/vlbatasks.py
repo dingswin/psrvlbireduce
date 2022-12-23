@@ -39,6 +39,7 @@ vlbabeams['OV'] = [-1.76, -0.95, 29.57, 29.64, 29.67, 29.62, 1438.0e6]
 vlbabeams['BR'] = [-1.44, -0.50, 29.19, 29.36, 29.55, 29.44, 1438.0e6]
 vlbabeams['MK'] = [-1.56, -0.60, 29.20, 29.26, 29.24, 29.25, 1438.0e6]
 vlbabeams['GB'] = [0, 0, 7.3, 7.3, 7.3, 7.3, 1438.0e6] # Total guess, based on scaling from VLBA
+vlbabeams['Y'] = [-1.59, -0.63, 29.27, 29.18, 29.28, 29.14, 1438.0e6] # Following PT.
 vlbalocations = {}
 # Latitude, longitude, elevation(m)
 vlbalocations['SC'] = ['17:45:23.68', '-64:35:01.07',  16  ]
@@ -52,6 +53,7 @@ vlbalocations['OV'] = ['37:13:53.95', '-118:16:37.37', 1196]
 vlbalocations['BR'] = ['48:07:52.42', '-119:40:59.80', 250 ]
 vlbalocations['MK'] = ['19:48:04.97', '-155:27:19.81', 3763]
 vlbalocations['GB'] = ['38:26:16.16', '-100:09:51.20', 844]
+vlbalocations['Y']  = ['34:04:43.497', '-107:37:03.819', 2120]
 
 ################################################################################
 # Container classes
@@ -1818,7 +1820,7 @@ def airyresponse(theta, D, lam):
 def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fieldsourcenames, 
                         iscal, issearch=True, isonepointing=False, onlygettimes=False, 
                         skipmissingsources=False):
-    numantennas    = len(uvdata.antennas)
+    numantennas    = len(uvdata.antennas) # this has python3 issue!
     wizuvdata      = WizAIPSUVData(uvdata)
     examplesntable = wizuvdata.table('SN', examplesnversion)
     num_if         = examplesntable.keywords['NO_IF']
