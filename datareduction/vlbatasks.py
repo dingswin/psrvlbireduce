@@ -5116,8 +5116,11 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
     rrsnfile        = tabledir + '/' + source + '.selfcal.rr.sn'
     llsnfile        = tabledir + '/' + source + '.selfcal.ll.sn'
     isnfile         = tabledir + '/' + source + '.selfcal.sn'
-
-    difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    
+    if sys.version_info.major == 3: ## python3
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    elif sys.version_info.major == 2: ## python2
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     difmap.stdin.write("obs " + inputfile + "\n")
     difmap.stdin.write("uvaver 10\n")
     difmap.stdin.write("mapsize 1024,1\n")
@@ -5178,7 +5181,10 @@ def difmapselfcal(inputfile, tabledir, modeldir, experiment, source):
 
 def getimagerms(source, uvfitsfile, resultsfile):
     tempout = open("junkresults.txt", "w")
-    difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, stdout=tempout, text=True)
+    if sys.version_info.major == 3: ## python3
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, stdout=tempout, text=True)
+    elif sys.version_info.major == 2: ## python2
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, stdout=tempout)
     difmap.stdin.write('obs ' + uvfitsfile + '\n')
     difmap.stdin.write('select i\n')
     difmap.stdin.write('uvweight 0,-1\n')
@@ -5232,7 +5238,10 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0,
     Note that for VLBI search (with no previous VLBI detection), uvaverstr should be set to <=30 to avoid smearing effect.
     """
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
-    difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    if sys.version_info.major == 3: ## python3 
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    elif sys.version_info.major == 2: ## python2
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
     #difmap.communicate(input='obs' + uvfile +'\n' + 'select i\nfloat pkflux\nexit\n')
@@ -5366,7 +5375,10 @@ def difmap_mapsource(uvfile, imagefile, pixsize, mapsize, coarsepixsize):
     finepix = 0.2
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
-    difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    if sys.version_info.major == 3: ## python3 
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE, text=True)
+    elif sys.version_info.major == 2: ## python2
+        difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     difmap.stdin.write("float pkflux\n")
     difmap.stdin.write("float peakx\n")
     difmap.stdin.write("float peaky\n")
