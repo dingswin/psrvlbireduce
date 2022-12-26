@@ -2283,7 +2283,13 @@ class vlbireduce(support_vlbireduce):
                         if inbeamsrc in config['primaryinbeam']:
                             vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                             #write out pre-selfcal in-beam cal data
-                            vlbatasks.writedata(self.splitdata_PS, self.inbeampreselfcaluvfiles[i], True)
+                            tempfile = directory + '/temp.fits'
+                            os.remove(tempfile)
+                            #if os.path.exists(temp_inbeampreselfcaluvfile):
+                            #    os.remove(temp_inbeampreselfcaluvfile)
+                            #print(inbeamuvdatas[count], inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
+                            vlbatasks.writedata(self.splitdata_PS, tempfile, True)
+                            os.system("mv -f " + tempfile + " " + self.inbeampreselfcaluvfiles[i])
                             #os.system("mv -f " + tempdivfile + " " + self.inbeampreselfcaluvfiles[i][count])
                         #divide inbeamuvfiles by model
                         tempdivfile = directory + '/temp.fits'

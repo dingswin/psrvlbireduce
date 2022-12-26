@@ -15,7 +15,7 @@ def ftpget(url, directory, filename):
     return contents
 
 def find_obs_date_from_idifits(idifitsfile):
-    header = open(idifitsfile, 'rb').readline()[:14408]
+    header = open(idifitsfile, 'rb').readline()[:1000]
     msgs = header.decode().split('   ')
     for msg in msgs:
         if 'DATE-OBS' in msg:
