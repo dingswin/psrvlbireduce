@@ -335,4 +335,4 @@ if __name__ == "__main__":
     #        
     # Print out HTML.
     #
-    print(diag, file=open("Diagnostic.html", 'w'))
+    #print(diag, file=open("Diagnostic.html", 'w'))

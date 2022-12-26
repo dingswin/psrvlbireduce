@@ -2284,7 +2284,7 @@ class vlbireduce(support_vlbireduce):
                             vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion, 'PRESEL', inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                             #write out pre-selfcal in-beam cal data
                             tempfile = directory + '/temp.fits'
-                            os.remove(tempfile)
+                            os.system("rm -f " + tempfile)
                             #if os.path.exists(temp_inbeampreselfcaluvfile):
                             #    os.remove(temp_inbeampreselfcaluvfile)
                             #print(inbeamuvdatas[count], inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
