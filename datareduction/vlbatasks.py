@@ -4718,6 +4718,12 @@ def createmodelflagtable(uvdataset, modelimage, minflux, flagver):
 def singlesource_calib(uvdataset, modelimage, snver, refant, doamp, solmins,
                        dostokesi, soltype, calibsnr, averageifs, uvrange=[0,0],
                        weightit=0,flagwheremodelbelow=-1.0,normalise=False):
+    """
+    Input parameters
+    ----------------
+    uvrange
+        unit : kilowavelength
+    """
     calib = AIPSTask('calib', version = aipsver)
     calib.indata = uvdataset
     if modelimage == None:

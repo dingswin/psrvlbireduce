@@ -69,7 +69,7 @@ from optparse import OptionParser
 warnings.defaultaction = "always"
 
 ################################################################################
-# Little logger class to put print statements to the log file
+## Little logger class to put print statements to the log file
 ################################################################################
 class Logger(object):
     def __init__(self, loghandle):
@@ -88,7 +88,7 @@ def main():
     main program
     """
     ################################################################################
-    # Option parsing and defaulted global variables
+    ## Option parsing and defaulted global variables
     ################################################################################
     try:
         aipsver = os.environ['PSRVLBAIPSVER']

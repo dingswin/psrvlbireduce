@@ -1532,6 +1532,7 @@ class vlbireduce(support_vlbireduce):
         2. inverse referencing is made possible here.
         3. self.doneinbeams include inbeam calibrator for each target to do self-calibration.
         """
+        print('\nNow preparing variables for inbeam self-calibrations...')
         self.doneinbeams = []
         self.inbeamfilenums = []
         self.secondaryinbeams = []
@@ -1555,7 +1556,7 @@ class vlbireduce(support_vlbireduce):
                 if config['inbeamcalibsp1mins'] > self.maxinbeamcalibsp1mins:
                     self.maxinbeamcalibsp1mins = config['inbeamcalibsp1mins']
             except KeyError:
-                print("No secondary inbeam calibrator...")
+                print("No secondary inbeam self-calibration requested...")
             try:
                 if config['inbeamcalibpnmins'] > self.maxinbeamcalibpnmins:
                     self.maxinbeamcalibpnmins = config['inbeamcalibpnmins']
@@ -1579,10 +1580,14 @@ class vlbireduce(support_vlbireduce):
             except KeyError:
                 secondaryinbeam = "XXXXX"
             for j in range(len(inbeamnames[i])):
-                for inbeamsrc in secondaryinbeam:
-                    if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
-                        self.secondaryinbeams.append(inbeamsrc.strip())
-                        self.secondaryfilenums.append(j)
+                if self.maxinbeamcalibsp1mins > 0:
+                    for inbeamsrc in secondaryinbeam:
+                        if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
+                            self.secondaryinbeams.append(inbeamsrc.strip())
+                            self.secondaryfilenums.append(j)
+                    if len(self.secondaryinbeams) == 0:
+                        print("\nSecondary inbeam self-calibration is requested.\nHowever, either secondary inbeam calibrator(s) is not specified, or it does not exist. Aborted.")
+                        sys.exit(1)
                 for primaryinbeam in primaryinbeams:
                     if primaryinbeam.strip() == inbeamnames[i][j].strip():
                         if not primaryinbeam.strip() in self.doneinbeams:

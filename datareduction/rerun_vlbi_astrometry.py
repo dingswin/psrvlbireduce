@@ -103,6 +103,7 @@ if experiment!='' and targetname=='':
     if prepareonly:
         sys.exit()
     run_pipeline_given_exp(experiment, runlevel, skipdiagnosticplots)
+    os.system('rm difmap.log* &> /dev/null')
     sys.exit()
 
 ## run through multiple epochs of one target
@@ -149,5 +150,7 @@ for vexfile in vexfiles:
         
     os.system('vlbi_astrometry.py -e %s -r %s --alwayssaved' % (experiment, runlevel))
     """
+
+os.system('rm difmap.log* &> /dev/null')
 current_time=datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 print("\nSuccessfully rerun through all epochs for %s at %s (UTC)\n" % (targetname,current_time))
