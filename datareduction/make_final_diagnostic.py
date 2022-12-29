@@ -2,6 +2,7 @@
 #
 # Script to make a diagnostic Web document.
 #
+from __future__ import print_function ## this import has to be placed on the top; it makes python3 print works for python2
 import os, glob, re, pwd
 import subprocess
 import datetime
@@ -335,4 +336,5 @@ if __name__ == "__main__":
     #        
     # Print out HTML.
     #
-    print(diag, file=open("Diagnostic.html", 'w'))
+    print(diag, file=open("Diagnostic.html", 'w')) ## python3 way
+    #print >> open("Diagnostic.html", 'w'), diag ## python2 way
