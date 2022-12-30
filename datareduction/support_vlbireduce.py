@@ -692,6 +692,8 @@ class support_vlbireduce(object):
                     calibstring = 'ap1'
                 elif dosecondary:
                     calibstring = 'sp1'
+                    if int(dualphscal_setup[0])>0:
+                        calibstring += '.dualphscal'
                 else:
                     calibstring = 'p1'
                     if int(dualphscal_setup[0])>0:
@@ -900,15 +902,16 @@ class support_vlbireduce(object):
                 calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
             else:
                 calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
-            ## for the first imbeamselfcalp1 or inbeamselfcalpn apply
             if not os.path.exists(calibtablepath):
-                calibtablepath = calibtablepath.replace('.dualphscal', '')
+                #calibtablepath = calibtablepath.replace('.dualphscal', '')
+                print('SN file (i.e. %s) not found - aborted!' % calibtablepath)
+                sys.exit(1)
 
             print("Applying table " + calibtablepath)
-            if targetonly and (not os.path.exists(calibtablepath)):
-                print("For target-only, the SN file must exist already - aborting!")
-                print(calibtablepath)
-                sys.exit(1)
+            #if targetonly and (not os.path.exists(calibtablepath)):
+            #    print("For target-only, the SN file must exist already - aborting!")
+                #print(calibtablepath)
+                #sys.exit(1)
             if not targetonly:
                 for i in range(numinbeams):
                     vlbatasks.loadtable(inbeamuvdatas[i], calibtablepath,
