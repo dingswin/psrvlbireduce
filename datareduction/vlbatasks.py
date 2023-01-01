@@ -6257,7 +6257,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print((s.t1))
         final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
-        writefile = open(final_saved_phase_edit, 'w')
+        writefile = open(final_saved_phase_edit, 'wb')
         pickle.dump(s.t1, writefile)
         writefile.close()
         #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False) ##cannot yet work with screen. to make plot, one needs to run the pipeline separately in a small runlevel range.
@@ -6273,16 +6273,16 @@ class calibrate_target_phase_with_two_colinear_phscals:
         saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
         t = s.t
         if os.path.exists(saved_phase_edit):
-            choise = input('Do you want to use saved phase edit and continue the edit? Press y if affirmative: ')
-            if choise == 'y' or choise=='yes':
+            choice = input('\nDo you want to use saved phase edit and continue the edit? Press y if affirmative: ')
+            if choice == 'y' or choice=='yes':
                 print("Continue on the saved phase edit.")
-                readfile = open(saved_phase_edit, 'r')
+                readfile = open(saved_phase_edit, 'rb')
                 t = pickle.load(readfile)
                 readfile.close()
             else:
                 print("Start new phase edit.")
         
-        phase_shifts = []
+        phase_shifts = None
         NAT = non_ambiguity_threshold = 90 ## in deg
         for i in range(1,s.numantennas+1):
             index = t['antenna_no']==i
@@ -6300,7 +6300,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
             if max(eachAnt['phi'])>=NAT or min(eachAnt['phi'])<= -NAT:
                 print(eachAnt['row_no'])
                 print("Here is the diagnostic plot for phase edit on a new antenna.\n")
-                phase_shifts = []
+                phase_shifts = None
                 while not phase_shifts in ['s', 'n']:
                     s.plot_diagnostic_phi_versus_time_for_each_antenna1(eachAnt, i)
                     phase_shifts = input("\nYou can press n to proceed to the next antenna and s to immediately exit.\nEnter an array of two integers N1,N2, separated by comma (e.g. 2,3), meaning shifting phases of the N1th and onward points (start from 0) by N2*360 degree (minus N2 accepted).\nNote that if -10<N2<-4, then the point would be deleted; when N2<-9, then the phases of the N1th and onward points will be deleted: ")
@@ -6326,7 +6326,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
             print(row_nos)
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print(s.t1)
-        writefile = open(saved_phase_edit, 'w')
+        writefile = open(saved_phase_edit, 'wb')
         pickle.dump(s.t1, writefile)
         writefile.close()
     def copy_inbeamselfcal_sntable(s, sntable):
@@ -6336,7 +6336,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
     def load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(s, final_phase_edit, correction_factor):
         from astropy.table import Table
         import pickle
-        readfile = open(final_phase_edit, 'r')
+        readfile = open(final_phase_edit, 'rb')
         t = pickle.load(readfile)
         readfile.close()
         phis = t['phi'] * correction_factor
