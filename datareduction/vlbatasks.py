@@ -6258,7 +6258,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         print((s.t1))
         final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
         writefile = open(final_saved_phase_edit, 'wb')
-        pickle.dump(s.t1, writefile)
+        pickle.dump(s.t1, writefile, protocol=2) ## in this way, python3 pickle can dump pickles that can be understood by python2
         writefile.close()
         #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False) ##cannot yet work with screen. to make plot, one needs to run the pipeline separately in a small runlevel range.
 
@@ -6327,7 +6327,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print(s.t1)
         writefile = open(saved_phase_edit, 'wb')
-        pickle.dump(s.t1, writefile)
+        pickle.dump(s.t1, writefile, protocol=2) ## in this way, python3 pickle can dump pickles that can be understood by python2
         writefile.close()
     def copy_inbeamselfcal_sntable(s, sntable):
         oldsntable = sntable.replace('.icalib.p1.sn', '_original.icalib.p1.sn')
