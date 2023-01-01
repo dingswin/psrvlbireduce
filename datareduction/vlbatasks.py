@@ -1,6 +1,8 @@
 ################################################################################
 # AIPS imports
 ################################################################################
+from __future__ import print_function
+from builtins import input
 from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
@@ -6194,8 +6196,8 @@ class calibrate_target_phase_with_two_colinear_phscals:
                     real = math.cos(phi_rad)
                     imag = math.sin(phi_rad)
                     for k in [1,2]:    
-                        exec("row.imag%d[i] = imag" % k)
-                        exec("row.real%d[i] = real" % k)
+                        exec(("row.imag%d[i] = imag" % k), globals())
+                        exec(("row.real%d[i] = real" % k), globals())
                 row.update()
             j += 1
         sntable.close()
@@ -6243,7 +6245,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                             eachAnt.remove_rows(list(range(N1,len(eachAnt))))
                     
             for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
-                exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+                exec(("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter)), globals())
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print((s.t1))
         final_saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal.final'
@@ -6257,7 +6259,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         from astropy.table import Table
         import pickle
         for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
-            exec('%ss = np.array([])' % parameter)
+            exec(('%ss = np.array([])' % parameter), globals())
         saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
         t = s.t
         if os.path.exists(saved_phase_edit):
@@ -6279,7 +6281,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                 continue
             if phase_shifts == 's':
                 for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
-                    exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+                    exec(("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter)), globals())
                 continue
             if max(eachAnt['phi'])>=NAT or min(eachAnt['phi'])<= -NAT:
                 print(eachAnt['row_no'])
@@ -6302,7 +6304,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
                     else:
                         eachAnt.remove_rows(list(range(N1,len(eachAnt))))
             for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
-                exec("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter))
+                exec(("%ss = np.append(%ss, eachAnt['%s'])" % (parameter, parameter, parameter)), globals())
             print(row_nos)
         s.t1 = Table([row_nos, antenna_nos, times, phis], names=['row_no', 'antenna_no', 'time', 'phi'])
         print(s.t1)
@@ -6335,8 +6337,8 @@ class calibrate_target_phase_with_two_colinear_phscals:
             if j in s.t2['row_no']:
                 index_in_t2 = s.t2['row_no']==j
                 for k in [1,2]:
-                    exec("row.imag%d = list(s.t2['imag'][index_in_t2]*np.ones(num_if))" % k)
-                    exec("row.real%d = list(s.t2['real'][index_in_t2]*np.ones(num_if))" % k)
+                    exec(("row.imag%d = list(s.t2['imag'][index_in_t2]*np.ones(num_if))" % k), globals())
+                    exec(("row.real%d = list(s.t2['real'][index_in_t2]*np.ones(num_if))" % k), globals())
                 row.update()
             j += 1
         sntable.close()

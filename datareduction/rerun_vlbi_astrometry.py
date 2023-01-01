@@ -4,6 +4,8 @@
 ###-- tailored for MSPSRPI
 ###-- if -e bd223a, just rerun bd223a, if -t J1012+5307, rerun all epochs regarding the target 
 ############################################################################
+from __future__ import print_function
+from builtins import input
 import os,sys,glob,yaml,howfun,datetime
 from optparse import OptionParser
 

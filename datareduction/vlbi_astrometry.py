@@ -1,4 +1,29 @@
 #!/usr/bin/env ParselTongue
+################################################################################
+## python2/3 compatibility
+################################################################################
+from __future__ import print_function
+from builtins import input
+
+################################################################################
+## AIPS imports
+################################################################################
+from AIPS import AIPS, AIPSDisk
+from AIPSTask import AIPSTask, AIPSList
+AIPSTask.isbatch = 0
+from AIPSData import AIPSUVData, AIPSImage, AIPSCat
+from AIPSTV import AIPSTV
+
+################################################################################
+## General python imports
+################################################################################
+import sys, os, string, math, warnings, subprocess, yaml, glob
+import interaction, vlbatasks
+from vlbireduce import vlbireduce
+from time import gmtime, strftime
+from optparse import OptionParser
+warnings.defaultaction = "always"
+
 __doc__ = """
 Functionality
 -------------
@@ -49,24 +74,6 @@ will be gradually replaced by three major formats.
     ## SEGMENT COMMENTS
     #######################################
 """
-################################################################################
-## AIPS imports
-################################################################################
-from AIPS import AIPS, AIPSDisk
-from AIPSTask import AIPSTask, AIPSList
-AIPSTask.isbatch = 0
-from AIPSData import AIPSUVData, AIPSImage, AIPSCat
-from AIPSTV import AIPSTV
-
-################################################################################
-## General python imports
-################################################################################
-import sys, os, string, math, warnings, subprocess, yaml, glob
-import interaction, vlbatasks
-from vlbireduce import vlbireduce
-from time import gmtime, strftime
-from optparse import OptionParser
-warnings.defaultaction = "always"
 
 ################################################################################
 ## Little logger class to put print statements to the log file
