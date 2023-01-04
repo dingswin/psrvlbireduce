@@ -2557,6 +2557,39 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
         fitld.datain = f
         fitld()
 
+def fitld_vlba1(file, aipsdata, wtthreshhold=0.4, rdate='', cltablemin=0.166667):
+    fitld = AIPSTask('fitld', version = aipsver)
+    splitfile = file.split(':')
+    fitld.doconcat = 0
+    if len(splitfile) > 1:
+        fitld.doconcat = 1
+    print(fitld.doconcat)
+    fitld.optype = ''
+    fitld.ncount = 0
+    fitld.dotable = 1
+    fitld.douvcomp = 1
+    fitld.qual = -1
+    fitld.bchan = 0
+    fitld.echan = 0
+    fitld.bif = 0
+    fitld.eif = 0
+    fitld.clint = cltablemin
+    fitld.refdate = rdate
+    fitld.digicor = 1
+    fitld.wtthresh = wtthreshhold
+    #fitld.sources[1:len(sources)+1] = sources
+    fitld.outdata = aipsdata
+    fitld.antname[1] = 'VLBA'
+    if aipsdata.exists():
+        if interaction.yesno("Delete existing UV dataset " + aipsdata.name + \
+                             "? (No will abort pipeline)"):
+            aipsdata.zap()
+        else:
+            sys.exit()
+    for f in splitfile:
+        fitld.datain = f
+        fitld()
+
 ####### FITLD FOR CORRELATOR UV FILES ##########################################
 def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='', cltablemin=0.166667):
     fitld = AIPSTask('fitld', version = aipsver)
