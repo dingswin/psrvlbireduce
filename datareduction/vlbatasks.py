@@ -4411,6 +4411,11 @@ def multisourcefit(image, predictedrms, maxsources, outfile):
 ##### Image a single-source file, optionally cleaning using autobox ############
 def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
                    taperml, rashiftmas, decshiftmas, numcc, cleanradius):
+    """
+    Note
+    ----
+    1. Auto-box is turned on when "cleanradius" <= 0. In this case, a negative cleanradius can assign the number of search boxes (with imagr.nboxes = -cleanradius). The auto-box functionality is required for the mapping of multi-component sources, where components are separated by ~100 mas.
+    """
     imagr = AIPSTask('imagr', version = aipsver)
     imagr.indata = uvdataset
     imagr.sources[1] = srcname
@@ -4462,7 +4467,7 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
             if cleanradius < 0:
                 imagr.nboxes = -cleanradius
             imagr.im2parm[1:]  = [0]
-            imagr.im2parm[1:6] = [1, 6.5, 9, 0.005, 0]
+            imagr.im2parm[1:6] = [1, 6.5, 9, 0.005, 0] ## use auto boxes
     else:
         imagr.niter = 0
     imagr.dotv = -1
@@ -5239,11 +5244,22 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
     difmap.stdin.write("unshift\n")
 
 ##### Use difmap to map a target ###############################################
-def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, 
-                     mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, 
-                     beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
+def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
     """
-    Note that for VLBI search (with no previous VLBI detection), uvaverstr should be set to <=30 to avoid smearing effect.
+    Note
+    ----
+    1. For VLBI search (with no previous VLBI detection), uvaverstr should be set to <=30 to avoid smearing effect.
+    2. The function is meant to map only one component of the target. Use widefieldimage (with auto-box on) instead for multi-component sources.
+
+    Input parameters
+    ----------------
+    pixsize : float (default : 1.0)
+    mapsize : int (default : 1024)
+        Initial mapsize parameters (pixsize in mas), which gives a sufficiently large field that contains the source. After shifting to the peak flux, final mapping would be carried out with "findpix" and "finalmapsize".
+    
+    finalmapsize : int (default : 1024)
+    finepix : float (default : 0.2)
+        After shifting to the peak flux, final mapping would be carried out with "findpix" and "finalmapsize".
     """
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
     if sys.version_info.major == 3: ## python3 
@@ -5579,6 +5595,11 @@ def make_greyscale_plot(cleanimage, psfile, xcentrepix, ycentrepix, jpgfile=None
 def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1, 
                    centredecpixel=-1, fitwidth=True,doextended=False, 
                    loadedfile=None, pixwindow=96):
+    """
+    Note
+    ----
+    1. the "doextended" option is preserved for future implementation.
+    """
     imagedata = AIPSImage('JUNK', 'IMG', 1, 1)
     outdata = AIPSImage('JUNK', 'IMG', 1, 2)
     targetstatout = open(jmfitfile + ".stats", "w")

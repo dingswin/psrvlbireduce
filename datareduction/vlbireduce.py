@@ -2558,18 +2558,17 @@ class vlbireduce(support_vlbireduce):
                                       '_difmap.fits'
                     jmfitfile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                  '.difmap.jmfit'
+                    aipssrcname = inbeamnames[i][j]
+                    if len(aipssrcname) > 12:
+                        aipssrcname = aipssrcname[:12]
                     if expconfig['dodefaultnames']:
                         targetimagefile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                           "_" + str(icount) + '_difmap.fits'
                         jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                     "_" + str(icount) + '.difmap.jmfit'
-                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, 
-                                               fullauto, stokesi, config['difmappixelmas'],
-                                               config['difmapnpixels'], config['difmapweightstring'], '20, False',
-                                               uvtaperstring, config['usegaussianinbeam'], 
-                                               beginif, endif-subtractif)
-                    vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
-                                    stokesi, endif-subtractif)
+                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif)
+                    #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -10) ## auto box on; imagr.nboxes=10
+                    vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
                     if inbeamnames[i][j] in self.dividesourcelist:
                         targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                           '_divided_difmap.fits'
@@ -2596,9 +2595,6 @@ class vlbireduce(support_vlbireduce):
                         #                           endif-subtractif)
                         #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                         #                stokesi, endif-subtractif)
-                        aipssrcname = inbeamnames[i][j]
-                        if len(aipssrcname) > 12:
-                            aipssrcname = aipssrcname[:12]
                         jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.difmap.jmfit' 
                         preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
                         if preselfcalinbeamimage.exists():
