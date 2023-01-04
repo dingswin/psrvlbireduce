@@ -90,6 +90,7 @@ class Logger(object):
     def flush(self):
         pass
 
+
 def main():
     """
     main program
@@ -97,13 +98,7 @@ def main():
     ################################################################################
     ## Option parsing and defaulted global variables
     ################################################################################
-    try:
-        aipsver = os.environ['PSRVLBAIPSVER']
-    except KeyError:
-        try:
-            aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
-        except KeyError:
-            aipsver = '31DEC20'
+    aipsver = vlbatasks.aipsversion()
     usage = "usage: %prog [options]"
     parser = OptionParser(usage)
     parser.add_option("-e", "--experiment", dest="experiment", default="",

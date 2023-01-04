@@ -15,15 +15,17 @@ import interaction, pylab, ephem, astro_utils
 import numpy as np
 from interaction import yesno
 
-# Set up AIPS version
-try:
-    aipsver = os.environ['PSRVLBAIPSVER']
-except KeyError:
+def aipsversion():
     try:
-        aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
+        aipsver = os.environ['PSRVLBAIPSVER']
     except KeyError:
-        aipsver = '31DEC20'
+        try:
+            aipsver = os.environ['AIPS_VERSION'].split('/')[-1]
+        except KeyError:
+            aipsver = '31DEC22'
+    return aipsver
 
+aipsver = aipsversion() ## Set up AIPS version
 speedOfLight = 299792458.
 
 vlbadiameter = 25.47415721 # metres
