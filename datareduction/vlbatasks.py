@@ -6094,8 +6094,8 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         else:
             flux = float(fluxsplit[4])*1000.0
             rms = float(fluxsplit[6])*1000.0
-        targetstatout.write("Flux (mJy):           " + str(flux) + "\n")
-        targetstatout.write("S/N:                  " + str(flux/rms) + "\n")
+        targetstatout.write("Flux (mJy):           " + str('%.3f' % flux) + "\n")
+        targetstatout.write("S/N:                  " + str('%.3f' % (flux/rms)) + "\n")
         centrerahours = float(centrerasplit[5]) +  float(centrerasplit[6])/60.0 \
                         + float(centrerasplit[7])/3600.0
         centredecdegs = float(centredecsplit[5]) +  float(centredecsplit[6])/60.0 \
@@ -6107,8 +6107,8 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         raoff = (srcrahours-centrerahours)*15*60*60*1000*\
                 math.cos(centredecdegs*math.pi/180.0)
         decoff = (srcdecdegs-centredecdegs)*60*60*1000
-        targetstatout.write("RA offset (mas):      " + str(raoff) + "\n")
-        targetstatout.write("Dec offset (mas):     " + str(decoff) + "\n")
+        targetstatout.write("RA offset (mas):      " + str('%.3f' % raoff) + "\n")
+        targetstatout.write("Dec offset (mas):     " + str('%.3f' % decoff) + "\n")
         targetstatout.write("Actual RA:            " + sourcerasplit[2] + ":" + \
                             sourcerasplit[3] + ":" + sourcerasplit[4] + "\n")
         targetstatout.write("Actual Dec:           " + sourcedecsplit[2] + ":" + \
@@ -6116,14 +6116,14 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         targetstatout.write("Fit:                  " + str(fitmin*1000) + "x" + \
                             str(fitmaj*1000) + " at " + fitpasplit[4] + \
                             " degrees; beam " + str(beammin) + "x" + \
-                            str(beammaj) + " at " + str(beampa) + " degrees\n")
+                            str('%.3f' % beammaj) + " at " + str(beampa) + " degrees\n")
         raerr = float(sourcerasplit[6])*1000
         decerr = float(sourcedecsplit[6])*1000
         targetstatout.write("Est. RA error (mas):  " + \
-                            str(raerr*math.cos(centredecdegs*math.pi/180.0)*15.0) \
+                            str('%.3f' % (raerr*math.cos(centredecdegs*math.pi/180.0)*15.0)) \
                             + "\n")
-        targetstatout.write("Est. RA error (hms):  " + str(raerr) + "\n")
-        targetstatout.write("Est. Dec error (mas): " + str(decerr) + "\n")
+        targetstatout.write("Est. RA error (hms):  " + str('%.4f' % raerr) + "\n")
+        targetstatout.write("Est. Dec error (mas): " + str('%.3f' % decerr) + "\n")
     targetstatout.close()
 
 ##### Change the "source" info in one datasets header to match another #########
