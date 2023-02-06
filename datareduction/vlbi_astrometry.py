@@ -496,7 +496,7 @@ def main():
     ## Do a combined IF amp + phase selfcal on the inbeams if requested ###########################################
     [tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
-            targetnames, numtargets, directory, tabledir, alwayssaved)
+            targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
     ## Load amp+p1 inbeam CALIB solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated,
