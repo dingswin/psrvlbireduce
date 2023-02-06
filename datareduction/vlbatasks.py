@@ -9,6 +9,10 @@ from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
 #import matplotlib
 #matplotlib.use('Agg')
+import matplotlib
+#matplotlib.use('Qt5Agg', warn=False, force=True) ##non-interactive way, which has to be claimed before import plt
+matplotlib.use('Qt5Agg', force=True) ##non-interactive way, which has to be claimed before import plt
+import matplotlib.pyplot as plt
 from scipy.special import jn
 import sys, os, subprocess, math, datetime, glob
 import interaction, pylab, ephem, astro_utils
@@ -2550,6 +2554,7 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
     if aipsdata.exists():
         if interaction.yesno("Delete existing UV dataset " + aipsdata.name + \
                              "? (No will abort pipeline)"):
+            aipsdata.clrstat()
             aipsdata.zap()
         else:
             sys.exit()
@@ -2583,6 +2588,7 @@ def fitld_vlba1(file, aipsdata, wtthreshhold=0.4, rdate='', cltablemin=0.166667)
     if aipsdata.exists():
         if interaction.yesno("Delete existing UV dataset " + aipsdata.name + \
                              "? (No will abort pipeline)"):
+            aipsdata.clrstat()
             aipsdata.zap()
         else:
             sys.exit()
@@ -6425,7 +6431,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
             os.remove(outputsntable)
         writetable(s.inbeamuvdata, 'SN', snver, outputsntable)
     def plot_diagnostic_phi_versus_time_for_each_antenna(s, antenna_no):
-        import matplotlib.pyplot as plt
+        #import matplotlib.pyplot as plt
         index = s.t['antenna_no']==antenna_no
         plt.scatter(s.t['time'][index], s.t['phi'][index], marker='.')
         plt.ylim(-180,180)
@@ -6436,7 +6442,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         plt.show()
         plt.clf()
     def plot_diagnostic_phi_versus_time_for_each_antenna1(s, t, antenna_no):
-        import matplotlib.pyplot as plt
+        #import matplotlib.pyplot as plt
         plt.scatter(t['time'], t['phi'], marker='.')
         plt.xlabel('time (day)')
         plt.ylabel('phase (degree)')
@@ -6447,9 +6453,9 @@ class calibrate_target_phase_with_two_colinear_phscals:
         """
         plot phases after phase-wrapping correction
         """
-        import matplotlib
-        matplotlib.use('Agg', warn=False, force=True) ##non-interactive way, which has to be claimed before import plt
-        import matplotlib.pyplot as plt
+        #import matplotlib
+        #matplotlib.use('Agg', warn=False, force=True) ##non-interactive way, which has to be claimed before import plt
+        #import matplotlib.pyplot as plt
         if before_phase_correction:
             t = s.t
             before_or_after = 'before'
