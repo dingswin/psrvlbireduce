@@ -503,7 +503,7 @@ def main():
             ungateduvdata, tabledir)
     ## Do a separate IF amp + phase selfcal on the inbeams if requested ###########################################
     [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(
-            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
+            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, inbeamnames, 
             targetnames, numtargets, directory, tabledir, alwayssaved)
     ## Load amp+pn inbeam CALIB solutions ########################################################################
     reducevlbi.load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(tocalnames, tocalindices, 
