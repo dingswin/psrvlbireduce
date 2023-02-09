@@ -2603,10 +2603,17 @@ class vlbireduce(support_vlbireduce):
                         if preselfcalinbeamimage.exists():
                             preselfcalinbeamimage.zap()
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
-                                   0, 0, 0, 100, 20)
-                        vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                           False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
+                        makepreselfcalimage = True
+                        if not self.splitdata_PS.exists():
+                            if os.path.exists(self.inbeampreselfcaluvfiles[i]):
+                                vlbatasks.fitld_uvfits(self.inbeampreselfcaluvfiles[i], self.splitdata_PS, [])
+                            else:
+                                makepreselfcalimage = False
+                        if makepreselfcalimage:
+                            vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
+                                       0, 0, 0, 100, 20)
+                            vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                                               False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
 
                     icount += 1
         else:
