@@ -4459,11 +4459,17 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
     """
     imagr = AIPSTask('imagr', version = aipsver)
     imagr.indata = uvdataset
+    imagr.nfield = 1
     imagr.sources[1] = srcname
     imagr.stokes = 'I'
     imagr.outname = srcname
     imagr.flux = stopflux
     imagr.outseq = 1
+    for klass in ['ICL001', 'ICL002', 'IBM001', 'IBM002', 'IIM001', 'IIM002']: ## not removing pre-existing images will cause RuntimeError
+        imagedata = AIPSImage(imagr.outname, klass, 1, 1)
+        if imagedata.exists():
+            imagedata.zap()
+
     imagr.flagver = 1
     imagr.docal = -1
     imagr.doband = -1
@@ -5635,12 +5641,16 @@ def make_greyscale_plot(cleanimage, psfile, xcentrepix, ycentrepix, jpgfile=None
 ##### Use JMFIT to get a position and error estimate ###########################
 def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1, 
                    centredecpixel=-1, fitwidth=True,doextended=False, 
-                   loadedfile=None, pixwindow=96):
+                   loadedfile=None, pixwindow=96, **kwargs):
     """
     Note
     ----
     1. the "doextended" option is preserved for future implementation.
     """
+    try:
+        ngauss = kwargs['ngauss']
+    except KeyError:
+        ngauss = 1
     imagedata = AIPSImage('JUNK', 'IMG', 1, 1)
     outdata = AIPSImage('JUNK', 'IMG', 1, 2)
     targetstatout = open(jmfitfile + ".stats", "w")
@@ -5678,7 +5688,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     jmfit.indata = imagedata
     jmfit.outdata = outdata
     jmfit.niter = 4000
-    jmfit.ngauss = 1
+    jmfit.ngauss = ngauss
     jmfit.fwidth[1][1] = 0
     jmfit.fwidth[1][2] = 0
     jmfit.fwidth[1][3] = 0
@@ -5895,7 +5905,11 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     return flux, flux/rms
     
 ##### Use JMFIT to get a position and error estimate ###########################
-def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmjd=-1):
+def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmjd=-1, **kwargs):
+    try:
+        ngauss = kwargs['ngauss']
+    except KeyError:
+        ngauss = 1
     directory = os.path.dirname(imagefile)
 
     todo = []
@@ -6003,7 +6017,7 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         jmfit.indata = imagedata
         jmfit.outdata = outdata
         jmfit.niter = 4000
-        jmfit.ngauss = 1
+        jmfit.ngauss = ngauss
         jmfit.fwidth[1][1] = 0
         jmfit.fwidth[1][2] = 0
         jmfit.fwidth[1][3] = 0
@@ -6021,6 +6035,13 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         jmfit.trc = trc
         jmfit.go()
         jmfitmessage = jmfit.message()
+        if len(kwargs) > 0:
+            print(jmfitmessage)
+            jmfitMsgs = 'jmfitmsg_ngauss%d.txt' % ngauss
+            writefile = open(jmfitMsgs, 'w')
+            writefile.write(str(jmfitmessage))
+            writefile.close()
+            sys.exit()
         msgindex = 0
         exciselinenos = []
         for i in range(len(jmfitmessage)-1):

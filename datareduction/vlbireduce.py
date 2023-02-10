@@ -2465,7 +2465,13 @@ class vlbireduce(support_vlbireduce):
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
             directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas,
-            uvtaperstring, difmaptargetuvaverstring):
+            uvtaperstring, difmaptargetuvaverstring, multi_component_sources):
+        """
+        Input parameters
+        ----------------
+        multi_component_sources : dict (default : {})
+            {sources:component_numbers}. This parameter is necessary when a source is multi-component, which would otherwise lead to overly large rms.
+        """
         #fullauto  = True
         stokesi   = True
         #gaussiantarget = False
@@ -2538,8 +2544,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## <<< ungated data
 
-                #difmap-image and jmfit ibshiftdivphscal
-                #targetimagefile = directory + '/' + experiment + '_' + phscalnames[i] + '_ibshiftdiv_difmap.fits'
+                ## >>> difmap-image and jmfit ibshiftdivphscal
                 aipssrcname = phscalnames[i]
                 if len(aipssrcname) > 12:
                     aipssrcname = aipssrcname[:12]
@@ -2548,14 +2553,13 @@ class vlbireduce(support_vlbireduce):
                     ibshiftedimage.zap()
                 divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                 jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_ibshiftdiv_difmap.jmfit'
-                #vlbatasks.difmap_maptarget(self.ibshiftdivphscaluvfiles[i], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], config['usegaussiantarget'], beginif, endif-subtractif)
-                #vlbatasks.jmfit(targetimagefile, jmfitfile, phscalnames[i], stokesi, endif-subtractif)
                 vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050,
                            0, 0, 0, 100, 20)
                 vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                     False,ibshiftedimage,48)
+                                         False,ibshiftedimage,48)
+                ## <<< difmap-image and jmfit ibshiftdivphscal
 
-                #then in-beam cals    
+                ## >>> then in-beam cals    
                 for j in range(len(inbeamnames[i])):
                     targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                       '_difmap.fits'
@@ -2569,9 +2573,13 @@ class vlbireduce(support_vlbireduce):
                                           "_" + str(icount) + '_difmap.fits'
                         jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                     "_" + str(icount) + '.difmap.jmfit'
-                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif)
-                    #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -10) ## auto box on; imagr.nboxes=10
-                    vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
+                    if inbeamnames[i][j] in multi_component_sources.keys():
+                        vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -2) ## auto box on; imagr.nboxes=10
+                        #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -10) ## auto box on; imagr.nboxes=10
+                        vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif, ngauss=multi_component_sources[inbeamnames[i][j]])
+                    else:
+                        vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif)
+                        vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
                     if inbeamnames[i][j] in self.dividesourcelist:
                         targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                           '_divided_difmap.fits'
@@ -2605,10 +2613,15 @@ class vlbireduce(support_vlbireduce):
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                         vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
                                    0, 0, 0, 100, 20)
-                        vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                           False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
+                        if inbeamnames[i][j] in multi_component_sources.keys():
+                            vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                                                    False, preselfcalinbeamimage, 48, ngauss=multi_component_sources[inbeamnames[i][j]]) ## imagedata == loadedfile == preselfcalinbeamimage
+                        else:
+                            vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
+                                                    False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
 
                     icount += 1
+                ## <<< then in-beam cals    
         else:
             print("Skipping imaging/position fitting of target")
         self.runlevel  = self.runlevel + 1
