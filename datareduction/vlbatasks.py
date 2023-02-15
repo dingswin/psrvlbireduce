@@ -4451,7 +4451,7 @@ def multisourcefit(image, predictedrms, maxsources, outfile):
 
 ##### Image a single-source file, optionally cleaning using autobox ############
 def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
-                   taperml, rashiftmas, decshiftmas, numcc, cleanradius):
+                   taperml, rashiftmas, decshiftmas, numcc, cleanradius, doband=False, docal=False):
     """
     Note
     ----
@@ -4466,13 +4466,19 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
     imagr.flux = stopflux
     imagr.outseq = 1
     for klass in ['ICL001', 'ICL002', 'IBM001', 'IBM002', 'IIM001', 'IIM002']: ## not removing pre-existing images will cause RuntimeError
-        imagedata = AIPSImage(imagr.outname, klass, 1, 1)
+        imagedata = AIPSImage(imagr.outname, klass, 1, int(imagr.outseq))
         if imagedata.exists():
             imagedata.zap()
 
     imagr.flagver = 1
-    imagr.docal = -1
-    imagr.doband = -1
+    if docal:
+        imagr.docal = 1
+    else:
+        imagr.docal = -1
+    if doband:
+        imagr.doband = 1
+    else:
+        imagr.doband = -1
     imagr.do3dimag = 1
     imagr.rashift[1] = rashiftmas/1000.0
     imagr.decshift[1] = decshiftmas/1000.0
@@ -4519,6 +4525,7 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
         imagr.niter = 0
     imagr.dotv = -1
     imagr()
+    
 
 ##### Use imean to get stats from an image and return ##########################
 def getimagestats(image, cutofffrac): # [peak, rms, peakx, peaky]
@@ -5646,6 +5653,8 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     Note
     ----
     1. the "doextended" option is preserved for future implementation.
+    2. There are two ways of loading images, either through imagefile or loadedfile.
+    3. kwargs['ngauss'] is preserved for future development. 
     """
     try:
         ngauss = kwargs['ngauss']
@@ -5733,6 +5742,12 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     jmfit.trc[1:] = [rahi, dechi]
     jmfit.go()
     jmfitmessage = jmfit.message()
+    if len(kwargs) > 0:
+        print(jmfitmessage)
+        outputjmfit = 'jmfitmsg_ngauss%d.txt' % ngauss
+        writefile = open(outputjmfit, 'w')
+        writefile.write(str(jmfitmessage))
+        writefile.close()
     msgindex = 0
     exciselinenos = []
     for i in range(len(jmfitmessage)-1):
@@ -5905,11 +5920,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     return flux, flux/rms
     
 ##### Use JMFIT to get a position and error estimate ###########################
-def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmjd=-1, **kwargs):
-    try:
-        ngauss = kwargs['ngauss']
-    except KeyError:
-        ngauss = 1
+def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmjd=-1):
     directory = os.path.dirname(imagefile)
 
     todo = []
@@ -6017,7 +6028,7 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         jmfit.indata = imagedata
         jmfit.outdata = outdata
         jmfit.niter = 4000
-        jmfit.ngauss = ngauss
+        jmfit.ngauss = 1
         jmfit.fwidth[1][1] = 0
         jmfit.fwidth[1][2] = 0
         jmfit.fwidth[1][3] = 0
@@ -6035,13 +6046,6 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
         jmfit.trc = trc
         jmfit.go()
         jmfitmessage = jmfit.message()
-        if len(kwargs) > 0:
-            print(jmfitmessage)
-            jmfitMsgs = 'jmfitmsg_ngauss%d.txt' % ngauss
-            writefile = open(jmfitMsgs, 'w')
-            writefile.write(str(jmfitmessage))
-            writefile.close()
-            sys.exit()
         msgindex = 0
         exciselinenos = []
         for i in range(len(jmfitmessage)-1):
@@ -6134,8 +6138,8 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
                             sourcerasplit[3] + ":" + sourcerasplit[4] + "\n")
         targetstatout.write("Actual Dec:           " + sourcedecsplit[2] + ":" + \
                             sourcedecsplit[3] + ":" + sourcedecsplit[4] + "\n")
-        targetstatout.write("Fit:                  " + str(fitmin*1000) + "x" + \
-                            str(fitmaj*1000) + " at " + fitpasplit[4] + \
+        targetstatout.write("Fit:                  " + str('%.3f' % fitmin*1000) + "x" + \
+                            str('%.3f' % fitmaj*1000) + " at " + fitpasplit[4] + \
                             " degrees; beam " + str(beammin) + "x" + \
                             str('%.3f' % beammaj) + " at " + str(beampa) + " degrees\n")
         raerr = float(sourcerasplit[6])*1000

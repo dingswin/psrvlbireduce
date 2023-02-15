@@ -2086,6 +2086,7 @@ class vlbireduce(support_vlbireduce):
         Note
         ----
         1. must be run before the final split and centroid-location fitting.
+        2. Regardless of the runfromlevel, this function will be run. As a result, directly running from vlbireduce.image_targets_using_DIFMAP_and_fit_for_position() would meet complaint, as self.splitdata_PS is already deleted here.
         """
         for i in range(20): #Clear any old FINAL split catalog entries
             for j in range(numtargets):
@@ -2553,10 +2554,8 @@ class vlbireduce(support_vlbireduce):
                     ibshiftedimage.zap()
                 divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                 jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_ibshiftdiv_difmap.jmfit'
-                vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050,
-                           0, 0, 0, 100, 20)
-                vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                         False,ibshiftedimage,48)
+                vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, 20)
+                vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True, False,ibshiftedimage,48)
                 ## <<< difmap-image and jmfit ibshiftdivphscal
 
                 ## >>> then in-beam cals    
@@ -2573,10 +2572,17 @@ class vlbireduce(support_vlbireduce):
                                           "_" + str(icount) + '_difmap.fits'
                         jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                     "_" + str(icount) + '.difmap.jmfit'
-                    if inbeamnames[i][j] in multi_component_sources.keys():
-                        vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -2) ## auto box on; imagr.nboxes=10
+                    if inbeamnames[i][j] in multi_component_sources.keys(): ## when there are multiple islands for a source, a large image is made, so that the rms gets smaller
+                        inbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                        if inbeamimage.exists():
+                            inbeamimage.zap()
+                        vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, -10, True, True) ## auto box on; imagr.nboxes=10
+                        targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_widefield.fits'
+                        vlbatasks.writedata(inbeamimage, targetimagefile, True)
                         #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -10) ## auto box on; imagr.nboxes=10
-                        vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif, ngauss=multi_component_sources[inbeamnames[i][j]])
+                        #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif, ngauss=multi_component_sources[inbeamnames[i][j]])
+                        #vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True, False, inbeamimage, 48, ngauss=multi_component_sources[inbeamnames[i][j]]) ## imagedata == loadedfile == inbeamimage
+                        vlbatasks.nonpulsarjmfit(targetimagefile, jmfitfile, aipssrcname, -1, -1, True, False, None, 48, ngauss=1) ## imagedata == loadedfile == inbeamimage
                     else:
                         vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif)
                         vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
@@ -2597,7 +2603,7 @@ class vlbireduce(support_vlbireduce):
                                                    beginif, endif-subtractif)
                         vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                         stokesi, endif-subtractif)
-                    if inbeamnames[i][j] in config['primaryinbeam']:
+                    if inbeamnames[i][j] in config['primaryinbeam']: ## pre-selfcal now
                         #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
                         #vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i][j], targetimagefile, 
                         #                           fullauto, stokesi, config['difmappixelmas'],
@@ -2611,14 +2617,16 @@ class vlbireduce(support_vlbireduce):
                         if preselfcalinbeamimage.exists():
                             preselfcalinbeamimage.zap()
                         #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050,
-                                   0, 0, 0, 100, 20)
                         if inbeamnames[i][j] in multi_component_sources.keys():
-                            vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                                    False, preselfcalinbeamimage, 48, ngauss=multi_component_sources[inbeamnames[i][j]]) ## imagedata == loadedfile == preselfcalinbeamimage
+                            imagr_imsize = 1024
                         else:
-                            vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True,
-                                                    False, preselfcalinbeamimage, 48) ## imagedata == loadedfile == preselfcalinbeamimage
+                            imagr_imsize = 256
+
+                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, 20)
+                        preselfcaltargetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal_widefield.fits'
+                        vlbatasks.writedata(preselfcalinbeamimage, preselfcaltargetimagefile, True)
+                        
+                        vlbatasks.nonpulsarjmfit(preselfcaltargetimagefile, jmfitfile, aipssrcname, -1, -1, True, False, None, 48) ## imagedata == loadedfile == preselfcalinbeamimage
 
                     icount += 1
                 ## <<< then in-beam cals    
