@@ -6138,8 +6138,8 @@ def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmj
                             sourcerasplit[3] + ":" + sourcerasplit[4] + "\n")
         targetstatout.write("Actual Dec:           " + sourcedecsplit[2] + ":" + \
                             sourcedecsplit[3] + ":" + sourcedecsplit[4] + "\n")
-        targetstatout.write("Fit:                  " + str('%.3f' % fitmin*1000) + "x" + \
-                            str('%.3f' % fitmaj*1000) + " at " + fitpasplit[4] + \
+        targetstatout.write("Fit:                  " + str('%.3f' % (fitmin*1000)) + "x" + \
+                            str('%.3f' % (fitmaj*1000)) + " at " + fitpasplit[4] + \
                             " degrees; beam " + str(beammin) + "x" + \
                             str('%.3f' % beammaj) + " at " + str(beampa) + " degrees\n")
         raerr = float(sourcerasplit[6])*1000

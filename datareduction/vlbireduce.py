@@ -2573,19 +2573,20 @@ class vlbireduce(support_vlbireduce):
                         jmfitfile = directory + '/' + experiment + '_inbeam' + str(i) + \
                                     "_" + str(icount) + '.difmap.jmfit'
                     if inbeamnames[i][j] in multi_component_sources.keys(): ## when there are multiple islands for a source, a large image is made, so that the rms gets smaller
-                        inbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
-                        if inbeamimage.exists():
-                            inbeamimage.zap()
-                        vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, -10, True, True) ## auto box on; imagr.nboxes=10
-                        targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_widefield.fits'
-                        vlbatasks.writedata(inbeamimage, targetimagefile, True)
-                        #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 2048, 0.75, True, 0.050, 0, 0, 0, 100, -10) ## auto box on; imagr.nboxes=10
-                        #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif, ngauss=multi_component_sources[inbeamnames[i][j]])
-                        #vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True, False, inbeamimage, 48, ngauss=multi_component_sources[inbeamnames[i][j]]) ## imagedata == loadedfile == inbeamimage
-                        vlbatasks.nonpulsarjmfit(targetimagefile, jmfitfile, aipssrcname, -1, -1, True, False, None, 48, ngauss=1) ## imagedata == loadedfile == inbeamimage
+                        #inbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                        #if inbeamimage.exists():
+                        #    inbeamimage.zap()
+                        #vlbatasks.widefieldimage(inbeamuvdatas[j], aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, -10, True, True) ## auto box on; imagr.nboxes=10
+                        #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_widefield.fits'
+                        #vlbatasks.writedata(inbeamimage, targetimagefile, True)
+                        #vlbatasks.nonpulsarjmfit(targetimagefile, jmfitfile, aipssrcname, -1, -1, True, False, None, 48, ngauss=1) ## imagedata == loadedfile == inbeamimage
+                        difmapfinalmapsize = 2048
+                        difmapfinepix = 0.5
                     else:
-                        vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif)
-                        vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
+                        difmapfinalmapsize = 1024
+                        difmapfinepix = 0.2
+                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif, "", difmapfinalmapsize, difmapfinepix)
+                    vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
                     if inbeamnames[i][j] in self.dividesourcelist:
                         targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                           '_divided_difmap.fits'
