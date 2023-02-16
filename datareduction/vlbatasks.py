@@ -5755,7 +5755,7 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     jmfit.trc[1:] = [rahi, dechi]
     jmfit.go()
     jmfitmessage = jmfit.message()
-    if len(kwargs) > 0:
+    if len(kwargs) > 0: ## for diagnosis only
         print(jmfitmessage)
         outputjmfit = 'jmfitmsg_ngauss%d.txt' % ngauss
         writefile = open(outputjmfit, 'w')
