@@ -5298,7 +5298,7 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
     difmap.stdin.write("unshift\n")
 
 ##### Use difmap to map a target ###############################################
-def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2):
+def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2, **kwargs):
     """
     Note
     ----
@@ -5322,6 +5322,12 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
         difmap = subprocess.Popen("difmap", stdin=subprocess.PIPE)
     if pixsize/2.0 < finepix:
         finepix = pixsize/2.0
+
+    try:
+        nopointsource = kwargs['nopointsource']
+    except KeyError:
+        nopointsource = False
+
     #difmap.communicate(input='obs' + uvfile +'\n' + 'select i\nfloat pkflux\nexit\n')
     #difmap.communicate(input='float peakx\n')
     #difmap.terminate()
@@ -5372,22 +5378,23 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
     difmap.stdin.write("mapsize 1024," + str(finepix) + "\n")
     difmap.stdin.write("finepeakx = peak(x,abs)\n")
     difmap.stdin.write("finepeaky = peak(y,abs)\n")
-    if stokesi:
-        pols = ['i']
-    else:
-        pols = ['rr','ll']
-    for p in pols:
-        for i in range(beginif, endif+1):
-            print("Doing IF " + str(i) + ", pol " + p)
-            difmap.stdin.write("select " + p + "," + str(i) + "\n")
-            if dogaussian:
-                write_difmapmapscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
-            else:
-                write_difmappsrscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
-        if not p == "i":
-            print("Doing IF " + str(beginif) + "-" + str(endif) + ", pol " + p)
-            difmap.stdin.write("select " + p + "," + str(beginif) + "," + str(endif) + '\n')
-            write_difmapmapscript(imagefile, p + ".a", difmap,pixsize,finepix)
+    if not nopointsource:
+        if stokesi:
+            pols = ['i']
+        else:
+            pols = ['rr','ll']
+        for p in pols:
+            for i in range(beginif, endif+1):
+                print("Doing IF " + str(i) + ", pol " + p)
+                difmap.stdin.write("select " + p + "," + str(i) + "\n")
+                if dogaussian:
+                    write_difmapmapscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
+                else:
+                    write_difmappsrscript(imagefile, p + "." + str(i), difmap,pixsize,finepix,finalmapsize)
+            if not p == "i":
+                print("Doing IF " + str(beginif) + "-" + str(endif) + ", pol " + p)
+                difmap.stdin.write("select " + p + "," + str(beginif) + "," + str(endif) + '\n')
+                write_difmapmapscript(imagefile, p + ".a", difmap,pixsize,finepix)
     if endif > 0:
         selectstring = "select i," + str(beginif) + "," + str(endif)
     elif ifrange != "":
@@ -5395,12 +5402,17 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
     else:
         selectstring = "select"
     difmap.stdin.write(selectstring + "\n")
-    if dogaussian:
-        write_difmapmapscript(imagefile, "ii.a", difmap,pixsize,finepix,finalmapsize)
-        write_difmapradplotscript(imagefile, "ii.a", difmap)
+    if not nopointsource:
+        imagefilesuffix = "ii.a"
     else:
-        write_difmappsrscript(imagefile, "ii.a", difmap,pixsize,finepix,finalmapsize)
-    #difmap.stdin.write("device %s.ps/PS\n" % imagefile)
+        imagefilesuffix = ""
+    if dogaussian:
+        write_difmapmapscript(imagefile, imagefilesuffix, difmap,pixsize,finepix,finalmapsize)
+        write_difmapradplotscript(imagefile, imagefilesuffix, difmap)
+    else:
+        write_difmappsrscript(imagefile, imagefilesuffix, difmap,pixsize,finepix,finalmapsize)
+        
+    #difmap.stdin.write("device %s.ps/PS\n" % imagefilei)
     #difmap.stdin.write("mappl cln\n")
     difmap.stdin.write("exit\n\n")
     difmap.stdin.close()
@@ -5413,7 +5425,8 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
 
 ##### Write a script to map one band of a target ###############################
 def write_difmapmapscript(imagename, bands, difmap, pixsize, finepix,npixels=1024):
-    imagename = imagename + "." + bands
+    if bands != "":
+        imagename = imagename + "." + bands
     difmap.stdin.write("clrmod true\n")
     difmap.stdin.write("unshift\n")
     difmap.stdin.write("shift -peakx,-peaky\n")

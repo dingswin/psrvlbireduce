@@ -2585,8 +2585,9 @@ class vlbireduce(support_vlbireduce):
                     else:
                         difmapfinalmapsize = 1024
                         difmapfinepix = 0.2
-                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif, "", difmapfinalmapsize, difmapfinepix)
-                    vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
+                    vlbatasks.difmap_maptarget(self.inbeamuvfiles[i][j], targetimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif, "", difmapfinalmapsize, difmapfinepix, nopointsource=True)
+                    #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], stokesi, endif-subtractif)
+                    vlbatasks.nonpulsarjmfit(targetimagefile, jmfitfile, inbeamnames[i][j], -1, -1, True, False, None, 48)
                     if inbeamnames[i][j] in self.dividesourcelist:
                         targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + \
                                           '_divided_difmap.fits'
