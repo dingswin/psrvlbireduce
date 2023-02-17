@@ -2606,29 +2606,20 @@ class vlbireduce(support_vlbireduce):
                         vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
                                         stokesi, endif-subtractif)
                     if inbeamnames[i][j] in config['primaryinbeam']: ## pre-selfcal now
-                        #targetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal.divided_uv.fits'
-                        #vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i][j], targetimagefile, 
-                        #                           fullauto, stokesi, config['difmappixelmas'],
-                        #                           config['difmapnpixels'], config['difmapweightstring'],
-                        #                           config['usegaussianinbeam'], beginif,
-                        #                           endif-subtractif)
-                        #vlbatasks.jmfit(targetimagefile, jmfitfile, inbeamnames[i][j], 
-                        #                stokesi, endif-subtractif)
                         jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '_preselfcal.difmap.jmfit' 
-                        preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
-                        if preselfcalinbeamimage.exists():
-                            preselfcalinbeamimage.zap()
-                        #divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                        if inbeamnames[i][j] in multi_component_sources.keys():
-                            imagr_imsize = 1024
-                        else:
-                            imagr_imsize = 256
-
-                        vlbatasks.widefieldimage(self.splitdata_PS, aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, 20)
-                        preselfcaltargetimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal_widefield.fits'
-                        vlbatasks.writedata(preselfcalinbeamimage, preselfcaltargetimagefile, True)
+                        #preselfcalinbeamimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                        #if preselfcalinbeamimage.exists():
+                        #    preselfcalinbeamimage.zap()
+                        preselfcalinbeamimagefile = directory + '/' + experiment + '_' + inbeamnames[i][j] + '_preselfcal_image.fits'
                         
-                        vlbatasks.nonpulsarjmfit(preselfcaltargetimagefile, jmfitfile, aipssrcname, -1, -1, True, False, None, 48) ## imagedata == loadedfile == preselfcalinbeamimage
+                        if inbeamnames[i][j] in multi_component_sources.keys(): ## when there are multiple islands for a source, a large image is made, so that the rms gets smaller
+                            difmapfinalmapsize = 4096
+                            difmapfinepix = 0.5
+                        else:
+                            difmapfinalmapsize = 1024
+                            difmapfinepix = 0.2
+                        vlbatasks.difmap_maptarget(self.inbeampreselfcaluvfiles[i], preselfcalinbeamimagefile, fullauto, stokesi, config['difmappixelmas'], config['difmapnpixels'], config['difmapweightstring'], '20, False', uvtaperstring, config['usegaussianinbeam'], beginif, endif-subtractif, "", difmapfinalmapsize, difmapfinepix, nopointsource=True)
+                        vlbatasks.nonpulsarjmfit(preselfcalinbeamimagefile, jmfitfile, inbeamnames[i][j], -1, -1, True, False, None, 40)
 
                     icount += 1
                 ## <<< then in-beam cals    
