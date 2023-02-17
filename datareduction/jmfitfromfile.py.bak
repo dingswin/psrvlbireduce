@@ -17,7 +17,7 @@ import os,sys,math
 ################################################################################
 usage =  "usage: jmfitfromfile.py <image fits file> <output stats file> [pixwindow | pixwindowx,pixwindowy | blc,blc,trc,trc | blc,blc,blc,trc,trc,trc]]\n"
 if not len(sys.argv) == 3 and not len(sys.argv) == 4:
-    print(usage)
+    print usage
     sys.exit()
 
 ################################################################################
@@ -53,7 +53,7 @@ if len(sys.argv) == 4:
             pixwindowy = trc[2] - blc[2]
             imageslice = int(pixstring[2])
             if imageslice != int(pixstring[5]):
-                print("Can't JMFIT across multiple slices!")
+                print "Can't JMFIT across multiple slices!"
                 sys.exit()
         elif len(pixstring) == 4:
             blc.append(int(pixstring[0]))
@@ -65,7 +65,7 @@ if len(sys.argv) == 4:
         elif len(pixstring) == 2:
             pixwindowy = int(pixstring[1])
         else:
-            print(usage, "len(pixstring)=", len(pixstring))
+            print usage, "len(pixstring)=", len(pixstring)
             sys.exit()
 
 if not imagefile[0] == '/':
@@ -76,7 +76,7 @@ if not jmfitfile[0] == '/':
 ################################################################################
 # Run JMFIT
 ################################################################################
-print("JMFITing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy))
+print "JMFITing over a box of width " + str(pixwindowx) + " x " + str(pixwindowy)
 wrong_imagedata = AIPSUVData('JUNK', 'IMG', 1, 1)
 if wrong_imagedata.exists():
     wrong_imagedata.zap()
@@ -111,10 +111,10 @@ if imageslice >= 0:
             cleanbeammaj = row.bmaj / math.fabs(imagedata.header.cdelt[1]*3600) # convert from beamsize in arcseconds to pixels
             cleanbeammin = row.bmin / math.fabs(imagedata.header.cdelt[1]*3600) # convert from beamsize in arcseconds to pixels
             cleanbeampa  = row.bpa
-            print("Clean beam details:", cleanbeammaj, cleanbeammin, cleanbeampa, row)
+            print "Clean beam details:", cleanbeammaj, cleanbeammin, cleanbeampa, row
             break
     if cleanbeammaj < 0:
-        print("Couldn't find clean beam details!")
+        print "Couldn't find clean beam details!"
         sys.exit()
 
 if len(blc) == 1:
@@ -133,8 +133,8 @@ if len(blc) == 1:
     trc = [None,0,0]
     blc[1:] = [xpix-pixwindowx/2, ypix-pixwindowy/2]
     trc[1:] = [xpix+pixwindowx/2, ypix+pixwindowy/2]
-    print(blc)
-    print(trc)
+    print blc
+    print trc
     if blc[1] < 0: blc[1] = 1
     if blc[2] < 0: blc[2] = 1
     if trc[1] > int(imagedata.header.naxis[0]): trc[1] = int(imagedata.header.naxis[0])-1
@@ -162,8 +162,6 @@ jmfit.blc = blc
 jmfit.trc = trc
 jmfit.go()
 jmfitmessage = jmfit.message()
-print(jmfitmessage)
-sys.exit()
 msgindex = 0
 exciselinenos = []
 for i in range(len(jmfitmessage)-1):
@@ -175,7 +173,7 @@ while jmfitmessage[msgindex].find('X-ref') == -1 and \
           msgindex < len(jmfitmessage):
     msgindex = msgindex + 1
 if msgindex >= len(jmfitmessage):
-    print("Did not find solution for " + imagefile)
+    print "Did not find solution for " + imagefile
     sys.exit(1)
 centrerasplit = jmfitmessage[msgindex].split()
 centredecsplit = jmfitmessage[msgindex+1].split()
@@ -183,17 +181,17 @@ rapixsize = math.fabs(float(centrerasplit[-1])*1000.0)
 decpixsize = math.fabs(float(centredecsplit[-1])*1000.0)
 pixsize = rapixsize
 if rapixsize != decpixsize:
-    print("*****WARNING*****: Different pixel sizes in RA and dec")
-    print("*****WARNING*****: Beam size measurement will be approximate")
+    print "*****WARNING*****: Different pixel sizes in RA and dec"
+    print "*****WARNING*****: Beam size measurement will be approximate"
     pixsize = (rapixsize + decpixsize)/2.0
 msgindex = msgindex + 2
 while not ("Beam=" in jmfitmessage[msgindex] or "NO CLEAN BEAM" in jmfitmessage[msgindex]) and msgindex < len(jmfitmessage):
     msgindex = msgindex + 1
 if msgindex >= len(jmfitmessage):
-    print("Did not find solution for " + imagefile)
+    print "Did not find solution for " + imagefile
     sys.exit(1)
 if "NO CLEAN BEAM" in jmfitmessage[msgindex]:
-    print("There was no clean beam (probably you're JMFIT'ing from a cube).  Ignore all the deconvolved params!")
+    print "There was no clean beam (probably you're JMFIT'ing from a cube).  Ignore all the deconvolved params!"
     beammaj = -1
     beammin = -1
     beampa  = -1
@@ -201,7 +199,7 @@ if "NO CLEAN BEAM" in jmfitmessage[msgindex]:
 else:
     beamsplit = jmfitmessage[msgindex].split()
     if not len(beamsplit) == 10:
-         print("*****WARNING*****: Poorly formatted beam string!")
+         print "*****WARNING*****: Poorly formatted beam string!"
     beammaj = float(beamsplit[2])*pixsize
     beammin = float(beamsplit[4])*pixsize
     beampa  = float(beamsplit[8])
@@ -211,7 +209,7 @@ while jmfitmessage[msgindex].find('********* Solution from JMFIT') == -1 \
           and msgindex < len(jmfitmessage):
     msgindex = msgindex + 1
 if msgindex >= len(jmfitmessage):
-    print("Did not find solution for " + imagefile)
+    print "Did not find solution for " + imagefile
     sys.exit(1)
 fluxsplit = jmfitmessage[msgindex+3].split()
 if nocleanbeam:
@@ -225,8 +223,8 @@ try:
     fitmaj = float(fitmajsplit[4])
     fitmin = float(fitminsplit[4])
 except ValueError:
-    print("Bad value for one or more of fit major axis " +  fitmajsplit[4] + \
-          ", minor axis " + fitminsplit[4] + ", both will be set to zero")
+    print "Bad value for one or more of fit major axis " +  fitmajsplit[4] + \
+          ", minor axis " + fitminsplit[4] + ", both will be set to zero"
     fitmaj = 0.0
     fitmin = 0.0
 targetstatout.write("Pulsar XXXXXXXX: MJD " + str(mjd) + ":\n")

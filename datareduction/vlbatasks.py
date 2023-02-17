@@ -5706,6 +5706,10 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     mjd = year*367 - int(7*(year + int((month + 9)/12))/4) + \
           int(275*month/9) + day - 678987
 
+    imean = AIPSTask("imean", version = aipsver) ## used to set the verb ACTNOISE in the header of the image, which often leads to more accurate rms (compared to JMFIT) for well resolved sources (see http://www.aips.nrao.edu/cgi-bin/ZXHLP2.PL?JMFIT)
+    imean.indata = imagedata
+    imean.go()
+
     jmfit = AIPSTask('jmfit', version = aipsver)
     jmfit.indata = imagedata
     jmfit.outdata = outdata
@@ -5720,13 +5724,15 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     jmfit.dowidth[1][1] = 0
     jmfit.dowidth[1][2] = 0
     jmfit.dowidth[1][3] = 0
+    jmfit.blc = [None,0,0]
+    jmfit.trc = [None,0,0]
     if fitwidth:
         jmfit.domax[1:] = [1]
         jmfit.dowidth[1][1] = 1
         jmfit.dowidth[1][2] = 1
         jmfit.dowidth[1][3] = 1
     if centrerapixel < 0:
-        centrerapixel = int(imagedata.header.naxis[0])/2
+        centrerapixel = int(imagedata.header.naxis[0])/2 ## assume the source is at the centre of the image
     if imagedata.header.naxis[0] < 128:
         print("Image too small in RA axis (%d) - increase size!" % (imagedata.header.naxis[0]))
         sys.exit()
@@ -5754,8 +5760,10 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     jmfit.blc[1:] = [ralo, declo]
     jmfit.trc[1:] = [rahi, dechi]
     jmfit.go()
+    jmfitmessage = None
     jmfitmessage = jmfit.message()
     if len(kwargs) > 0: ## for diagnosis only
+        print(target)
         print(jmfitmessage)
         outputjmfit = 'jmfitmsg_ngauss%d.txt' % ngauss
         writefile = open(outputjmfit, 'w')
