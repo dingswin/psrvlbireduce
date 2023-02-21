@@ -5314,6 +5314,10 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
     finalmapsize : int (default : 1024)
     finepix : float (default : 0.2)
         After shifting to the peak flux, final mapping would be carried out with "findpix" and "finalmapsize".
+
+    kwargs :
+        1. nopointsource : bool (default : False)
+            If False (typically for the target source), then images are made for each frequency band. If True (normally for calibrators), then images are made across the frequency bands.
     """
     inputmsg = "Enter a difmap command for the LL data - enter to go to fitting"
     if sys.version_info.major == 3: ## python3 
@@ -5942,6 +5946,11 @@ def nonpulsarjmfit(imagefile, jmfitfile, target, centrerapixel=-1,
     
 ##### Use JMFIT to get a position and error estimate ###########################
 def jmfit(imagefile, jmfitfile, target, stokesi, nifs = 4, pixwindow=20, exactmjd=-1):
+    """
+    Note
+    ----
+    This function is mainly meant for the target source, which would fit positions and fluxes for each frequency band. For calibrators, nonpulsarjmfit() is used instead, which is largely the same as this function, but only fit for the overall position and flux.
+    """
     directory = os.path.dirname(imagefile)
 
     todo = []
