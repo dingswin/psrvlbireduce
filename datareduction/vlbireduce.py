@@ -1931,7 +1931,7 @@ class vlbireduce(support_vlbireduce):
 
     def do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
-            targetnames, numtargets, directory, tabledir, alwayssaved):
+            inbeamnames, targetnames, numtargets, directory, tabledir, alwayssaved):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
