@@ -2475,6 +2475,7 @@ def atlod(atfile, uvdata, sources):
 ####### FITLD FOR NON-CORRELATOR UV FILES ######################################
 def fitld_uvfits(uvfitsfile, aipsdata, sources):
     fitld = AIPSTask('fitld', version = aipsver)
+    fitld.doweight = 1 ## FITLD default 
     fitld.digicor = 0
     fitld.ncount = 1
     if sources != "":
@@ -2535,6 +2536,7 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
     if len(splitfile) > 1:
         fitld.doconcat = 1
     print(fitld.doconcat)
+    fitld.doweight = 1 ## FITLD default
     fitld.optype = ''
     fitld.ncount = 0
     fitld.dotable = 1
@@ -2636,6 +2638,7 @@ def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='
 ####### FITLD FOR IMAGE FILES ##################################################
 def fitld_image(file, aipsdata):
     fitld = AIPSTask('fitld', version = aipsver)
+    fitld.doweight = 1 ## FITLD default
     fitld.dotable = 1
     fitld.douvcomp = 1
     fitld.digicor = -1
