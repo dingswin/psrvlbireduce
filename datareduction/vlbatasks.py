@@ -4998,7 +4998,7 @@ def plotvistime(amparray1, phsarray1, amparray2, phsarray2, timearray, numstokes
     return True
 
 ##### Make a postscript of a bandpass ##########################################
-def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion=1, ifs=[0,0], smooth=0, chans=[0,0], stokes=""):
+def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion=1, ifs=[0,0], smooth=0, chans=[0,0], stokes="", baselines=None):
     possm = AIPSTask('possm', version = aipsver)
     possm.indata = uvdata
     possm.stokes = stokes
@@ -5017,6 +5017,13 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
     else:
         print("Chans parameter must be a len(2) list for bchan and echan, was", chans)
         sys.exit()
+    if baselines is not None: ## added by Kelly to plot baselines
+        if isinstance(baselines,(list,)):
+            for i in baselines:
+                possm.baseline[i] = i
+        else:
+            print "baselines parameter must be a list"
+            sys.exit()
     if clversion > 0:
         possm.docalib = 1
         possm.gainuse = clversion
