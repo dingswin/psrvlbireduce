@@ -37,7 +37,7 @@ class PmparInput:
                     self.haveepoch = True
                 if '=' in self.pmparlines[self.headerendlinenum]:
                     self.numkeywords = self.numkeywords + 1
-                print "Skipping line " + self.pmparlines[self.headerendlinenum][0:-1]
+                print("Skipping line " + self.pmparlines[self.headerendlinenum][0:-1])
                 self.headerendlinenum = self.headerendlinenum + 1
             if not self.haveepoch:
                 self.numkeywords = self.numkeywords+1       
@@ -67,7 +67,7 @@ class PmparInput:
                         rarad = astro_utils.stringToRad(splitline[1],True)
                         decrad = astro_utils.stringToRad(splitline[3],False)
                     except ValueError:
-                        print "Bad position entry", splitline[1], splitline[3]
+                        print("Bad position entry", splitline[1], splitline[3])
                         rarad = 0
                         decrad = 0
                     self.rarad[self.numepochs-1].append(rarad)
@@ -83,23 +83,23 @@ class PmparInput:
 
     def getAverageError(self):
         for i in range(len(self.decrad)):
-            print len(self.decrad[i])
-        print np.array(self.decrad[0])
-        print np.array(self.decrad)
+            print(len(self.decrad[i]))
+        print(np.array(self.decrad[0]))
+        print(np.array(self.decrad))
         meanraerr = np.mean(np.array(self.ra_err)*15*np.cos(np.array(self.decrad)))
         meandecerr = np.mean(np.array(self.dec_err))
         return math.sqrt(meanraerr*meanraerr + meandecerr*meandecerr)
 
-    def setSystematicError(self, sysraerr, sysdecerr, rchisqscaling):
+    def setSystematicError(self, sysraerr, sysdecerr, rchisqscaling, mjdmatch=0.5):
         for i in range(len(self.mjdstrs)):
             mjd = self.mjds[i]
             scale = [-1,-1]
-            for m in rchisqscaling.keys():
-                if math.fabs(mjd - float(m)) < 0.5:
+            for m in list(rchisqscaling.keys()):
+                if math.fabs(mjd - float(m)) < mjdmatch:
                     scale = rchisqscaling[m]
                     break
             if scale[0] < 0:
-                print "Couldn't match " + str(mjd) + " in rchisqscaling dict!"
+                print("Couldn't match " + str(mjd) + " in rchisqscaling dict!")
                 sys.exit()
             for j in range(len(self.sysra_err[i])):
                 self.sysra_err[i][j] = sysraerr*scale[0]
@@ -109,7 +109,7 @@ class PmparInput:
         self.perturbedrarad = []
         self.perturbeddecrad = []
         count = 0
-        keys = posoffsetsmas.keys()
+        keys = list(posoffsetsmas.keys())
         for mjd in self.mjdstrs:
             self.perturbedrarad.append([])
             self.perturbeddecrad.append([])
@@ -134,7 +134,7 @@ class PmparInput:
 #                    rastr1, decstr1 = astro_utils.posradians2string(ra, dec)
 #                    rastr2, decstr2 = astro_utils.posradians2string(ra, self.perturbeddecrad[count][-1])
             except KeyError:
-                print "Could not find " + mjd + " in the position offset dictionary..."
+                print("Could not find " + mjd + " in the position offset dictionary...")
             count += 1
 
     def generateOffsets(self):
@@ -145,11 +145,11 @@ class PmparInput:
         offsetmas = {}
         for r,d,r_e,d_e,mjd in zip(self.rarad, self.decrad, self.ra_err, self.dec_err,self.mjdstrs):
             if len(r) > 1:
-                print "This only works for single-fit-per-epoch type files!"
+                print("This only works for single-fit-per-epoch type files!")
                 sys.exit()
             offsetmas[mjd] = [(meanrarad-r[0])*3.6e6*180/math.pi, (meandecrad-d[0])*3.6e6*180/math.pi, r_e[0], d_e[0]]
-            print offsetmas[mjd], r[0], meanrarad
-        print offsetmas
+            print(offsetmas[mjd], r[0], meanrarad)
+        print(offsetmas)
         return offsetmas
 
     def addEpoch(self, jmfitresultarray, snrcut=0.0):
@@ -162,7 +162,7 @@ class PmparInput:
         self.mjdstrs.append("%.4f" % jmfitresultarray[0].mjd)
         for jmfitresult in jmfitresultarray:
             if jmfitresult.snr < snrcut:
-                print "Skipping result with S/N " + str(jmfitresult.snr)
+                print("Skipping result with S/N " + str(jmfitresult.snr))
                 continue
             self.rarad[-1].append(jmfitresult.rarad)
             self.decrad[-1].append(jmfitresult.decrad)
@@ -258,7 +258,7 @@ class AstroObsResult:
 
     def write(self, outputfile, overwrite=False):
         if os.path.exists(outputfile) and not overwrite:
-            print "%s exists and overwrite is False - aborting" % outputfile
+            print("%s exists and overwrite is False - aborting" % outputfile)
             sys.exit()
         output = open(outputfile, "w")
         output.write("Pulsar %s: MJD %.4f: Frequency X, pol ?.:\n" % (self.object, self.mjd))
@@ -287,12 +287,12 @@ class BootstrapResult:
         for line in lines:
             splitline = line.split()
             if len(splitline) < 2:
-                print "Garbage line " + line
+                print("Garbage line " + line)
                 continue
             param = splitline[1][:-1].lower()
             if not param in self.usedparams:
-                print "Got unknown parameter " + param + " when initialising bootstrapresult"
-                print line
+                print("Got unknown parameter " + param + " when initialising bootstrapresult")
+                print(line)
                 sys.exit()
             if "mode" in line:
                 self.mode[param] = float(splitline[-1])
@@ -303,23 +303,23 @@ class BootstrapResult:
             elif "99.7%" in line:
                 self.interval3sig[param] = (float(splitline[-5]), float(splitline[-3]), float(splitline[-1]))
             else:
-                print "Unparseable line " + line
+                print("Unparseable line " + line)
             
     def get1sigmaconfidence(self, param):
         if not param.lower() in self.usedparams:
-            print "Got unknown parameter " + param
+            print("Got unknown parameter " + param)
             sys.exit()
         return self.interval1sig[param.lower()]
 
     def get2sigmaconfidence(self, param):
         if not param.lower() in self.usedparams:
-            print "Got unknown parameter " + param
+            print("Got unknown parameter " + param)
             sys.exit()
         return self.interval2sig[param.lower()]
 
     def get3sigmaconfidence(self, param):
         if not param.lower() in self.usedparams:
-            print "Got unknown parameter " + param
+            print("Got unknown parameter " + param)
             sys.exit()
         return self.interval3sig[param.lower()]
 
@@ -380,7 +380,7 @@ class AstroFitResult:
             self.pmramaserr = float(self.pmrastring.split()[2])
             self.pmdecmaserr = float(self.pmdecstring.split()[2])
         else:
-            print "Cannot find file " + filename
+            print("Cannot find file " + filename)
 
     def getApproxPositionAtDate(self, mjd):
         yeardiff = (mjd - float(self.epochmjdstring))/365.25
@@ -425,8 +425,8 @@ class BasicJmfitResult:
             self.measuredimagerms = float(limitlines[-2].split(':')[-1])*limitscale
             self.peakpixel = float(limitlines[-3].split(':')[-1])
             if self.peakpixel > 10.0*self.estimatedimagerms and self.upperlimit:
-                print "Source %s was a non-detection, but peak pixel (%.3f) is %.1f x the expected image rms!" % \
-                      (self.object, self.peakpixel, self.peakpixel/self.estimatedimagerms)
+                print("Source %s was a non-detection, but peak pixel (%.3f) is %.1f x the expected image rms!" % \
+                      (self.object, self.peakpixel, self.peakpixel/self.estimatedimagerms))
             if self.upperlimit and self.peakpixel > 12*self.estimatedimagerms:
                 self.iscomplex = True
 
@@ -484,14 +484,14 @@ class ExtendedJmfitResult:
         if not limitfile == None:
             limitlines = open(limitfile).readlines()
             if len(limitlines) < 2:
-                print "Some problem with limit file " + limitfile
+                print("Some problem with limit file " + limitfile)
             else:
                 self.estimatedimagerms = float(limitlines[-1].split(':')[-1])*limitscale
                 self.measuredimagerms = float(limitlines[-2].split(':')[-1])*limitscale
                 self.peakpixel = float(limitlines[-3].split(':')[-1])
                 if self.peakpixel > 10.0*self.estimatedimagerms and self.upperlimit:
-                    print "Source %s was a non-detection, but peak pixel (%.3f) is %.1f x the expected image rms!" % \
-                          (self.object, self.peakpixel, self.peakpixel/self.estimatedimagerms)
+                    print("Source %s was a non-detection, but peak pixel (%.3f) is %.1f x the expected image rms!" % \
+                          (self.object, self.peakpixel, self.peakpixel/self.estimatedimagerms))
                 if self.upperlimit and self.peakpixel > 12*self.estimatedimagerms:
                     self.iscomplex = True
 
