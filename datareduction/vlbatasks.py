@@ -5022,7 +5022,7 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
             for i in baselines:
                 possm.baseline[i] = i
         else:
-            print "baselines parameter must be a list"
+            print("baselines parameter must be a list")
             sys.exit()
     if clversion > 0:
         possm.docalib = 1

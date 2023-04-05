@@ -14,6 +14,45 @@ def ftpget(url, directory, filename):
     ftps.retrlines("RETR {:s}".format(filename), contents.append)
     return contents
 
+def vexfile2time_info(vexfile):
+    """
+    Outputs
+    -------
+    obsdate, obsmonth, MJD, syear, sdoy, syy, eyear, edoy, eyy, startfound, stopfound
+    """
+    vexin = open(vexfile)
+    vexlines = vexin.readlines()
+    vexin.close()
+
+    startfound = False
+    stopfound = False
+    for line in vexlines:
+        if 'date' in line:
+            obsdate  = line.split(':')[-1].split(' ')
+            obsmonth = obsdate[-2].strip().lower()
+            obsmonth = obsmonth + obsdate[-1].strip()[2:4]
+            print(obsmonth)
+        if 'MJD' in line:
+            MJD = int(line.split(':')[-1])
+        if "exper_nominal_start" in line:
+            splitline = line.split('=')
+            syear     = int(splitline[1][:4])
+            sdoy      = int(splitline[1][5:8])
+            #syy       = syear - 100*(syear/100)
+            syy       = syear % 100 
+            startfound = True
+        elif "exper_nominal_stop" in line:
+            splitline = line.split('=')
+            eyear     = int(splitline[1][:4])
+            edoy      = int(splitline[1][5:8])
+            #eyy       = eyear - 100*(eyear/100)
+            eyy       = eyear % 100
+            stopfound = True
+        if startfound and stopfound:
+            break
+    return obsdate, obsmonth, MJD, syear, sdoy, syy, eyear, edoy, eyy, startfound, stopfound 
+    
+
 def find_obs_date_from_idifits(idifitsfile):
     header = open(idifitsfile, 'rb').readline()[:1000]
     msgs = header.decode().split('   ')
@@ -61,36 +100,7 @@ def main():
         print(("%s not found on ftp server; aborting\n" % vexfile))
         sys.exit()
     
-    vexin = open(sys.argv[1])
-    vexlines = vexin.readlines()
-    vexin.close()
-
-    startfound = False
-    stopfound = False
-    for line in vexlines:
-        if 'date' in line:
-            obsdate  = line.split(':')[-1].split(' ')
-            obsmonth = obsdate[-2].strip().lower()
-            obsmonth = obsmonth + obsdate[-1].strip()[2:4]
-            print(obsmonth)
-        if 'MJD' in line:
-            MJD = int(line.split(':')[-1])
-        if "exper_nominal_start" in line:
-            splitline = line.split('=')
-            syear     = int(splitline[1][:4])
-            sdoy      = int(splitline[1][5:8])
-            #syy       = syear - 100*(syear/100)
-            syy       = syear % 100 
-            startfound = True
-        elif "exper_nominal_stop" in line:
-            splitline = line.split('=')
-            eyear     = int(splitline[1][:4])
-            edoy      = int(splitline[1][5:8])
-            #eyy       = eyear - 100*(eyear/100)
-            eyy       = eyear % 100
-            stopfound = True
-        if startfound and stopfound:
-            break
+    obsdate, obsmonth, MJD, syear, sdoy, syy, eyear, edoy, eyy, startfound, stopfound = vexfile2time_info(sys.argv[1])
 
     if not (startfound and stopfound):
         print("Couldn't find start and/or stop date! Aborting.")
@@ -133,7 +143,13 @@ def main():
         > esag%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
     os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
         > codg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
-    os.system("gunzip igsg%03d0.%02di.Z" % (sdoy, syy))
+    try:
+        gunzip_result = os.system("gunzip igsg%03d0.%02di.Z" % (sdoy, syy))
+        if gunzip_result != 0:
+            raise Exception
+    except:
+        print('use jplg instead of igsg, as the latter is not yet available.')
+        os.system("gunzip jplg%03d0.%02di.Z" % (sdoy, syy))
     if edoy != sdoy:
         os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
             > jplg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
@@ -143,8 +159,13 @@ def main():
             > esag%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
         os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
             > codg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
-        os.system("gunzip igsg%03d0.%02di.Z" % (edoy, eyy))
-
+        try:
+            gunzip_result = os.system("gunzip igsg%03d0.%02di.Z" % (edoy, eyy))
+            if gunzip_result != 0:
+                raise Exception
+        except:
+            print('use jplg instead of igsg, as the latter is not yet available.')
+            os.system("gunzip jplg%03d0.%02di.Z" % (edoy, eyy))
 
 if __name__ == "__main__":
     main()
