@@ -2998,7 +2998,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     selectedionextype = ""
     for ionextype in ionextypes:
         for filename in files:
-            if (ionextype in filename and filename[-1] == 'i') or (ionextype.upper() in filename and filename[-3:] == 'INX'):
+            if (ionextype in filename and filename[-1] == 'i') or (ionextype.upper() in filename and filename[-7:] == 'GIM.INX'):
                 selectedionextype = ionextype
                 break
         if selectedionextype != "":
@@ -3008,7 +3008,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
         sys.exit()
     numfiles = 0
     for filename in files:
-        if (selectedionextype in filename and filename[-1:] == 'i') or (ionextype.upper() in filename and filename[-3:] == 'INX'):
+        if (selectedionextype in filename and filename[-1:] == 'i') or (ionextype.upper() in filename and filename[-7:] == 'GIM.INX'):
             if numfiles == 0:
                 tecor.infile = tecordirectory + filename
             elif (filename.split('.')[-1] < tecor.infile.split('.')[-1]):
