@@ -14,6 +14,39 @@ def ftpget(url, directory, filename):
     ftps.retrlines("RETR {:s}".format(filename), contents.append)
     return contents
 
+def download_TEC_maps(yyyy, doy, yy):
+    if yyyy < 2023: ## old TEC map naming convention
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
+            > jplg%03d0.%02di.Z" % (yyyy, doy, doy, yy, doy, yy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/igsg%03d0.%02di.Z\
+            > igsg%03d0.%02di.Z" % (yyyy, doy, doy, yy, doy, yy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/esag%03d0.%02di.Z\
+            > esag%03d0.%02di.Z" % (yyyy, doy, doy, yy, doy, yy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
+            > codg%03d0.%02di.Z" % (yyyy, doy, doy, yy, doy, yy))
+        try:
+            gunzip_result = os.system("gunzip igsg%03d0.%02di.Z" % (doy, yy))
+            if gunzip_result != 0:
+                raise Exception
+        except:
+            print('use jplg instead of igsg, as the latter is not yet available.')
+            os.system("gunzip jplg%03d0.%02di.Z" % (doy, yy))
+    else: ## new TEC map naming convention since November 2022
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
+            > jplg%03d0.%02di.Z" % (yyyy, doy, doy, yy, doy, yy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/IGS0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz > IGS0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz" % (yyyy, doy, yyyy, doy, yyyy, doy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/ESA0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz > ESA0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz" % (yyyy, doy, yyyy, doy, yyyy, doy))
+        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/COD0OPSFIN_%04d%03d0000_01D_01H_GIM.INX.gz > COD0OPSFIN_%04d%03d0000_01D_01H_GIM.INX.gz" % (yyyy, doy, yyyy, doy, yyyy, doy))
+        try:
+            gzip_result = os.system("gzip -d IGS0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz" % (yyyy, doy))
+            if gzip_result != 0:
+                raise Exception
+        except:
+            print('use jplg instead of igsg, as the latter is not yet available.')
+            os.system("gunzip jplg%03d0.%02di.Z" % (doy, yy))
+
+    
+
 def vexfile2time_info(vexfile):
     """
     Outputs
@@ -135,37 +168,12 @@ def main():
     #os.system('wget --auth-no-challenge "https://cddis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp"')
     #os.system("wget -4 ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
     """download IONEX files"""
-    os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
-        > jplg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
-    os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/igsg%03d0.%02di.Z\
-        > igsg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
-    os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/esag%03d0.%02di.Z\
-        > esag%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
-    os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
-        > codg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
-    try:
-        gunzip_result = os.system("gunzip igsg%03d0.%02di.Z" % (sdoy, syy))
-        if gunzip_result != 0:
-            raise Exception
-    except:
-        print('use jplg instead of igsg, as the latter is not yet available.')
-        os.system("gunzip jplg%03d0.%02di.Z" % (sdoy, syy))
     if edoy != sdoy:
-        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
-            > jplg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
-        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/igsg%03d0.%02di.Z\
-            > igsg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
-        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/esag%03d0.%02di.Z\
-            > esag%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
-        os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
-            > codg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))
-        try:
-            gunzip_result = os.system("gunzip igsg%03d0.%02di.Z" % (edoy, eyy))
-            if gunzip_result != 0:
-                raise Exception
-        except:
-            print('use jplg instead of igsg, as the latter is not yet available.')
-            os.system("gunzip jplg%03d0.%02di.Z" % (edoy, eyy))
+        download_TEC_maps(eyear, edoy, eyy)
+    else:
+        download_TEC_maps(syear, sdoy, syy)
+        
+            
 
 if __name__ == "__main__":
     main()
