@@ -6306,6 +6306,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         [row_nos, antenna_nos, times, phi_degs] = s.read_inbeamselfcalp1_solutions()
         s.t = Table([row_nos, antenna_nos, times, phi_degs], names=['row_no', 'antenna_no', 'time', 'phi'])
         print(s.t)
+        s.max_antno = int(max(s.t['antenna_no']))
     def edit_inbeamselfcalpn_in_AIPS_and_write_out(s, correction_factor, snver, outputsntable):
         phi_degs = s.read_inbeamselfcalpn_solutions()
         wizuvdata = WizAIPSUVData(s.inbeamuvdata)
@@ -6342,7 +6343,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
             interactively_solve_phase_ambiguity function.
         If dualphscal.edit is present and dualphscal=True, the pipeline will generate the final
             phase edit automatically, then keep running till the end. This workflow would enable running
-            the pipeline from another country (in which case the latency time is long).
+            the pipeline remotely with long latency time.
         Plots are made to confirm that corrections are made.
         """
         from astropy.table import Table
@@ -6355,7 +6356,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
             exec('%ss = np.array([])' % parameter)
                     
-        for i in range(1,s.numantennas+1):
+        for i in range(1,s.max_antno+1):
             index = t['antenna_no']==i
             eachAnt = t[index]
             if len(eachAnt)==0:
@@ -6411,7 +6412,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         
         phase_shifts = None
         NAT = non_ambiguity_threshold = 90 ## in deg
-        for i in range(1,s.numantennas+1):
+        for i in range(1,s.max_antno+1):
             index = t['antenna_no']==i
             eachAnt = t[index]
             if len(eachAnt)==0:
@@ -6527,7 +6528,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         else:
             t = s.t1
             before_or_after = 'after'
-        for i in range(1,s.numantennas+1):
+        for i in range(1,s.max_antno+1):
             index = t['antenna_no']==i
             if len(t[index])==0:
                 continue
