@@ -2994,11 +2994,11 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     tecor.indata = uvdataset
     files = sorted(os.listdir(tecordirectory))
     print(files)
-    ionextypes = ["jplg","esag","codg","upcg","igsg","c1pg","c2pg","u2pg","e1pg"]
+    ionextypes = ["jpl","esa","cod","upc","igs","c1p","c2p","u2p","e1p"]
     selectedionextype = ""
     for ionextype in ionextypes:
         for filename in files:
-            if ionextype in filename and filename[-1] == 'i':
+            if (ionextype in filename and filename[-1] == 'i') or (ionextype.upper() in filename and filename[-3:] == 'INX'):
                 selectedionextype = ionextype
                 break
         if selectedionextype != "":
@@ -3008,7 +3008,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
         sys.exit()
     numfiles = 0
     for filename in files:
-        if selectedionextype in filename and filename[-1:] == 'i':
+        if (selectedionextype in filename and filename[-1:] == 'i') or (ionextype.upper() in filename and filename[-3:] == 'INX'):
             if numfiles == 0:
                 tecor.infile = tecordirectory + filename
             elif (filename.split('.')[-1] < tecor.infile.split('.')[-1]):
