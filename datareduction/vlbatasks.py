@@ -6465,7 +6465,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         from astropy.table import Table
         import pickle
         readfile = open(final_phase_edit, 'rb')
-        t = pickle.load(readfile)
+        t = pickle.load(readfile) ## would run into UnicodeDecodeError when loading in python3 what is pickle-dumped in python2 !!!
         readfile.close()
         phis = t['phi'] * correction_factor
         reals = np.cos(phis*math.pi/180)
