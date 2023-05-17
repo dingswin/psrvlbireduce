@@ -2533,6 +2533,24 @@ class vlbireduce(support_vlbireduce):
                                            uvtaperstring, config['usegaussiantarget'],
                                            beginif, endif-subtractif)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
+                ## >>> when the target is resolved
+                if targetnames[i] in self.dividesourcelist:
+                    targetimagefile = directory + '/' + experiment + '_' + targetnames[i] + \
+                                      '_divided_difmap.gated.fits'
+                    jmfitfile = directory + '/' + experiment + '_' + targetnames[i] + \
+                                '.divided.gated.difmap.jmfit'
+                    if expconfig['dodefaultnames']:
+                        targetimagefile = directory + '/' + experiment + '_pulsar' + \
+                                          '_divided_difmap.gated.fits'
+                        jmfitfile = directory + '/' + experiment + '_pulsar' + \
+                                        '.divided.gated.difmap.jmfit'
+                    vlbatasks.difmap_maptarget(self.dividedgateduvfiles[i], targetimagefile, fullauto, stokesi,
+                                               config['difmappixelmas'], config['difmapnpixels'],
+                                               config['difmapweightstring'], difmaptargetuvaverstring, 
+                                               uvtaperstring, config['usegaussiantarget'],
+                                               beginif, endif-subtractif)
+                    vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
+                ## <<<                        
                 ## <<< gated data first
 
                 ## >>> preselfcal gated in the case of inverse referencing
