@@ -2123,6 +2123,7 @@ class vlbireduce(support_vlbireduce):
         self.phscaluvfiles = []
         self.inbeamuvfiles = []
         self.gateduvfiles = []
+        self.dividedgateduvfiles = [] ## sometimes the target is not pulsar, and it is resolved
         self.dividedinbeamuvfiles = []
         self.ungateduvfiles = []
         self.ungatedpresent = []
@@ -2149,6 +2150,8 @@ class vlbireduce(support_vlbireduce):
             targetoutname = targetnames[i]
             gfile = directory + '/' + experiment + "_" + targetoutname + \
                     "_pipeline_uv.gated.fits"
+            divgfile = directory + '/' + experiment + "_" + targetoutname + \
+                    "_pipeline_divided_uv.gated.fits"
             ufile = directory + '/' + experiment + "_" + targetoutname + \
                     "_pipeline_uv.ungated.fits"
             if targetoutname in targetconfigs[i]['primaryinbeam']:
@@ -2156,11 +2159,13 @@ class vlbireduce(support_vlbireduce):
                     targetoutname + "_pipeline_uv.fits"
             if expconfig['dodefaultnames']:
                 gfile = directory + '/' + experiment + "_pulsar_pipeline_uv.gated.fits"
+                divgfile = directory + '/' + experiment + "_pulsar_pipeline_divided_uv.gated.fits"
                 ufile = directory + '/' + experiment + "_pulsar_pipeline_uv.ungated.fits"
                 if targetoutname in targetconfigs[i]['primaryinbeam']:
                     ifile_preselfcal = directory + '/' + experiment + "_preselfcal" + \
                         "_pulsar_pipeline_uv.ungated.fits"
             self.gateduvfiles.append(gfile)
+            self.dividedgateduvfiles.append(divgfile)
             self.ungateduvfiles.append(ufile)
             if targetoutname in targetconfigs[i]['primaryinbeam']:
                 self.inbeampreselfcaluvfiles[i] = ifile_preselfcal
@@ -2425,6 +2430,29 @@ class vlbireduce(support_vlbireduce):
                         splitdata2.zap()
                     vlbatasks.splittoseq(gateduvdata, self.clversion+self.targetcl, 'GFINL', targetnames[i], splitseqno,
                                          splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
+                    ## >>> when the target is a non-point-like source
+                    if targetnames[i].strip() in self.dividesourcelist:
+                        target_image_file = modeldir + targetnames[i].strip() + self.cmband + ".clean.fits"
+                        if not os.path.exists(target_image_file):
+                            print("Need a model for " + targetnames[i].strip() + " since the source is in the dividesourcelist")
+                            print("But " + target_image_file + " was not found.")
+                            sys.exit()
+                        aipssrcname = targetnames[i].strip()
+                        if len(inbeamsrc) > 12:
+                            aipssrcname = inbeamsrc[:12]
+                        modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
+                        if modeldata.exists():
+                            modeldata.zap()
+                        vlbatasks.fitld_image(target_image_file, modeldata)
+                        divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                        if divideddata.exists():
+                            divideddata.zap()
+                        vlbatasks.normaliseUVData(splitdata2, modeldata, divideddata)
+                        os.system("rm -f " + tempdivfile)
+                        vlbatasks.writedata(divideddata, tempdivfile, True)
+                        os.system("mv -f " + tempdivfile + " " + self.dividedgateduvfiles[i])
+                    ## <<<
+
                     ## >>> inverse referencing
                     if targetnames[i].strip() == config['primaryinbeam'].strip():
                         #splitdata_PS = AIPSUVData(targetnames[i], 'PRESEL', 1, 1) #pre-selfcalibration
