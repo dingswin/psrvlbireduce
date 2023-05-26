@@ -2028,6 +2028,7 @@ class vlbireduce(support_vlbireduce):
 
         if self.maxinbeamcalibsp1mins > 0:
             self.snversion = self.snversion + sncount
+            self.targetcl0 = self.targetcl ## to mark the primary inbeam self-cal solutions
             self.targetcl += 1
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
@@ -2252,7 +2253,7 @@ class vlbireduce(support_vlbireduce):
                             splitdata = AIPSUVData(aipssrcname, split_phscal_option, 1, 1)
                             if splitdata.exists():
                                 splitdata.zap()
-                            if split_phscal_option == 'FINAL':
+                            if split_phscal_option == 'FINAL': ## main phscal solutions applied to the main phscal
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                 vlbatasks.writedata(splitdata, self.phscaluvfiles[i], True)
                             else:
@@ -2294,9 +2295,15 @@ class vlbireduce(support_vlbireduce):
                         splitdata = AIPSUVData(aipssrcname, 'FINAL', 1, 1)
                         if splitdata.exists():
                             splitdata.zap()
-                        vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion+self.targetcl, 'FINAL', inbeamsrc, 
-                                             splitseqno, splitmulti, splitband, splitbeginif, splitendif, 
-                                             combineifs, self.leakagedopol)
+                        if (self.maxinbeamcalibsp1mins > 0) and (inbeamsrc in config['primaryinbeam']): ## primary inbeam selfcal solutions applied to the primary inbeam
+                            vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion+self.targetcl0, 'FINAL', inbeamsrc, 
+                                                 splitseqno, splitmulti, splitband, splitbeginif, splitendif, 
+                                                 combineifs, self.leakagedopol)
+                        else: ## the secondary inbeam selfcal solutions (or primary inbeam selfcal ones if secondaryinbeam is not requested) are applied to non-primary-inbeams
+                            vlbatasks.splittoseq(inbeamuvdatas[count], self.clversion+self.targetcl, 'FINAL', inbeamsrc, 
+                                                 splitseqno, splitmulti, splitband, splitbeginif, splitendif, 
+                                                 combineifs, self.leakagedopol)
+                            
                         #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
                         #if not skipplots:
                         #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, inbeamsrc, plotfile, False,
