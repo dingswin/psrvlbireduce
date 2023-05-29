@@ -1591,12 +1591,9 @@ class vlbireduce(support_vlbireduce):
             for j in range(len(inbeamnames[i])):
                 if self.maxinbeamcalibsp1mins > 0:
                     for inbeamsrc in secondaryinbeam:
-                        if not secondaryinbeam == None and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
+                        if (secondaryinbeam != None) and (inbeamsrc.strip() == inbeamnames[i][j].strip()):
                             self.secondaryinbeams.append(inbeamsrc.strip())
                             self.secondaryfilenums.append(j)
-                    if len(self.secondaryinbeams) == 0:
-                        print("\nSecondary inbeam self-calibration is requested.\nHowever, either secondary inbeam calibrator(s) is not specified, or it does not exist. Aborted.")
-                        sys.exit(1)
                 for primaryinbeam in primaryinbeams:
                     if primaryinbeam.strip() == inbeamnames[i][j].strip():
                         if not primaryinbeam.strip() in self.doneinbeams:
@@ -1608,6 +1605,9 @@ class vlbireduce(support_vlbireduce):
                             self.doneinbeams.append(targetnames[i]) 
                             self.inbeamfilenums.append(-1) ## < 0 --> inverse referencing, see inbeamselfcal()
                     ##################
+        if (self.maxinbeamcalibsp1mins > 0) and (len(self.secondaryinbeams) == 0):
+            print("\nSecondary inbeam self-calibration is requested.\nHowever, either secondary inbeam calibrator(s) is not specified, or it does not exist. Aborted.")
+            sys.exit(1)
         for primaryinbeam in primaryinbeams:
             if not primaryinbeam.strip() in self.doneinbeams:
                 print("Didn't find primary inbeam " + primaryinbeam.strip() + " amongst the data! Check the inbeam name in your config file!")
