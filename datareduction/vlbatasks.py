@@ -1828,7 +1828,7 @@ def airyresponse(theta, D, lam):
 def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fieldsourcenames, 
                         iscal, issearch=True, isonepointing=False, onlygettimes=False, 
                         skipmissingsources=False):
-    numantennas    = len(uvdata.antennas) # this has python3 issue! In constrast, in python2 ParselTongue it works well.
+    numantennas    = len(uvdata.antennas) # this has python3 issue when the frequency bands have been trimmed with UVCOP'ed! In constrast, in python2 ParselTongue it works well.
     wizuvdata      = WizAIPSUVData(uvdata)
     examplesntable = wizuvdata.table('SN', examplesnversion)
     num_if         = examplesntable.keywords['NO_IF']

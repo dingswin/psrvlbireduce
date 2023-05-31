@@ -589,6 +589,27 @@ class vlbireduce(support_vlbireduce):
         if not expconfig['skippbcor']:
             self.clversion = self.clversion + 1
             self.snversion = self.snversion + 1
+        if True: # Need to dump out the phs cal sources so we can make models of them
+            for phscal in phscalnames:
+                for i in range(20): #Clear any old CALIB split catalog entries
+                    phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
+                    if phscal_uv_data.exists():
+                        phscal_uv_data.zap()
+                phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
+                rawuvoutputfile = '/Volumes/DataT7/processing/J2222-0137/bd244a/' + experiment.upper() + '_' + \
+                                           phscal + self.cmband + ".formodeling.uv.fits"
+                doband = False
+                domulti = False
+                if expconfig['ampcalscan'] > 0:
+                    doband = True
+                combineifs = False
+                beginif = -1
+                endif = -1
+                vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
+                                     False, 1, 2, combineifs, self.leakagedopol)
+                vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
+            print("UV datasets of the phase reference sources have been written out to model prior to FRING")
+            sys.exit()
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def do_PCAL_correction_and_inspect(self, expconfig, targetonly, tabledir,
