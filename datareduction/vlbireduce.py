@@ -537,6 +537,7 @@ class vlbireduce(support_vlbireduce):
             print("Runlevel " + str(self.runlevel) + ": Doing primary beam correction")
             vexfile  = directory + '/' + experiment.lower() + '.vex'
             scanlist = vlbatasks.getvexscaninfo(vexfile)
+            sources_in_vexfile = vlbatasks.get_sources_in_vexfile(vexfile)
             fieldsourcenames = {}
             fieldsourcenames[ampcalsrc] = ampcalsrc
             if not targetonly:
@@ -545,12 +546,16 @@ class vlbireduce(support_vlbireduce):
                         if i==0:
                             fieldsourcenames[phscalnames[j]] = phscalnames[j]
                         if len(inbeamnames[j]) > i:
-                            if expconfig['dodefaultnames']:
-                                fieldsourcenames["TARGETPT"] = inbeamnames[j][i]
-                            elif "174" in experiment:
-                                fieldsourcenames[targetnames[j][:5] + "PT"] = inbeamnames[j][i]
-                            else:
-                                fieldsourcenames[targetnames[j] + "PT"] = inbeamnames[j][i]
+                            if inbeamnames[j][i] in sources_in_vexfile: ## the "inbeam" source is actually out of beam
+                                fieldsourcenames[inbeamnames[j][i]] = inbeamnames[j][i]
+                            else: ## the "inbeam" source is indeed in-beam
+                                if expconfig['dodefaultnames']:
+                                    fieldsourcenames["TARGETPT"] = inbeamnames[j][i]
+                                elif "174" in experiment:
+                                    fieldsourcenames[targetnames[j][:5] + "PT"] = inbeamnames[j][i]
+                                else:
+                                    fieldsourcenames[targetnames[j] + "PT"] = inbeamnames[j][i]
+                                
                     pbsntable = tabledir + 'pbcor.cal' + str(i) + '.sn'
                     vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion)
                     vlbatasks.correct_primarybeam(inbeamuvdatas[i], self.snversion-1, i, scanlist, fieldsourcenames, False, False)
@@ -589,27 +594,6 @@ class vlbireduce(support_vlbireduce):
         if not expconfig['skippbcor']:
             self.clversion = self.clversion + 1
             self.snversion = self.snversion + 1
-        if True: # Need to dump out the phs cal sources so we can make models of them
-            for phscal in phscalnames:
-                for i in range(20): #Clear any old CALIB split catalog entries
-                    phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, i)
-                    if phscal_uv_data.exists():
-                        phscal_uv_data.zap()
-                phscal_uv_data = AIPSUVData(phscal[:12], 'CALIB', 1, 1)
-                rawuvoutputfile = '/Volumes/DataT7/processing/J2222-0137/bd244a/' + experiment.upper() + '_' + \
-                                           phscal + self.cmband + ".formodeling.uv.fits"
-                doband = False
-                domulti = False
-                if expconfig['ampcalscan'] > 0:
-                    doband = True
-                combineifs = False
-                beginif = -1
-                endif = -1
-                vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, 'CALIB', phscal, 1, domulti,
-                                     False, 1, 2, combineifs, self.leakagedopol)
-                vlbatasks.writedata(phscal_uv_data, rawuvoutputfile, True)
-            print("UV datasets of the phase reference sources have been written out to model prior to FRING")
-            sys.exit()
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def do_PCAL_correction_and_inspect(self, expconfig, targetonly, tabledir,

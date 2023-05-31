@@ -1000,6 +1000,18 @@ def getvexscaninfo(vexfile):
     print("Found " + str(len(scanlist)) + " scans in vex file " + vexfile)
     return scanlist
 
+####### OUTPUT THE SOURCE LIST PURELY BASED ON VEX FILE ########################
+def get_sources_in_vexfile(vexfile):
+    """
+    The sources are assigned by the key file, and likely include the pointing shared by a target and its in-beam calibrators.
+    """
+    scanlist = getvexscaninfo(vexfile)
+    sources = []
+    for scan in scanlist:
+        sources.append(scan.source.name)
+    sources_in_vexfile = list(set(sources))
+    return sources_in_vexfile
+
 ####### COMPUTE THE MEDIAN ABSOLUTE DIFFERENCE OF AN ARRAY #####################
 def mad(array):
     med=n.median(array)
