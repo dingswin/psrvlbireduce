@@ -565,7 +565,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.plottops(inbeamuvdatas[i], 'SN', self.snversion, 'AMP', 0, 2, 4, tabledir + 'pbcor.cal' + str(i) + '.ps')
                     vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion)
                     vlbatasks.loadtable(inbeamuvdatas[i], pbsntable, self.snversion)
-                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, '2PT', self.clversion, expconfig['refant'])
+                    vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, '2PT', self.clversion, expconfig['refant']) 
             if not calonly:
                 for i in range(numtargets):
                     if expconfig['dodefaultnames']:
