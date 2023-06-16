@@ -235,12 +235,6 @@ def main():
         secondary_dualphscal_setup = ['-1','0']
 
     try:
-        triphscal_setup = targetconfigs[0]['triphscal'].split(';')
-        dotriphscal = True
-    except KeyError:
-        dotriphscal = False
-
-    try:
         difmaptargetuvaverstring = expconfig['difmaptargetuvaverstring']
     except KeyError:
         difmaptargetuvaverstring = '20,false'
@@ -252,9 +246,6 @@ def main():
     except KeyError:
         multi_component_sources = {}
 
-    if float(dualphscal_setup[0]) > 0 and dotriphscal:
-        print("Can't do both dualphscal and triphscal; aborting...")
-        sys.exit()
 
 
     ################################################################################

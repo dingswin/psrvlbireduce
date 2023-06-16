@@ -1749,6 +1749,11 @@ class vlbireduce(support_vlbireduce):
             if not os.path.exists(inbeamselfcal_phase_time_folder):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
             
+            try:
+                secondary_dualphscal_requested = targetconfigs[0]['secondarydualphscal'].split(',')[0]
+            except KeyError:
+                secondary_dualphscal_requested = False
+            
             for (tocalname, tocalindex) in zip(tocalnames, tocalindices):
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
                 if tocalname in self.secondaryinbeams:
@@ -1776,11 +1781,15 @@ class vlbireduce(support_vlbireduce):
                 dualphscalp1.compile_into_table()
                 #originalinbeamselfcalp1sntable = dualphscal.copy_inbeamselfcal_sntable(inbeamselfcalp1sntable) 
                 
-                final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_inbeam_selfcal.final'
-                dualphscal_edit = tabledir + '/dualphscal.edit'
+                if not dosecondary:
+                    final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_inbeam_selfcal.final'
+                    dualphscal_edit = tabledir + '/dualphscal.edit'
+                else:
+                    final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_secondary_inbeam_selfcal.final'
+                    dualphscal_edit = tabledir + '/secondarydualphscal.edit'
                 if (not os.path.exists(dualphscal_edit)) and (not os.path.exists(final_inbeamselfcal_phase_edit)): ## the old interactive approach
                     print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it to .corrected_phases_inbeam_selfcal.final and rerun the pipeline.")
-                    dualphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder)
+                    dualphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder, dosecondary)
                     sys.exit(0)
                 
                 if os.path.exists(dualphscal_edit):
@@ -1794,14 +1803,17 @@ class vlbireduce(support_vlbireduce):
                 
                 vlbatasks.deletetable(uvdata, 'SN', self.snversion) ## clean up after producing dualphscaloutputsn
                 ## <<<<
-                    
+            
             ## >>> apply the corrected p1.sn (or sp1.sn) only to the de-facto target.\
             ## the original clversion+1 CL table will be deleted and replaced in applyinbeamcalib() !!
             junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                    targetconfigs, True, calonly, False, dosecondary, True,
                                    self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
                                    ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
-            ## <<< 
+            ## <<<
+            if (not dosecondary) and (secondary_dualphscal_requested != False): 
+                print('Applying the phase-corrected solutions only to the secondary in-beam calibrator.')
+                
                     
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do not trust this printTableAndRunlevel result if you are requesting inverse referencing!

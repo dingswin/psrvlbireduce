@@ -6403,14 +6403,17 @@ class calibrate_target_phase_with_two_colinear_phscals:
         #s.plot_phi_versus_time_for_all_antennas(plotpath2save, False) ##cannot yet work with screen. to make plot, one needs to run the pipeline separately in a small runlevel range.
 
 
-    def interactively_solve_phase_ambiguity(s, plotpath2save):
+    def interactively_solve_phase_ambiguity(s, plotpath2save, dosecondarydualphscal=False):
         from astropy.table import Table
         import pickle
         #for parameter in ['row_no', 'antenna_no', 'time', 'phi']:
         #    exec(('%ss = np.array([])' % parameter), globals())
         row_nos, antenna_nos, times, phis = np.array([]), np.array([]), np.array([]), np.array([])
-
-        saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
+        
+        if not dosecondarydualphscal:
+            saved_phase_edit = plotpath2save + '/.corrected_phases_inbeam_selfcal'
+        else:
+            saved_phase_edit = plotpath2save + '/.corrected_phases_secondary_inbeam_selfcal'
         t = s.t
         if os.path.exists(saved_phase_edit):
             choice = input('\nDo you want to use saved phase edit and continue the edit? Press y if affirmative: ')
