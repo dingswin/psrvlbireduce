@@ -162,8 +162,6 @@ jmfit.blc = blc
 jmfit.trc = trc
 jmfit.go()
 jmfitmessage = jmfit.message()
-print(jmfitmessage)
-sys.exit()
 msgindex = 0
 exciselinenos = []
 for i in range(len(jmfitmessage)-1):
