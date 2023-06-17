@@ -492,34 +492,35 @@ class support_vlbireduce(object):
                             inbeamuvrange = config['inbeamcalibspnuvrange']
                         except KeyError:
                             inbeamuvrange = [0, 0]
-                    if doampcal:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
-                        pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
-                        solmins = config['inbeamcalibapnmins']
-                        solsnr  = config['inbeamcalibapnsnr']
-                        soltype = config['inbeamcalibapntype']
-                        try:
-                            weightit = config['inbeamcalibapnweightit']
-                        except KeyError:
-                            weightit = 0
-                        try:
-                            dostokesi = config['inbeamcalibapnstokesi']
-                        except KeyError:
-                            dostokesi = False
                     else:
-                        sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
-                        pspath      = tabledir + inbeamsrc + '.icalib.pn.ps'
-                        solmins     = config['inbeamcalibpnmins']
-                        solsnr      = config['inbeamcalibpnsnr']
-                        soltype     = config['inbeamcalibpntype']
-                        try:
-                            weightit = config['inbeamcalibpnweightit']
-                        except KeyError:
-                            weightit = 0
-                        try:
-                            dostokesi = config['inbeamcalibpnstokesi']
-                        except KeyError:
-                            dostokesi = False
+                        if doampcal:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
+                            solmins = config['inbeamcalibapnmins']
+                            solsnr  = config['inbeamcalibapnsnr']
+                            soltype = config['inbeamcalibapntype']
+                            try:
+                                weightit = config['inbeamcalibapnweightit']
+                            except KeyError:
+                                weightit = 0
+                            try:
+                                dostokesi = config['inbeamcalibapnstokesi']
+                            except KeyError:
+                                dostokesi = False
+                        else:
+                            sntablepath = tabledir + inbeamsrc + '.icalib.pn.sn'
+                            pspath      = tabledir + inbeamsrc + '.icalib.pn.ps'
+                            solmins     = config['inbeamcalibpnmins']
+                            solsnr      = config['inbeamcalibpnsnr']
+                            soltype     = config['inbeamcalibpntype']
+                            try:
+                                weightit = config['inbeamcalibpnweightit']
+                            except KeyError:
+                                weightit = 0
+                            try:
+                                dostokesi = config['inbeamcalibpnstokesi']
+                            except KeyError:
+                                dostokesi = False
                 print(("Using solution interval " + str(solmins) + ', requiring S/N ' + str(solsnr)))
                 try:
                     flagwheremodelbelow = expconfig['inbeamminmodelflux'] ## Jy
@@ -736,12 +737,13 @@ class support_vlbireduce(object):
                     calibstring = 'spn'
                     if int(dualphscal_setup[0])>0:
                         calibstring += '.dualphscal'
-                if doampcal:
-                    calibstring = 'apn'
                 else:
-                    calibstring = 'pn'
-                    if int(dualphscal_setup[0])>0:
-                        calibstring += '.dualphscal'
+                    if doampcal:
+                        calibstring = 'apn'
+                    else:
+                        calibstring = 'pn'
+                        if int(dualphscal_setup[0])>0:
+                            calibstring += '.dualphscal'
             print(inbeamsrc)
             if "CONCAT" in inbeamsrc:
                 calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
