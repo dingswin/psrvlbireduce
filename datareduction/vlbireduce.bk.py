@@ -1554,8 +1554,7 @@ class vlbireduce(support_vlbireduce):
         self.numifs = 4
         self.maxinbeamcalibp1mins = -1 # Phase-only, primary inbeam, summed IFs
         self.maxinbeamcalibpnmins = -1 # Phase-only, primary inbeam, separate IFs
-        self.maxinbeamcalibsp1mins = -1 # Phase-only, secondary inbeam, summed IFs
-        self.maxinbeamcalibspnmins = -1 # Phase-only, secondary inbeam, separate IFs
+        self.maxinbeamcalibsp1mins = -1 # Phase-only, secondary inbeam (rarely used)
         self.maxinbeamcalibap1mins = -1 # Amplitude and phase, primary inbeam, combined IFs
         self.maxinbeamcalibapnmins = -1 # Amplitude and phase, primary inbeam, separate IFs
         if inbeamuvdatas[0].exists():
@@ -1571,12 +1570,7 @@ class vlbireduce(support_vlbireduce):
                 if config['inbeamcalibsp1mins'] > self.maxinbeamcalibsp1mins:
                     self.maxinbeamcalibsp1mins = config['inbeamcalibsp1mins']
             except KeyError:
-                print("No secondary inbeam self-calibration (with IFs and pols combined) requested...")
-            try:
-                if config['inbeamcalibspnmins'] > self.maxinbeamcalibspnmins:
-                    self.maxinbeamcalibspnmins = config['inbeamcalibspnmins']
-            except KeyError:
-                print("No secondary inbeam self-calibration (with separate IFs) requested...")
+                print("No secondary inbeam self-calibration requested...")
             try:
                 if config['inbeamcalibpnmins'] > self.maxinbeamcalibpnmins:
                     self.maxinbeamcalibpnmins = config['inbeamcalibpnmins']
@@ -1592,7 +1586,6 @@ class vlbireduce(support_vlbireduce):
         print("maxinbeamcalibap1mins", self.maxinbeamcalibap1mins)
         print("maxinbeamcalibapnmins", self.maxinbeamcalibapnmins)
         print("maxinbeamcalibsp1mins", self.maxinbeamcalibsp1mins)
-        print("maxinbeamcalibspnmins", self.maxinbeamcalibspnmins)
         for i in range(numtargets):
             primaryinbeams = targetconfigs[i]['primaryinbeam'].split(',')
             try:
@@ -2063,34 +2056,6 @@ class vlbireduce(support_vlbireduce):
             self.targetcl += 1
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
-    
-    def do_a_separate_IF_phase_selfcal_on_the_secondary_inbeams_if_requested(self,
-            inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
-            targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
-        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            self.maxinbeamcalibspnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs) on secondary inbeam")
-            tocalnames, tocalindices = self.inbeamselfcal(self.secondaryinbeams, self.secondaryfilenums, 
-                                       inbeamuvdatas, gateduvdata, expconfig, targetconfigs, 
-                                       modeldir, modeltype, targetonly,
-                                       calonly, self.beginif, self.endif, False, True, False, 
-                                       self.clversion+self.targetcl, targetnames, numtargets, inbeamnames, directory, 
-                                       tabledir, alwayssaved, self.leakagedopol)
-        else:
-            print("Skipping secondary inbeam phase-only selfcal (separate IFs)")
-            tocalnames = []
-            tocalindices = []
-            for i in range(numtargets):
-                config = targetconfigs[i]
-                try:
-                    if config['inbeamcalibsp1mins'] > 0:
-                        tocalnames.append(targetconfigs[i]['secondaryinbeam'])
-                        tocalindices.append(i)
-                except KeyError:
-                    continue
-        self.runlevel  = self.runlevel + 1
-        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
-        return tocalnames, tocalindices
 
     def calculate_the_scintillation_correction(self, numtargets, targetconfigs, tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas):
         beginif = 1
