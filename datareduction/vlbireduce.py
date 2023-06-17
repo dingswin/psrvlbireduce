@@ -1750,7 +1750,10 @@ class vlbireduce(support_vlbireduce):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
             
             try:
-                secondary_dualphscal_requested = targetconfigs[0]['secondarydualphscal'].split(',')[0]
+                if int(targetconfigs[0]['secondarydualphscal'].split(',')[0]) > 0:
+                    secondary_dualphscal_requested = True
+                else:
+                    secondary_dualphscal_requested = False
             except KeyError:
                 secondary_dualphscal_requested = False
             
@@ -1793,7 +1796,7 @@ class vlbireduce(support_vlbireduce):
                     sys.exit(0)
                 
                 if os.path.exists(dualphscal_edit):
-                    dualphscalp1.correcting_inbeamcalib_phase_with_dualphscal_edit(tabledir, inbeamselfcal_phase_time_folder) ## this will make/overwrite final_inbeamselfcal_phase_edit
+                    dualphscalp1.correct_inbeamcalib_phase_with_dualphscal_edit(tabledir, inbeamselfcal_phase_time_folder, dosecondary) ## this will make/overwrite final_inbeamselfcal_phase_edit
                 
                 phase_correction_factor = float(dualphscal_setup[1].strip())
                 dualphscalp1.load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(final_inbeamselfcal_phase_edit,

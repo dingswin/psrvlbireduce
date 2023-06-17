@@ -6349,7 +6349,7 @@ class calibrate_target_phase_with_two_colinear_phscals:
         if os.path.exists(outputsntable):
             os.remove(outputsntable)
         writetable(s.inbeamuvdata, 'SN', snver, outputsntable)
-    def correcting_inbeamcalib_phase_with_dualphscal_edit(s, tabledir, plotpath2save):
+    def correct_inbeamcalib_phase_with_dualphscal_edit(s, tabledir, plotpath2save, dosecondary=False):
         """
         The format of dualphscal.edit in the tabledir follows 'Ant_NO N1 N2' in the 
             interactively_solve_phase_ambiguity function.
@@ -6360,7 +6360,10 @@ class calibrate_target_phase_with_two_colinear_phscals:
         """
         from astropy.table import Table
         import pickle
-        dualphscal_edit = tabledir + '/dualphscal.edit'
+        if not dosecondary:
+            dualphscal_edit = tabledir + '/dualphscal.edit'
+        else:
+            dualphscal_edit = tabledir + '/secondarydualphscal.edit'
         readfile = open(dualphscal_edit, 'r')
         config_lines = readfile.readlines()
         readfile.close()

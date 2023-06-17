@@ -677,7 +677,7 @@ class support_vlbireduce(object):
             one needs to change yaml files to switch an inbeamcal to be the 'target', as it is
             very rare.
         4. With applyinbeamlist (that is not None), the function can apply solutions to listed 
-            inbeam sources, as long as targetonly==False. Note that this feature is not yet
+            inbeam sources, as long as targetonly==False. NOTE that this feature is not yet
             available for inverse phase referencing!!
 
         Return parameters
