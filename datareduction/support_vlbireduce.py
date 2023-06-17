@@ -229,11 +229,13 @@ class support_vlbireduce(object):
                 else:
                     if dosecondary:
                         if not sumifs:
-                            print("Can't do separate IFs secondary!")
-                            sys.exit()
-                        try:
-                            solmins = config['inbeamcalibsp1mins']
-                        except KeyError: pass
+                            try:
+                                solmins = config['inbeamcalibspnmins']
+                            except KeyError: pass
+                        else:
+                            try:
+                                solmins = config['inbeamcalibsp1mins']
+                            except KeyError: pass
                     else:
                         if sumifs:
                             solmins = config['inbeamcalibp1mins']
@@ -255,8 +257,8 @@ class support_vlbireduce(object):
                             pspath      = tabledir + inbeamsrc + '.icalib.p1.ps'
                     else:
                         if dosecondary:
-                            print("Can't do separate IFs secondary!")
-                            sys.exit()
+                            sntablepath = tabledir + inbeamsrc + '.icalib.spn.sn'
+                            pspath  = tabledir + inbeamsrc + '.icalib.spn.ps'
                         if doampcal:
                             sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
                             pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
@@ -379,9 +381,14 @@ class support_vlbireduce(object):
                             except KeyError: pass
                     else:
                         if dosecondary:
-                            try:
-                                solmins = targetconfigs[i]['inbeamcalibsp1mins']
-                            except KeyError: pass
+                            if sumifs:
+                                try:
+                                    solmins = targetconfigs[i]['inbeamcalibsp1mins']
+                                except KeyError: pass
+                            else:
+                                try:
+                                    solmins = targetconfigs[i]['inbeamcalibspnmins']
+                                except KeyError: pass
                         else:
                             if sumifs:
                                 solmins = config['inbeamcalibp1mins']
@@ -427,7 +434,7 @@ class support_vlbireduce(object):
                 ## >>> this redundancy increase robustness against future extensions.
                 dostokesi   = True
                 try:
-                    inbeamuvrange = config['inbeamuvrange']
+                    inbeamuvrange = config['inbeamuvrange'] ## it would be overwritten by inbeamcalib*uvrange
                 except KeyError:
                     inbeamuvrange = [0, 0]
                 if sumifs:
@@ -453,7 +460,7 @@ class support_vlbireduce(object):
                         except KeyError:
                             weightit = 0
                         try:
-                            inbeamuvrange = config['secondaryinbeamuvrange']
+                            inbeamuvrange = config['inbeamcalibsp1uvrange']
                         except KeyError:
                             inbeamuvrange = [0, 0]
                     else:
@@ -468,8 +475,23 @@ class support_vlbireduce(object):
                             weightit = 0
                 else:
                     if dosecondary:
-                        print("Can't do separate IFs secondary!")
-                        sys.exit()
+                        sntablepath = tabledir + inbeamsrc + '.icalib.spn.sn'
+                        pspath  = tabledir + inbeamsrc + '.icalib.spn.ps'
+                        solmins = config['inbeamcalibspnmins']
+                        solsnr  = config['inbeamcalibspnsnr']
+                        soltype = config['inbeamcalibspntype']
+                        try:
+                            weightit = config['inbeamcalibspnweightit']
+                        except KeyError:
+                            weightit = 0
+                        try:
+                            dostokesi = config['inbeamcalibspnstokesi']
+                        except KeyError:
+                            dostokesi = False
+                        try:
+                            inbeamuvrange = config['inbeamcalibspnuvrange']
+                        except KeyError:
+                            inbeamuvrange = [0, 0]
                     if doampcal:
                         sntablepath = tabledir + inbeamsrc + '.icalib.apn.sn'
                         pspath  = tabledir + inbeamsrc + '.icalib.apn.ps'
