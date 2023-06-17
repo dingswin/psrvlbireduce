@@ -733,8 +733,9 @@ class support_vlbireduce(object):
                         calibstring += '.dualphscal'
             else:
                 if dosecondary:
-                    print("Can't do separate IFs secondary cal!")
-                    sys.exit()
+                    calibstring = 'spn'
+                    if int(dualphscal_setup[0])>0:
+                        calibstring += '.dualphscal'
                 if doampcal:
                     calibstring = 'apn'
                 else:

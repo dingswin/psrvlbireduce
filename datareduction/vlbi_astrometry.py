@@ -510,15 +510,20 @@ def main():
     [tocalnames, tocalindices] = reducevlbi.do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
             targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
-    ## Load the secondary inbeam CALIB solutions ########################################################################
+    ## Load the secondary inbeam (IFs-summed) CALIB solutions ############################################################
     reducevlbi.load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, tabledir)
-    ## Do dual-phscal calibration on the prIBC-secIBC line if requested: correct secIBC.icalib.sp1.sn #############
+    ## Do dual-phscal calibration on the prIBC-secIBC line if requested: correct secIBC.icalib.sp1.sn ####################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(secondary_dualphscal_setup, directory,
             tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames, tocalindices, expconfig, 
             targetconfigs, inbeamnames, targetnames)
-
-    ## Calculate the scintillation correction #####################################################################
+    ## Do a separate IF (and pol) selfcal on the secondary inbeam(s) if requested ########################################
+    [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_secondary_inbeams_if_requested(inbeamuvdatas, gateduvdata, expconfig,
+            targetconfigs, modeldir, modeltype, targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames)
+    ## Load the separate IF secondary inbeam CALIB solutions #############################################################
+    reducevlbi.load_secondaryinbeam_CALIB_solutions_obtained_with_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig,
+            targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, tabledir)
+    ## Calculate the scintillation correction ############################################################################
     [scinttablepaths, beginif, endif] = reducevlbi.calculate_the_scintillation_correction(numtargets, targetconfigs,
                 tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas)
         # Scintillation correction is applied later at the stage of the final split !!! 
