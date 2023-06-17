@@ -1801,6 +1801,7 @@ class vlbireduce(support_vlbireduce):
                 phase_correction_factor = float(dualphscal_setup[1].strip())
                 dualphscalp1.load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(final_inbeamselfcal_phase_edit,
                                                                                             phase_correction_factor)
+                
                 dualphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.dualphscal.sn')
                 dualphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, dualphscaloutputsn)
                 
@@ -1814,9 +1815,12 @@ class vlbireduce(support_vlbireduce):
                                    self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
                                    ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
             ## <<<
-            if (not dosecondary) and (secondary_dualphscal_requested != False): 
+            if (not dosecondary) and secondary_dualphscal_requested: 
                 print('Applying the phase-corrected solutions only to the secondary in-beam calibrator.')
-                
+                junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                                       targetconfigs, targetonly, True, False, False, True,
+                                       self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
+                                       ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums, self.secondaryinbeams)
                     
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do not trust this printTableAndRunlevel result if you are requesting inverse referencing!
