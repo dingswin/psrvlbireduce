@@ -7,11 +7,10 @@ from AIPS import AIPS, AIPSDisk
 from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
-#import matplotlib
-#matplotlib.use('Agg')
 import matplotlib
 #matplotlib.use('Qt5Agg', warn=False, force=True) ##non-interactive way, which has to be claimed before import plt
-matplotlib.use('Qt5Agg', force=True) ##non-interactive way, which has to be claimed before import plt
+matplotlib.use('TkAgg', force=True) ## this backend brings a plot to foreground in Python2 on an Intel Mac, better than the 'Qt5Agg' one. but to be tested for Python3
+#matplotlib.use('Qt5Agg', force=True) ##non-interactive way, which has to be claimed before import plt
 import matplotlib.pyplot as plt
 from scipy.special import jn
 import sys, os, subprocess, math, datetime, glob
@@ -6522,7 +6521,6 @@ class calibrate_target_phase_with_two_colinear_phscals:
         plt.xlabel('time (day)')
         plt.ylabel('phase (degree)')
         plt.title('phase-time evolution for antenna%d' % antenna_no)
-        #plt.draw()
         plt.show()
         plt.clf()
     def plot_diagnostic_phi_versus_time_for_each_antenna1(s, t, antenna_no):
@@ -6532,6 +6530,9 @@ class calibrate_target_phase_with_two_colinear_phscals:
         plt.ylabel('phase (degree)')
         plt.title('phase-time evolution for antenna%d' % antenna_no)
         plt.show()
+        #w = plt.get_current_fig_manager()
+        #w.window.activateWindow()
+        #w.window.raise_()
         plt.clf()
     def plot_phi_versus_time_for_all_antennas(s, plotpath2save, before_phase_correction=True):
         """
@@ -6564,7 +6565,3 @@ class calibrate_target_phase_with_two_colinear_phscals:
                 os.remove(figure2save)
             plt.savefig(figure2save)
             plt.clf()
-
-class calibrate_target_phase_with_three_phscals:
-    def __init__(s, targetname, cal1, cal2, cal3):
-        pass
