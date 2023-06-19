@@ -1876,10 +1876,24 @@ class vlbireduce(support_vlbireduce):
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
            int(dualphscal_setup[0].strip()) > 0 and self.maxinbeamcalibpnmins > 0:
+            try:
+                if int(targetconfigs[0]['secondarydualphscal'].split(',')[0]) > 0:
+                    secondary_dualphscal_requested = True
+                else:
+                    secondary_dualphscal_requested = False
+            except KeyError:
+                secondary_dualphscal_requested = False
+            
             phase_correction_factor = float(dualphscal_setup[1].strip())
+            
             for (tocalname, tocalindex) in zip(tocalnames, tocalindices):
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
-                inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.pn.sn'
+                if tocalname in self.secondaryinbeams:
+                    inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.spn.sn'
+                    dosecondary = True
+                else:
+                    inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.pn.sn'
+                    dosecondary = False
                 ## <<<
                 
                 ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
@@ -1901,10 +1915,17 @@ class vlbireduce(support_vlbireduce):
             ## >>> apply the corrected pn.sn only to the de-facto target.\
             ## the original clversion+2 CL table will be deleted and replaced in applyinbeamcalib() !!
             junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                   targetconfigs, True, calonly, False, False, False,
+                                   targetconfigs, True, calonly, False, dosecondary, False,
                                    self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                    dualphscal_setup, tabledir, self.inbeamfilenums)
             ## <<< 
+            if (not dosecondary) and secondary_dualphscal_requested: 
+                print('Applying the phase-corrected solutions only to the secondary in-beam calibrator.')
+                junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                                       targetconfigs, targetonly, True, False, False, False,
+                                       self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
+                                       ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums, self.secondaryinbeams)
+        
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do\
         ## not trust this printTableAndRunlevel result if you are requesting iverse referencing!
