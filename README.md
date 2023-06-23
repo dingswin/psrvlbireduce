@@ -8,7 +8,7 @@ New Feature of this branch:
    
 Should you have any inquiry about the pipeline or comments for improvements, feel free to contact Hao (hdingastro@hotmail.com) or Adam (adeller@astro.swin.edu.au).
 
-### Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
+## Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
 Below details the required packages and software that needs to be installed prior to downloading and running PSRVLBIREDUCE.
 
 The first required package is, of course, AIPs. AIPs can be downloaded by following the instructions located here by clicking on the date for which you want to download AIPs. Note that as of recently, AIPs is now compatible with M1 macs.
@@ -70,10 +70,11 @@ export PATH=$PATH:/Users/Alice/Documents/PSR/psrvlbireduce/datareduction
 You will also need to add the location of the psrvlbireduce code to your bash_login e.g., export PYTHONPATH=$PYTHONPATH:<path to psrvlbireduce>/psrvlbireduce/
 
 Ideally, this should be everything you need to now start playing around with the code. 
-Example Module #1
+
+## Example Module #1
 First, before getting started, make sure to run your source_file_psrvlbireduce.sh file. Otherwise, everything will break.
 
-Downloading the data
+##### Downloading the data
 Next, the example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the NRAO data archive site. One at the data archive site, search for bd179i0 and then download the files:
 
 VLBA_BD179I0_ungatedi0_BIN0_SRC0_0_150824T164359.idifits
@@ -84,7 +85,7 @@ VLBA_BD179I0_inbeam3i0_BIN0_SRC0_0_150824T165321.idifits
 
 Note that in total, these files are ~12.7 Gb, so you will need adequate storage on your machine. You should place these files under /Users/Bob/PSR/examples/J1738+0333/bd179i0. 
 
-Downloading auxiliary data files
+#### Downloading auxiliary data files
 Next, you need to acquire the EOP (earth-orientation parameter) file and the ionospheric files for that given day. This can easily be done by running the program prepare_astrometric_epoch.py under /datareduction. To run this file successfully, you will either need to supply it with the .vex file from your observations, or run it under the directory in which your data lives so it can grab the name of the .idifits file and figure out the date for which the files need to be grabbed. For example, 
 
 In /Users/Alice/PSR/examples/J1738+0333/bd179i0 you can either run prepare_astrometric_epoch.py bd179i0.vex or you can just run prepare_astrometric_epoch.py. This should download all of the necessary files for you to be on your way.
@@ -99,7 +100,7 @@ The usno_finals.erp file can be fftp’ed from ftp://gdc.cddis.eosdis.nasa.gov/v
 
 You will need to place these files under a new directory /Users/Alice/PSR/examples/J1738+0333/bd179i0/logs. Additionally, you will need to make the directories /Users/Alice/PSR/examples/J1738+0333/bd179i0/images and /Users/Alice/PSR/examples/J1738+0333/bd179i0/tables. 
 
-## Running the program
+#### Running the program
 You should not be all set to get to work running the program. Go to /Users/Alice/PSR/psrvlbireduce/datareduction/ and run ParselTongue vlbi_astrometry.py -e bd179i0
 
 You will be prompted with many questions along the way, as the program runs. The initial set of questions will be related to the loading in of your data. You want to always answer yes to these questions, otherwise the program will abort (seeing as it has no data to use). This is the computationally longest part of the pipeline.
@@ -112,7 +113,7 @@ At some point later on, you will be asked to do the same for your primary in-bea
 
 The program should (ideally) run all the way to the end. Given all your paths are properly set-up, it should end by running make_diagnostics.py which will produce a file Diagnostic.html which will contain all of the relevant plots from your work. Additionally, all of the logs outputted on the command line will be stored under bd179i0.datacheck.log and the pipeline summary will be saved under bd179i0.pipelinesummary. 
 
-Interpreting the output data
+#### Interpreting the output data
 
 If everything has gone right, you should have a file Diagnostic.html with many different plots. Below we detail how to interpret those plots. 
 
