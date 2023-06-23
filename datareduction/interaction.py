@@ -7,7 +7,8 @@ def yesno(prompt):
         return True
     ans = ""
     while ans == "":
-        ans = input(prompt)
+        print(prompt)
+        ans = input()
     return (ans[0]=='y' or ans[0]=='Y')
 
 ################################################################################

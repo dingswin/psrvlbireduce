@@ -55,6 +55,8 @@ class vlbireduce(support_vlbireduce):
                     if expconfig['clearcatalog'] and inbeamuvdatas[i].exists():
                         inbeamuvdatas[i].clrstat()
                         inbeamuvdatas[i].zap()
+                    os.system("ls -als %s/templink.fits" % directory)
+                    print("Attempting to open templinks file")
                     vlbatasks.fitld_vlba("%s/templink.fits" % directory, inbeamuvdatas[i], [], 0.05, refdate, cltablemins)
             if not calonly:
                 if (expconfig['clearcatalog'] or targetonly) and gateduvdata.exists():
@@ -247,6 +249,14 @@ class vlbireduce(support_vlbireduce):
 
     def correct_positions(self, alluvdatas, targetonly, gateduvdata, haveungated, 
             ungateduvdata, calonly, inbeamuvdatas, expconfig):
+        """
+        Functionality
+        -------------
+        Shifts position of sources in the uvdata files by 
+        the amount specified in the config file by the keyword "shifts. Can
+        shift multiple sources according to the name entered into "shift" e.g.,
+        doesn't have to just be the target source
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print("Runlevel " + str(self.runlevel) + ": Running CLCOR to shift sources")
             uvdatas = alluvdatas
@@ -289,6 +299,16 @@ class vlbireduce(support_vlbireduce):
 
     def run_TECOR(self, expconfig, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
+        """
+        Does basic ionospheric corrections using the TECOR program.
+        Corrects all of the in-beam calibrator datasets along with the gated and un-gated uv datasets
+        (unless otherwise specified).
+
+        Relevant ionospheric data files must be downloaded ahead of time, and can be accessed
+        by running prepare_astrometric_epoch.py.
+
+        Uses the AIPs task TECOR.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not expconfig['skiptecor']:
             print("Runlevel " + str(self.runlevel) + ": Running TECOR to correct ionosphere")
             try:
@@ -313,6 +333,11 @@ class vlbireduce(support_vlbireduce):
     
     def run_CLCOR_to_correct_EOPs(self, targetonly, numinbeams, inbeamuvdatas, logdir,
             calonly, gateduvdata, ungateduvdata, haveungated):
+        """
+        Corrects for Earth Orientation Parameters (EOPs) using the task CLCOR.
+
+        Need to download the latest EOP file using prepare_astrometric_epoch.py.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print("Runlevel " + str(self.runlevel) + ": Running CLCOR to correct for EOPs")
             if not targetonly:
@@ -329,6 +354,9 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
     
     def prepare_leakage_related_variables(self, expconfig, ampcalsrc):
+        """
+        Grab leakage related variables from the config files.
+        """
         self.leakagedopol = 0
         try:
             self.xpolscan = expconfig['xpolscan']
@@ -358,6 +386,9 @@ class vlbireduce(support_vlbireduce):
 
     def run_CLCOR_to_correct_PANG(self, targetonly, numinbeams,
             inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
+        """
+        Parallactic angle corrections using CLCOR.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.leakagescan > 0:
             print("Runlevel " + str(self.runlevel) + ": Running CLCOR to correct PANG")
             if not targetonly:
@@ -376,6 +407,9 @@ class vlbireduce(support_vlbireduce):
     
     def correct_for_a_priori_delays_if_available_using_CLCOR(self, tabledir, alluvdatas,
             targetonly, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas):
+        """
+        If there are apriori clock delays, correct for them here. 
+        """
         adelayfile = tabledir + 'aprioridelays.txt'
         gatedadelayfile = tabledir + 'aprioridelays.gated.txt'
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
@@ -407,6 +441,18 @@ class vlbireduce(support_vlbireduce):
     
     def do_the_amplitude_calibration_with_existing_table_or_in_an_interative_way__and_inspect(self, expconfig, targetonly,
             tabledir, alluvdatas, gateduvdata, ungateduvdata, haveungated, calonly, inbeamuvdatas, logdir, experiment):
+        """
+        Do amplitude calibration. Possibility to skip amplitude calibration of desired.
+
+        Can use saved sn file if it exists by coping the SN table from previous file
+        to current dataset. 
+        
+        If not using a saved sn file, performs amplitude calibration. Relevant variables are:
+        - accorinterpol: interpolation method for autocorrelation (accor)
+        - accorampsmo: autocorrelation SN table smoothing parameter in minutes
+        - accorinterval: interval for autocorrelation (accor)
+        - dotsysfix: boolean for whether or not to fix system temperatures
+        """
         try:
             skipapcalaccor = expconfig['skipapcalaccor']
         except KeyError:
@@ -533,12 +579,22 @@ class vlbireduce(support_vlbireduce):
     def correct_for_primary_beam_attenuation(self, expconfig, directory, experiment,
             ampcalsrc, targetonly, numinbeams, numtargets, phscalnames, inbeamnames, tabledir, inbeamuvdatas, calonly,
             targetnames, gateduvdata, ungateduvdata, haveungated):
+        """
+        Functionality
+        -------------
+        Correct for primary beam attenuation by using a Bessel approximate to estimate the response of the VLBA beam. Necessary as neither
+        the pulsar nor the in-beam calibrator are centered in the primary beam and thus the amplitude of each is attenuated by primary beam fall-off.
+
+        Unless otherwise specified, correcting the primary beam will create a new SN table, which is then applied directly to the data using a 
+        2PT function.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not expconfig['skippbcor']:
             print("Runlevel " + str(self.runlevel) + ": Doing primary beam correction")
             vexfile  = directory + '/' + experiment.lower() + '.vex'
             scanlist = vlbatasks.getvexscaninfo(vexfile)
             fieldsourcenames = {}
             fieldsourcenames[ampcalsrc] = ampcalsrc
+            # correcting all in-beam datasets
             if not targetonly:
                 for i in range(numinbeams):
                     for j in range(numtargets):
@@ -561,6 +617,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion)
                     vlbatasks.loadtable(inbeamuvdatas[i], pbsntable, self.snversion)
                     vlbatasks.applysntable(inbeamuvdatas[i], self.snversion, '2PT', self.clversion, expconfig['refant'])
+            # correcting the gated and ungated datasets
             if not calonly:
                 for i in range(numtargets):
                     if expconfig['dodefaultnames']:
@@ -593,6 +650,17 @@ class vlbireduce(support_vlbireduce):
 
     def do_PCAL_correction_and_inspect(self, expconfig, targetonly, tabledir,
             inbeamuvdatas, ampcalsrc, calonly, gateduvdata, ungateduvdata, haveungated, numinbeams):
+        """
+        Functionality
+        -------------
+        Perform additional calibration use a pulse calibrator source. 
+        
+        NOTES
+        -----
+        Need the pulse calibrator (PC)
+        file to already exist. Must request use of a pulse calibrator prior to observations, otherwise
+        this isn't possible.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             not expconfig['skippcal'] and expconfig['ampcalscan'] > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing pulse cal calibration")
@@ -632,6 +700,13 @@ class vlbireduce(support_vlbireduce):
 
     def run_FRING_with_fringe_finder(self, targetonly, expconfig, tabledir,
             modeldir, ampcalsrc, modeltype, inbeamuvdatas): 
+        """
+        Functionality
+        -------------
+        Perform FRINGE on the fringe finder source (called ampcalsrc). 
+
+        Can use a model of the FRINGE calibrator if it exists, although this is not necessary.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             expconfig['ampcalscan'] > 0:
             if not os.path.exists(tabledir + 'ampcalfring.sn') or \
@@ -707,6 +782,12 @@ class vlbireduce(support_vlbireduce):
 
     def copy_the_FRING_SN_table_around_and_apply_it(self, expconfig, targetonly,
             tabledir, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated):
+        """
+        Functionality
+        -------------
+        Copies the SN table created above in run_FRING_with_fringe_finder and applies it to
+        the inbeam sources, the ungated uv dataset, and the gated uv dataset. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and expconfig['ampcalscan'] > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading ampcal FRING SN table & calibrating")
             if targetonly and (not os.path.exists(tabledir + 'ampcalfring.sn')):
@@ -734,6 +815,11 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
 
     def run_xpoldelaycal(self, tabledir, targetonly, expconfig, modeldir, inbeamuvdatas):
+        """
+        Functionality
+        -------------
+        Performs cross-polar delay calibration
+        """
         xpolsnfilename = tabledir + '/xpolfring.sn'
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             self.xpolscan > 0:
@@ -778,6 +864,11 @@ class vlbireduce(support_vlbireduce):
     
     def load_and_apply_xpoldelaycal(self, targetonly, numinbeams,
             inbeamuvdatas, xpolsnfilename, expconfig, gateduvdata, ungateduvdata, haveungated, calonly):
+        """
+        Functionality
+        -------------
+        Loads and applies the x-pol sn table created above in run_xpoldelaycal
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.xpolscan > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading XPOL CAL FRING SN table & calibrating")
             if targetonly and (not os.path.exists(xpolsnfilename)):
@@ -806,6 +897,9 @@ class vlbireduce(support_vlbireduce):
 
     def run_leakagecal_on_the_leakage_calibrator_and_save_AN_file(self, targetonly,
             tabledir, modeldir, inbeamuvdatas, expconfig, directory, experiment):
+        """
+        
+        """
         leakagefilename = tabledir + "/leakage.an"
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             self.leakagescan > 0:
@@ -865,6 +959,11 @@ class vlbireduce(support_vlbireduce):
 
     def run_BPASS(self, targetonly, expconfig, tabledir, modeldir, ampcalsrc, 
             modeltype, inbeamuvdatas):
+        """
+        Running bandpass calibration the ampcalsrc which is just our fringe source. 
+
+        Can use a previous model, but this is not necessary. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
             expconfig['ampcalscan'] > 0:
             print("Runlevel " + str(self.runlevel) + ": Generating bandpass corrections")
@@ -894,6 +993,9 @@ class vlbireduce(support_vlbireduce):
     
     def load_BPASS_solutions(self, expconfig, tabledir, calonly, 
             gateduvdata, ungateduvdata, targetonly, numinbeams, inbeamuvdatas, haveungated):
+        """
+        Loads the bandpass table created in run_BPASS.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             expconfig['ampcalscan'] > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading bandpass corrections")
@@ -915,6 +1017,9 @@ class vlbireduce(support_vlbireduce):
         return bandpassclversion 
     
     def plot_bandpass(self, plotbandpass, directory, inbeamuvdatas, ifs, chans):
+        """
+        Plots the bandpass table created in run_BPAPSS
+        """
         if plotbandpass:
             bandpassplot = directory + '/' + 'bandpass.ps' 
             #vlbatasks.plotbandpass(inbeamuvdatas[0], 1, True, 9, bandpassplot, self.clversion, ifs, 0, chans, "I")
@@ -924,7 +1029,7 @@ class vlbireduce(support_vlbireduce):
 
     def prepare_variables_for_calibration_on_phase_calibrators(self, targetconfigs, phscalnames):
         """
-        prepare variables for FRING (phase reference calibrators)
+        prepare variables for FRING with the phase reference calibrators
         """
         self.maxphsreffringmins = -1
         self.maxphsrefcalibapnmins = -1
@@ -950,10 +1055,17 @@ class vlbireduce(support_vlbireduce):
 
     def run_FRING_with_phase_reference_calibrators(self, targetonly,
             tabledir, modeldir, modeltype, expconfig, experiment, inbeamuvdatas):
+        """
+        Run fringe on the phase reference calibrator source.
+
+        Can either use a model for the phase calibrator, but this is not required. If there is no model, it will
+        dump out a .fits file which can then be cleaned and used as a model.
+        """
         dophscaldump = False
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not targetonly and \
            self.maxphsreffringmins > 0:
-            if not os.path.exists(tabledir + 'phsreffring.sn') or \
+           print("Table directory: ", tabledir) 
+           if not os.path.exists(tabledir + 'phsreffring.sn') or \
                    not interaction.yesno("Do you wish to used saved SN table for phsref FRING?"):
                 print("Runlevel " + str(self.runlevel) + ": FRING'ing phase calibrator")
                 for phscal, config in zip(self.donephscalnames, self.doneconfigs):
@@ -963,6 +1075,7 @@ class vlbireduce(support_vlbireduce):
                         phscalseparateifmodel = False
                     phscalmodeldata = None
                     phscalmodelfile = modeldir + phscal + self.cmband + '.clean.fits'
+                    print("Phase cal model file name: ", phscalmodelfile)
                     if not phscalseparateifmodel:
                         if os.path.exists(phscalmodelfile):
                             aipscalname = phscal
@@ -1107,6 +1220,9 @@ class vlbireduce(support_vlbireduce):
 
     def copy_the_phsref_FRING_SN_table_around_and_apply_it(self, targetonly, tabledir, expconfig,
             numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated, directory, experiment, dophscaldump):
+        """
+        Apply the phase calibrator solutions to the inbeam datasets and the gated/ungated datasets using clcal.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and self.maxphsreffringmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading phsref FRING SN table & calibrating")
             if targetonly and (not os.path.exists(tabledir + 'phsreffring.sn')):
@@ -1163,6 +1279,11 @@ class vlbireduce(support_vlbireduce):
 
     def run_phase_CALIB_on_the_phase_reference_sources(self,
             tabledir, targetonly, inbeamuvdatas, expconfig, modeltype, modeldir):
+        """
+        Perform phase self calibration on the phase reference source.
+        
+        This can be skipped though if desired. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibpnmins > 0:
             haveall = True
@@ -1203,6 +1324,7 @@ class vlbireduce(support_vlbireduce):
                         phsrefweightit = expconfig['phsrefcalibpnweightit']
                     except KeyError:
                         phsrefweightit = 0
+                    print(phscalmodelfile)
                     if os.path.exists(phscalmodelfile):
                         print("Using " + modeltype + " model for " + phscal)
                         aipscalname = phscal
@@ -1260,6 +1382,10 @@ class vlbireduce(support_vlbireduce):
     def load_all_the_phase_CALIB_solutions_obtained_with_phase_calibrators(self,
             phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, haveungated, ungateduvdata,
             tabledir, expconfig):
+        """
+        Loads all the phase self calibration solutions from the different phase calibrators and first
+        merges then applies the new SN tables. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibpnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading phs ref PN CALIB " + \
@@ -1331,6 +1457,9 @@ class vlbireduce(support_vlbireduce):
 
     def run_amp_CALIB_on_the_phase_reference_sources(self, targetconfigs,
             tabledir, targetonly, expconfig, inbeamuvdatas, modeldir, modeltype, phscalnames):
+        """
+        Performs amplitude self calibration on the phase calibrators.
+        """
         #prepare two variables for amp CALIB on the phase calibrators
         self.donephscalnames = []
         self.doneconfigs = []
@@ -1460,6 +1589,10 @@ class vlbireduce(support_vlbireduce):
     def load_all_the_amp_CALIB_solutions_obtained_with_phase_calibrators(self,
             phscalnames, targetonly, numinbeams, inbeamuvdatas, calonly, gateduvdata, ungateduvdata, haveungated,
             tabledir, expconfig):
+        """
+        Loads all the amplitude self calibration solutions from the different phase calibrators and first
+        merges then applies the new SN tables. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxphsrefcalibapnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Loading phs ref APN CALIB " + \
@@ -1616,6 +1749,10 @@ class vlbireduce(support_vlbireduce):
 
     def generate_a_raw_inbeam_dataset_without_phase_selfcal_on_itself_if_requested(self, expconfig,
             targetonly, numtargets, targetconfigs, inbeamnames, directory, experiment, inbeamuvdatas):
+        """
+        Generates a file for the in-beam  calibrator prior to running phase self calibration
+        on the in-beam calibrator. 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
            expconfig['writerawinbeam']:
             print("Runlevel " + str(self.runlevel) + ": Writing raw inbeam outputs")
@@ -1653,6 +1790,16 @@ class vlbireduce(support_vlbireduce):
     def do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
             calonly, targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved):
+        """
+        Functionality
+        --------------
+        Do a phase-only selfcal on the primary in-beam calibrator(s), using the combined IFs and polarizations.
+        Uses the function inbeamselfcal in support_vlbireduce to perform in-beam calibration.
+        
+        Notes
+        -----
+        Primary in-beam calibrators must be specified in the config files using 
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)")
@@ -1679,6 +1826,10 @@ class vlbireduce(support_vlbireduce):
     def load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(self, tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, 
             haveungated, ungateduvdata, tabledir):
+        """
+        Load the inbeam self calibration SN tables obtained above using 
+        do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibp1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols")
@@ -1702,6 +1853,16 @@ class vlbireduce(support_vlbireduce):
     def do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
             calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
+        """
+        Functionality
+        -------------
+        Same as do_a_combined__IF_and_pol__phase_selfcal_on_the_inbeams_if_requested, but now 
+        do it for each IF separately. 
+
+        Notes
+        -----
+        Only done for the primary in-beam calibrators which must be specified in the config files.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)")
@@ -1733,6 +1894,9 @@ class vlbireduce(support_vlbireduce):
         Functionality
         -------------
         Correct the inbeamcalibp1 (or inbeamcalibsp1) solutions, then apply to the target only.
+        Combine IFs and polarizations.
+
+        NEED TO WRITE MORE NOTES ON.
         
         Note
         ----
@@ -1807,7 +1971,8 @@ class vlbireduce(support_vlbireduce):
         """
         Functionality
         -------------
-        If requested, apply *pn.sn to phscal(s), inbeamcals and target(s).
+        If requested, apply *pn.sn to phscal(s), inbeamcals and target(s). Inbeam self-calibration solutions done
+        for separate IFs.
         """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibpnmins > 0:
@@ -1838,6 +2003,7 @@ class vlbireduce(support_vlbireduce):
         Functionality
         -------------
         Correct the inbeamcalibpn solutions.
+        Separate IFs.
 
         Note
         ----
@@ -1883,6 +2049,11 @@ class vlbireduce(support_vlbireduce):
     def do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir,
             modeltype, targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
+        """
+        Functionality
+        -------------
+        Amplitude and phase self-cal on the primary in-beam calibrator(s) with IFs combined
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
@@ -1909,6 +2080,11 @@ class vlbireduce(support_vlbireduce):
 
     def load_inbeam_CALIB_on__amp_and_phase__with__IFs_and_pols__combined(self, tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, tabledir):
+        """
+        Functionality
+        -------------
+        Load the above SN table created using do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested()
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibap1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB ap1 sols")
@@ -1932,6 +2108,11 @@ class vlbireduce(support_vlbireduce):
     def do_a_separate_IF__amp_plus_phase__self_calibration_on_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
             inbeamnames, targetnames, numtargets, directory, tabledir, alwayssaved):
+        """
+        Functionality
+        -------------
+        Amplitude and phase self-cal on the primary in-beam calibrator(s) for each IF separately.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
@@ -1961,6 +2142,11 @@ class vlbireduce(support_vlbireduce):
 
     def load_inbeam_CALIB_solutions_on__amp_plus_phase__on_separate_IFs(self, tocalnames, tocalindices, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, tabledir):
+        """
+        Functionality
+        -------------
+        Load the above SN table created using do_a_separate_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested()
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibapnmins > 0:
             print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB apn sols")
@@ -1984,6 +2170,12 @@ class vlbireduce(support_vlbireduce):
     def do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested(self,
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
             targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
+        """
+        Functionality
+        -------------
+        Perform phase self-calibration on the secondary inbeam calibrator with IFs and polarizations combined.
+
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal on secondary inbeam")
@@ -2012,6 +2204,12 @@ class vlbireduce(support_vlbireduce):
     def load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined(self,
             tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly,
             calonly, inbeamnames, targetnames, haveungated, ungateduvdata, tabledir):
+        """
+        Functionality
+        -------------
+        Load and apply the above SN table created using 
+        do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested.
+        """
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
             self.maxinbeamcalibsp1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Applying secondary inbeam CALIB sp1 sols")
@@ -2033,6 +2231,16 @@ class vlbireduce(support_vlbireduce):
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def calculate_the_scintillation_correction(self, numtargets, targetconfigs, tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas):
+        """
+        Functionality
+        -------------
+        Correcting for scintillation that can cause a scattering disk in the final image.
+
+        Notes
+        -----
+        Need to set the 'noscintcorr' flag to be True in the config file '
+
+        """
         beginif = 1
         endif = self.numifs
         scinttablepaths = []
@@ -2083,6 +2291,13 @@ class vlbireduce(support_vlbireduce):
     def prepare_variables_for_final_split(self, numtargets, inbeamnames, targetconfigs, expconfig, phscalnames, targetnames,
             directory, experiment):
         """
+        Functionality
+        -------------
+        Prepare data to be split out e.g., phase cal, target, and in-beam sources.
+        1st: Clears any old split catalog entries for the target, phase cal, and in-beam sources
+        2nd: Determines which sources will be the divide sources
+        3rd: Prepares output file names and adds to class dataset e.g., self.X = file name
+
         Note
         ----
         1. must be run before the final split and centroid-location fitting.
@@ -2136,6 +2351,7 @@ class vlbireduce(support_vlbireduce):
                     self.dividesourcelist.extend(dividesources)
             except KeyError:
                 pass
+        print("DIVIDE SOURCE LIST: ", self.dividesourcelist)
         for phscalsrc in phscalnames:
             if len(phscalsrc) > 12:
                 phscalsrc = phscalsrc[:12]
@@ -2194,6 +2410,21 @@ class vlbireduce(support_vlbireduce):
             directory, experiment, phscalnames, modeldir, inbeamnames,
             calonly, targetnames, haveungated, ungateduvdata, scinttablepaths, gateduvdata):
         """
+        Functionality
+        -------------
+        Split out the uvdata and divide by the in-beam data (if requested)
+
+        More detailed functionality:
+        ----------------------------
+        1. Split out the fringe finder (ampcal) source
+        2. First, split out the phase cal data as is. Then, normalize the phase cal uv dataset either by using the in-beam
+        cal (specified in config file) or the clean model of the phase cal itself. Writes out the divided dataset.
+        3. First, write out each in-beam file as it is. Next, check if the in-beam source is in the divideout list, and proceed
+        if it is. If it is the primary in-beam calibrator, and if it has a separate IF model, do a normalization using that model
+        for every single IF. If it is not the primary in-beam calibrator, or it doesn't have separate IF models, then just use one
+        model to normalize it. Then, write out the normed model. 
+        4. Writes out the ungated (if it exists) and gated pulsar data. Doesn't divide by any model. 
+
         Note
         ----
         1. An extra model-divided fits file will be made for IBCs added to 'dividesources' of the target yaml file; a statsfile
@@ -2255,9 +2486,11 @@ class vlbireduce(support_vlbireduce):
                                     phscalseparateifmodel = config['phscalseparateifmodel']
                                 except KeyError:
                                     phscalseparateifmodel = False
+                                # normalize the phase cal using the in-beam model
                                 if phscalseparateifmodel:
                                     divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
                                         inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
+                                # normalize the phase cal using its own clean image model
                                 else:
                                     vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
                                         splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
@@ -2273,6 +2506,7 @@ class vlbireduce(support_vlbireduce):
                                     divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
                                     if divideddata.exists():
                                         divideddata.zap()
+                                    # normalizes the phase calibrator (split data) by its own clean image (model data)
                                     vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
                                 vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
                                 #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
@@ -2468,6 +2702,22 @@ class vlbireduce(support_vlbireduce):
             directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas,
             uvtaperstring, difmaptargetuvaverstring, multi_component_sources):
         """
+        Functionality
+        -------------
+        Image the targets using DIFMAP and fit them using JMFIT.
+
+        More Specific Functionality
+        ---------------------------
+        1. Make a bunch of files to write out the fitted data to 
+        2. Run DIFMAP and JMFIT on the gated uv files. 
+        3. In case there is inverse referencing (using the pulsar as its own in-beam calibrator),
+        run DIFMAP and JMFIT on this inverse referenced dataset.
+        4. Run DIFMAP and JMFIT on the ungated uv files.
+        5. Make a wide-field image of the phase calibrator and run jmfit on it (different version of jmfit than
+        what is run for the pulsar)
+        6. Finish by running DIFMAP and JMFIT for the in-beam calibrators. Also run DIFMAP and JMFIT for the divided in-beam 
+        datasets.
+
         Input parameters
         ----------------
         multi_component_sources : dict (default : {})

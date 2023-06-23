@@ -1,0 +1,242 @@
+! Started logfile: difmap.log_20 on Tue Jun 20 08:07:50 2023
+float pkflux
+float peakx
+float peaky
+float finepeakx
+float finepeaky
+float rmsflux
+integer ilevs
+float lowlev
+obs /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_pipeline_uv.fits
+! Reading UV FITS file: /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_pipeline_uv.fits
+! AN table 1: 5304 integrations on 45 of 45 possible baselines.
+! Apparent sampling: 0.990502 visibilities/baseline/integration-bin.
+! Found source: IBC01325
+! 
+! There are 8 IFs, and a total of 8 channels:
+! 
+!  IF  Channel    Frequency  Freq offset  Number of   Overall IF
+!       origin    at origin  per channel   channels    bandwidth
+!  ------------------------------------------------------------- (Hz)
+!  01        1   1.4075e+09     3.05e+07          1     3.05e+07
+!  02        2   1.4395e+09     3.05e+07          1     3.05e+07
+!  03        3   1.4715e+09     3.05e+07          1     3.05e+07
+!  04        4   1.5035e+09     3.05e+07          1     3.05e+07
+!  05        5   1.5995e+09     3.05e+07          1     3.05e+07
+!  06        6   1.6635e+09     3.05e+07          1     3.05e+07
+!  07        7   1.6955e+09     3.05e+07          1     3.05e+07
+!  08        8   1.7275e+09     3.05e+07          1     3.05e+07
+! 
+! Polarization(s): RR LL
+! 
+! Read 302 lines of history.
+! 
+! Reading 3782608 visibilities.
+mapsize 2048,0.75
+! Map grid = 2048x2048 pixels with 0.750x0.750 milli-arcsec cellsize.
+uvweight 0,-1
+! Uniform weighting is not currently selected.
+! Gridding weights will be scaled by errors raised to the power -1.
+! Radial weighting is not currently selected.
+uvaver 20, False
+! Averaging into 20 second bins.
+uvtaper 0.99,999
+! No UV-taper is currently set.
+mapcolor none
+! Mapplot colormap: none, contrast: 1 brightness: 0.5.
+device /null
+! Attempting to open device: '/null'
+select i
+! Selecting polarization: I,  channels: 1..8
+! Reading IF 1 channels: 1..1
+! Reading IF 2 channels: 2..2
+! Reading IF 3 channels: 3..3
+! Reading IF 4 channels: 4..4
+! Reading IF 5 channels: 5..5
+! Reading IF 6 channels: 6..6
+! Reading IF 7 channels: 7..7
+! Reading IF 8 channels: 8..8
+save /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_pipeline_uv.fits.junk
+! Writing UV FITS file: /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_pipeline_uv.fits.junk.uvf
+! Writing difmap environment to: /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_pipeline_uv.fits.junk.par
+select i
+! Selecting polarization: I,  channels: 1..8
+! Reading IF 1 channels: 1..1
+! Reading IF 2 channels: 2..2
+! Reading IF 3 channels: 3..3
+! Reading IF 4 channels: 4..4
+! Reading IF 5 channels: 5..5
+! Reading IF 6 channels: 6..6
+! Reading IF 7 channels: 7..7
+! Reading IF 8 channels: 8..8
+peakx = peak(x,abs)
+! Inverting map and beam 
+! Estimated beam: bmin=4.877 mas, bmaj=11.8 mas, bpa=-0.2304 degrees
+! Estimated noise=0.0138552 mJy/beam.
+peaky = peak(y,abs)
+shift -peakx,-peaky
+! Shifting UV data, models and windows by: 0.75 (mas) East
+! Shifting UV data, models and windows by: -1.5 (mas) North
+! Total accumulated eastward shift  = 0.75 (mas).
+! Total accumulated northward shift = -1.5 (mas).
+mapsize 1024,0.2
+! Map grid = 1024x1024 pixels with 0.200x0.200 milli-arcsec cellsize.
+finepeakx = peak(x,abs)
+! Inverting map and beam 
+! Estimated beam: bmin=4.877 mas, bmaj=11.8 mas, bpa=-0.2304 degrees
+! Estimated noise=0.0138552 mJy/beam.
+finepeaky = peak(y,abs)
+select i,1,8
+! Selecting polarization: I,  channels: 1..8
+! Reading IF 1 channels: 1..1
+! Reading IF 2 channels: 2..2
+! Reading IF 3 channels: 3..3
+! Reading IF 4 channels: 4..4
+! Reading IF 5 channels: 5..5
+! Reading IF 6 channels: 6..6
+! Reading IF 7 channels: 7..7
+! Reading IF 8 channels: 8..8
+clrmod true
+unshift
+! unshift: Removing accumulated position shifts.
+shift -peakx,-peaky
+! Shifting UV data, models and windows by: 0.75 (mas) East
+! Shifting UV data, models and windows by: -1.5 (mas) North
+! Total accumulated eastward shift  = 0.75 (mas).
+! Total accumulated northward shift = -1.5 (mas).
+mapsize 1024,0.2
+! Map grid = 1024x1024 pixels with 0.200x0.200 milli-arcsec cellsize.
+pkflux = peak(flux,abs)
+! Inverting map and beam 
+! Estimated beam: bmin=4.877 mas, bmaj=11.8 mas, bpa=-0.2304 degrees
+! Estimated noise=0.0138552 mJy/beam.
+addcmp pkflux, true, finepeakx, finepeaky, true, 0.5, true, 1, true, 0, true
+mapsize 1024,0.75
+! Map grid = 1024x1024 pixels with 0.750x0.750 milli-arcsec cellsize.
+modelfit 50
+! Partitioning the model into established and variable parts.
+! The fixed established model contains 0 components (0 Jy).
+! The variable part of the model contains 1 components (0.000522673 Jy).
+! There are 6 variables and 202670 usable visibilities.
+! This gives 2 x 202670 - 6 = 405334 degrees of freedom.
+! Reduced Chi-squared = Chi-squared / 405334.
+! 
+! Iteration 00: Reduced Chi-squared=1.8896452  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000522673v    0.282843v     135.000v    0.500000v     1.00000v    0.00000v 1
+! 
+! Iteration 01: Reduced Chi-squared=1.8896348  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000539803v    0.370952v     152.710v     2.79854v    0.192014v    12.8046v 1
+! 
+! Iteration 02: Reduced Chi-squared=1.8896347  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000540654v    0.376702v     153.833v     2.84144v    0.204844v    12.4644v 1
+! 
+! Iteration 03: Reduced Chi-squared=1.8896347  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000540713v    0.376602v     153.862v     2.84000v    0.207459v    12.4450v 1
+! 
+! Iteration 04: Reduced Chi-squared=1.8896347  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000540719v    0.376575v     153.867v     2.83984v    0.207696v    12.4456v 1
+! 
+! Iteration 05: Reduced Chi-squared=1.8896347  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000540719v    0.376573v     153.868v     2.83979v    0.207732v    12.4459v 1
+! 
+! Iteration 06: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 07: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 08: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 09: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 10: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 11: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 12: Reduced Chi-squared=1.8896347 (Increased)
+! 
+! Iteration 13: Reduced Chi-squared=1.8896347  Degrees of Freedom=405334
+! ! Flux (Jy) Radius (mas)  Theta (deg)  Major FWHM (mas)  Axial ratio   Phi (deg) T \
+! ! Freq (Hz)     SpecIndex
+! 0.000540719v    0.376573v     153.868v     2.83979v    0.207732v    12.4459v 1
+! 
+! Iteration 14: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 15: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 16: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 17: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 18: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 19: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 20: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 21: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 22: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 23: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 24: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 25: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 26: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 27: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 28: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 29: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 30: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 31: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 32: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 33: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 34: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 35: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 36: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 37: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 38: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 39: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 40: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 41: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 42: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 43: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 44: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 45: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 46: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 47: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 48: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 49: Reduced Chi-squared=1.8896347 (Increased)
+! Iteration 50: Reduced Chi-squared=1.8896347 (Increased)
+! #    Flux (Jy)          East (arcsec)        North (arcsec)    Shape   R.A. (deg)       Dec (deg)  Major FWHM (arcsec) Minor FWHM (arcsec)  Theta (deg)     Freq (Hz)      Spectral Index  
+! #  Value     Stdev      Value     Stdev      Value     Stdev                                          Value    Stdev     Value    Stdev     Value  Stdev                   Value     Stdev 
+! #------------------  -------------------  ------------------- ------  -------------- -------------- -----------------  -----------------  ---------------  -----------  -------------------
+!  5.4072e-04 1.9e-05   1.6586e-04 5.9e-05  -3.3808e-04 1.4e-04  gauss  264.7087928044   3.7846262655 2.840e-03 8.6e-04  5.899e-04 4.1e-03    12.45 1.5e+01
+rmsflux = imstat(rms)
+! Adding 1 model components to the UV plane model.
+! The established model now contains 1 components and 0.000540719 Jy
+! Inverting map and beam 
+! Estimated beam: bmin=4.877 mas, bmaj=11.8 mas, bpa=-0.2304 degrees
+! Estimated noise=0.0138552 mJy/beam.
+restore
+! restore: Substituting estimate of restoring beam from last 'invert'.
+! Restoring with beam: 4.877 x 11.8 at -0.2304 degrees (North through East)
+! Clean map  min=-7.8247e-05  max=0.00052032 Jy/beam
+pkflux = peak(flux,abs)
+ilevs = pkflux/rmsflux
+lowlev = 300.0/ilevs
+loglevs lowlev
+! The new contour levels are:
+!  -11.1111 11.1111 22.2222 44.4444 88.8889
+device bd179i0_IBC01325_difmap.fits.clean.ps/PS
+! Attempting to open device: 'bd179i0_IBC01325_difmap.fits.clean.ps/PS'
+mappl cln
+wmap /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_difmap.fits
+! Writing clean map to FITS file: /Users/curtina/Documents/McGill/CHIME/Outriggers/psrvlbireduce/examples/J1738+0333/bd179i0//bd179i0_IBC01325_difmap.fits
+unshift
+! unshift: Removing accumulated position shifts.
+clrmod true
+! clrmod: Cleared the established and tentative models.
+unshift
+! unshift: Removing accumulated position shifts.
+shift -peakx,-peaky
+! Shifting UV data, models and windows by: 0.75 (mas) East
+! Shifting UV data, models and windows by: -1.5 (mas) North
+! Total accumulated eastward shift  = 0.75 (mas).
+! Total accumulated northward shift = -1.5 (mas).
+exit
+! Exiting program
+! Log file difmap.log_20 closed on Tue Jun 20 08:07:52 2023

@@ -60,6 +60,9 @@ def main():
     if not os.path.exists(vexfile):
         print(("%s not found on ftp server; aborting\n" % vexfile))
         sys.exit()
+
+    if os.path.exists(vexfile):
+        print("Vex file found. Moving on.")
     
     vexin = open(sys.argv[1])
     vexlines = vexin.readlines()
@@ -75,6 +78,7 @@ def main():
             print(obsmonth)
         if 'MJD' in line:
             MJD = int(line.split(':')[-1])
+        # setting start date parameters
         if "exper_nominal_start" in line:
             splitline = line.split('=')
             syear     = int(splitline[1][:4])
@@ -82,6 +86,7 @@ def main():
             #syy       = syear - 100*(syear/100)
             syy       = syear % 100 
             startfound = True
+        # setting stop date parameters
         elif "exper_nominal_stop" in line:
             splitline = line.split('=')
             eyear     = int(splitline[1][:4])
@@ -110,7 +115,7 @@ def main():
         os.system("rm *")
     except OSError:
         pass
-    """download the ERP file"""
+    """DOWNLOADING ERP FILES"""
     #eop_page = ftpget(gsfc_url, eop_dir, eop_filename)
     os.system("curl -u anonymous:daip@nrao.edu --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp > usno_finals.erp")
     if not os.path.exists("usno_finals.erp"):
@@ -124,7 +129,7 @@ def main():
             os.system("wget ftp://ftp.lbo.us/pub/staff/wbrisken/EOP/usno_finals.erp")
     #os.system('wget --auth-no-challenge "https://cddis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp"')
     #os.system("wget -4 ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
-    """download IONEX files"""
+    """DOWNLOADING IONEX FILES"""
     os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
         > jplg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
     os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/igsg%03d0.%02di.Z\
@@ -134,6 +139,7 @@ def main():
     os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/codg%03d0.%02di.Z\
         > codg%03d0.%02di.Z" % (syear, sdoy, sdoy, syy, sdoy, syy))
     os.system("gunzip igsg%03d0.%02di.Z" % (sdoy, syy))
+    # if end date is different than start date, need to download two sets of files
     if edoy != sdoy:
         os.system("curl -u anonymous:haoding@swin.edu.au -O --ftp-ssl ftp://gdc.cddis.eosdis.nasa.gov/gps/products/ionex/%04d/%03d/jplg%03d0.%02di.Z\
             > jplg%03d0.%02di.Z" % (eyear, edoy, edoy, eyy, edoy, eyy))

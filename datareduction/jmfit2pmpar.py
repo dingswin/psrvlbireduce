@@ -1,10 +1,43 @@
+"""
+jmfit2pmpar.py
+
+Takes output files created by vlbi_astrometry and reformats them for input into the pmpar software created by W. Brisken which can 
+determine a given pulsar's proper motion and parallax based off of a series of astrometric measurements.
+
+Authors:
+--------
+A. Deller
+
+Commenters:
+-----------
+A. Deller
+A. Curtin
+"""
+
 #!/usr/bin/env python2
 
 import sys, glob, re, math, os
 from optparse import OptionParser
 
-# function which parses one stats file
-def processFile(solout, statsfile, vexfile,dosinglefit, dosinglerrll, experiment, expcode=""):
+def processFile(solout, statsfile, dosinglefit, dosinglerrll, experiment, expcode=""):
+    """
+    Functionality
+    -------------
+    Parses a single stats file created by vlbi_astrometry and writes out a file which can then be inputted
+    to pmpar. 
+
+    Input
+    -----
+    solout: output file for pmpar
+    statsfile: statistics file created by vlbi_astrometry
+    dosinglefit: use the single summed fit
+    dosinglerrll: use only the single RR and single LL values
+    experiment: experiment name
+
+    Output
+    ------
+    solout: output file for pmpar with format (date, ra, raerr, dec, decerr)
+    """
     statsin = open(statsfile, 'r')
     statslines = statsin.readlines()
     statsin.close()
@@ -20,7 +53,6 @@ def processFile(solout, statsfile, vexfile,dosinglefit, dosinglerrll, experiment
         if not expcode == "":
             print "No dayoffset for expcode " + expcode + " of experiment " + experiment + " - aborting"
             sys.exit()
-#    if (dosinglefit or (experiment == 'bd141' and (expcode == 'b' or expcode == 'g'))) and not dosinglerrll:
     if dosinglefit or (experiment == 'bd141' and (expcode == 'g' or (expcode == 'b' and not dosinglerrll))):
         print "Taking the single summed value for experiment bd141" + expcode + "!!"
         count = runto*statsinc
@@ -49,6 +81,10 @@ def processFile(solout, statsfile, vexfile,dosinglefit, dosinglerrll, experiment
             solout.write("#%10.5f %s %010.8f %s %010.8f\n" % (date, ra, raerr, dec, decerr))
         count = count + statsinc
     print "Average SNR for " + experiment + expcode + " was " + str(expsnr)
+
+#---------------------------------------------------------------------------------------------------
+# main part of file starts here
+#---------------------------------------------------------------------------------------------------
 
 # GLOBAL VARS
 statsinc = 13 #Number of lines per psrstats entry
@@ -108,6 +144,8 @@ doposttecor = False
 if not posttecormode == "":
     doposttecor = True
     #suffix = posttecormode + suffix
+
+# setting the file to read into pmpar
 if dodir:
     pulsarfile = os.getcwd() + '/local.jmfit.pmpar.in'
 else:
@@ -130,7 +168,7 @@ if len(junk) > 0:
           "and -- ones! Aborting"
     sys.exit()
 
-# Write the header of the pmpar file
+# Write the header of the pmpar file (called pulsarfile)
 solout = open(pulsarfile, 'w')
 solout.write("name = J" + pulsar + "\n\n")
 if not ref == "":
@@ -140,6 +178,7 @@ if not dm == "":
 solout.write("epoch = " + epoch + "\n\n")
 solout.write("# Positions\n\n")
 
+# running through every stats file in the given cwg and creating a file for pmpar for each file
 statslist = []
 if dodir:
     filelist = os.listdir(os.getcwd())
@@ -152,6 +191,7 @@ if dodir:
         processFile(solout, s, dosinglefit, dosinglerrll, dayoffsets, experiment)
     solout.close()
     sollines = open(pulsarfile).readlines()
+    # pulsar file now referred to as solout throughout the text
     solout = open(pulsarfile, 'w')
     linelist = []
     for line in sollines:
@@ -167,6 +207,7 @@ if dodir:
     solout.close()
     sys.exit()
 
+# if not running through every stats file, attemps to find the given stats file you are interested in running pmpar on
 for expcode in expcodes:
     oldstokesi = stokesi
     if experiment + expcode == 'v190k':

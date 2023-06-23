@@ -97,15 +97,17 @@ def plt_images(code):
     """
     Make figures of images.
     """
-    filelist_a = glob.glob(code+'_*_difmap*fits*ii.a.clean')
-    filelist_b = glob.glob(code+'_*_difmap.*gated.fits.ii.a.')
+    code = code.lower()
+    filelist_a = glob.glob(code+'_*_difmap*fits*ii.a.clean.ps')
+    filelist_b = glob.glob(code+'_*_difmap.*gated.fits.ii.a.ps')
     filelist = filelist_a + filelist_b
+    print(filelist)
     plotfile = []
 
     for f in filelist:
-        plotfile.append('images/' + f + '.png')
+        plotfile.append('images/' + f[:-3] + '.png')
         infile = 'ps:' + f
-        status = subprocess.call([convert, '-rotate', '90', infile, plotfile[-1]])
+        status = subprocess.call(['convert', '-rotate', '90', infile, plotfile[-1]])
 
     return(plotfile)
 

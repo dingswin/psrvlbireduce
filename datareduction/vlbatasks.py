@@ -608,6 +608,9 @@ class Model:
 def wizCorrectScintAdvanced(uvdatafile, outputsntable, solmins, rashiftmas, 
                             decshiftmas, maxuvradiuslambda, examplesntable, 
                             averageifs=False):
+    """
+    Doesn't seem to be used.
+    """
     uvdata = AIPSUVData("JUNK","JUNK",1,1)
     if uvdata.exists():
         uvdata.zap()
@@ -755,7 +758,23 @@ def wizCorrectScintAdvanced(uvdatafile, outputsntable, solmins, rashiftmas,
 
 def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata, 
                     solmins, outputsntable):
-    # Get an example SN table, prefill all the entries that can be prefilled
+    """
+    Functionality
+    -------------
+    Corrects for extreme scintillation in sources by: "averaging data over all 
+    sensitive baselines to 1/4 of the scintillation time, normalizing, and taking the square root 
+    to obtain an antenna-based correction. The visibility weights were then scaled by the 
+    inverse of the square of the correction, upweighting points when the amplitude was 
+    high and downweighting points of low significance."
+
+
+    Example of input parameters:
+    -----------------------------
+    wizCorrectScint(gateduvdata, 1, self.snversion, splituvdata,
+                    targetconfigs[i]['scintcorrmins'], 
+                    scinttablepaths[i)
+    """
+    # Getting the basic SN table parameters from the parentuvdata set
     wizuvdata      = WizAIPSUVData(parentuvdata)
     examplesntable = wizuvdata.table('SN', examplesnversion)
     num_if         = examplesntable.keywords['NO_IF']
@@ -763,15 +782,16 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
     num_snterms    = num_if*num_pol
     numantennas    = len(parentuvdata.antennas)
     examplerow     = examplesntable[0]
-    annumbers      = []
-    maxanno        = 0
-    antable = parentuvdata.table('AN', 1)
+    annumbers      = [] # antenna numbers
+    maxanno        = 0 # max antenna number
+    antable = parentuvdata.table('AN', 1) # antenna table
     for row in antable:
-        if row.nosta > maxanno:
+        if row.nosta > maxanno: # row.nosta gives the antenna number
             maxanno = row.nosta
-    for i in range(maxanno):
+    for i in range(maxanno): # renaming the antennas from 0 to max(number of antennas)
         annumbers.append(i+1)
-    tables = parentuvdata.tables
+    tables = parentuvdata.tables # getting all the tables from the dataset to operate on
+    # Deleting tables whose SNVersion > that desired
     for table in tables:
         if table[1][-2:] == 'SN' and table[0] >= outputsnversion:
             if yesno("Can i delete " + table[1][-2:] + " table version " + \
@@ -779,6 +799,7 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
                 parentuvdata.table('SN', table[0]).zap()
             else:
                 sys.exit()
+    # making a new SN table again and pre-filling it 
     wizuvdata  = WizAIPSUVData(parentuvdata)
     newsntable = wizuvdata.attach_table('SN', outputsnversion, no_term=num_snterms)
     newsntable.keywords['NO_IF'] = num_if
@@ -791,6 +812,7 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
     newrate1  = []
     newdelay2 = []
     newrate2  = []
+    # setting delay, image, and rate for each IF in the example SN table to zero
     for j in range(num_if):
         newimag1.append(0.0)
         newimag2.append(0.0)
@@ -804,7 +826,7 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
     examplerow.delay_2 = newdelay2
     examplerow.rate_1 = newrate1
     examplerow.rate_2 = newrate2
-    examplerow.time_interval = solmins/1400.0
+    examplerow.time_interval = solmins/1400.0 # Here, solmins is the scintillation correlation length in mins
 
     # Run SPLAT to generate the dataset that will be used
     outputuvdata = AIPSUVData(splituvdata.name,"SCNTT",1,1)
@@ -816,8 +838,8 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
     splat.solint = solmins
     splat()
 
-    # Loop through the data, summing all amplitudes of all baselines
-    wizuvdata2 = WizAIPSUVData(outputuvdata)
+    # Loop through the data, summing all amplitudes of all baselines, IFs, and polarization
+    wizuvdata2 = WizAIPSUVData(outputuvdata) # outputevdata created using the splituvdata input
     ampsum = 0
     count = 0
     for visibility in wizuvdata2:
@@ -828,24 +850,32 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
                                     visibility.visibility[i][0][j][1]**2)
                     ampsum += amp
                     count += 1
-    avamp = ampsum/count
+    avamp = ampsum/count  # average amplitude over all baslines, IFs, and polarizations
     lasttime = -999
     ifampsum = []
     ifcount  = []
     for i in range(num_if):
-        ifampsum.append(0)
-        ifcount.append(0)
+        ifampsum.append(0) # will be the total amplitude over all visibilities for each IF
+        ifcount.append(0) # will be number of polarizations, visibilities amplitudes added to ifampsum
+    # loop through every visibility
     for visibility in wizuvdata2:
+        # if the time of the visibility is large enough, proceed
         if visibility.time > lasttime + examplerow.time_interval/2.0:
+            # doesn't loop through the below if statement until the second visibility
+            # as lasttime needs to be set to a new value. However, it adds up the previous
+            # visibility's amplitudes and counts, so it is okay. 
             if lasttime > 0:
                 examplerow.time = lasttime
                 newreal1 = []
                 newreal2 = []
                 newweight1 = []
                 newweight2 = []
+                # correcting each IF
                 for i in range(num_if):
                     correction = 1.0
                     corrweight = 1.0
+                    # if there were non-zero visibilities for the previous visibility,
+                    # create corrections
                     if ifcount[i] > 0:
                         ifampsum[i] /= ifcount[i]
                         correction = math.sqrt(avamp/ifampsum[i])
@@ -858,13 +888,17 @@ def wizCorrectScint(parentuvdata, examplesnversion, outputsnversion, splituvdata
                 examplerow.real2 = newreal2
                 examplerow.weight_1 = newweight1
                 examplerow.weight_2 = newweight2
+                # add new rows with new weights and corrections to the sn table
                 for annum in annumbers:
                     examplerow.antenna_no = annum
                     newsntable.append(examplerow)
+            # set the time to now be that of the current visibility
             lasttime = visibility.time
+            # clear the summed amplitude for each IF
             for i in range(num_if):
                 ifampsum[i] = 0
                 ifcount[i]  = 0
+        # add all of the amplitudes for each IF to the main arrays e.g., ifampsum, ifcount
         for i in range(num_if):
             for j in range(num_pol):
                 if visibility.visibility[i][0][j][2] > 0.0:
@@ -1435,6 +1469,18 @@ def estimateimagerms(uvdata, inttime, bwhz):
 
 ####### INSERT MISSING TSYS ENTRIES ############################################
 def copytsys(uvdata, inputsnversion, inantname, outantname, scalefactor, inif=-1, outif=-1):
+    """
+    Functionality
+    -------------
+    Copy tsys entries from one antenna (inantname) to another antenna (outnatname)
+
+    Notes
+    -----
+    In config file, need to set --copytsys=AN,AN,ifX@ifY where X and Y are the input and output IFs
+    Can copy from one IF to another IF within the same antenna 
+    Can't do tsys fix and copytsys
+
+    """
     numantennas    = len(uvdata.antennas)
     wizuvdata      = WizAIPSUVData(uvdata)
     examplesntable = wizuvdata.table('SN', inputsnversion)
@@ -1532,6 +1578,15 @@ def copytsys(uvdata, inputsnversion, inantname, outantname, scalefactor, inif=-1
 
 ####### FIX BOGUS HN TSYS ENTRIES ##############################################
 def fixtsys(uvdata, snversion):
+    """
+    Functionality
+    -------------
+    Fixes the TSYS only for HN entries. Uses pre-determined HN tsys 
+    values to repalce abnormally large HN tsys values. Does not change
+    HN tsys values if they are below certain thresholds. Also checks for abnormal
+    values for other antennas and replaces bad values with -1. 
+
+    """
     numantennas    = len(uvdata.antennas)
     wizuvdata      = WizAIPSUVData(uvdata)
     examplesntable = wizuvdata.table('SN', snversion)
@@ -1590,6 +1645,8 @@ def fixtsys(uvdata, snversion):
  
     examplehnrow.time = 99.9
     for row in examplesntable:
+        # correcting HN tysy values by plugging in the pre-set values
+        # for real1, real2, weight_1, weight_2
         if row.antenna_no == hnid:
             examplehnrow.time = row.time
             newreal1 = []
@@ -1618,14 +1675,16 @@ def fixtsys(uvdata, snversion):
             examplehnrow.real2 = newreal2
             examplehnrow.weight_2 = newweight2
         else:
-            #Check for wacky values
+            #Check for wacky values for other antennas
             badindex = []
             goodval = -1.0
+            # trys to find good values for possibly whacky IFs
             for i in range(num_if):
                 if row.real1[i] < 0.0 or row.real1[i] > 400.0:
                     badindex.append(i)
                 else:
                     goodval = row.real1[i]
+            # only replaces whacky IFs if there was at least one good iF
             if len(badindex) > 0 and goodval > 0.0:
                 for i in badindex:
                     row.real1[i] = goodval
@@ -1639,7 +1698,9 @@ def fixtsys(uvdata, snversion):
             if len(badindex) > 0 and goodval > 0.0:
                 for i in badindex:
                     row.real2[i] = goodval
+        # add on the row to the sn table
         newsntable.append(row)
+        # if some difference is large enough, adds another HN row basically 
         if row.time - examplehnrow.time > 1.0/1440.0:
             examplehnrow.time = row.time
             row.antenna_no = hnid
@@ -1828,6 +1889,14 @@ def airyresponse(theta, D, lam):
 def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fieldsourcenames, 
                         iscal, issearch=True, isonepointing=False, onlygettimes=False, 
                         skipmissingsources=False):
+    """
+    Functionality
+    -------------
+    Correct for primary beam attenuation by using a Bessel approximate to estimate the response of the VLBA beam. Necessary as neither
+    the pulsar nor the in-beam calibrator are centered in the primary beam and thus the amplitude of each is attenuated by primary beam fall-off.
+
+    Can either return the equivalent time on source, or just creates a new SN table which can later be applied to the source. 
+    """
     numantennas    = len(uvdata.antennas) # this has python3 issue!
     wizuvdata      = WizAIPSUVData(uvdata)
     examplesntable = wizuvdata.table('SN', examplesnversion)
@@ -1848,11 +1917,12 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         if row.nosta > maxannumber:
             maxannumber = row.nosta
 
+    # creating arrays of all of the freqs and wavelengths contained in the dataset
     freqs    = []
     #beamhwhm = []
     lambdas  = []
     equivtimeonsource = {}
-    fqtable = uvdata.table('FQ', 1)
+    fqtable = uvdata.table('FQ', 1) # frequency table
     for row in fqtable:
         try:
             #print row
@@ -1899,10 +1969,12 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
     row.source_id = 1
 
     aipsstartmjd = getAIPSMJD(uvdata.header.date_obs)
-    sutable = uvdata.table('SU', 1)
+    sutable = uvdata.table('SU', 1) # source table
     numsusources = 0
+    # tallying total number of sources
     for srow in sutable:
         numsusources += 1
+    # iterating through each scan
     for scan in scanlist:
         meancorr = 0.0
         meancorrcount = 0
@@ -1912,6 +1984,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         sutablerow = None
         scansource = scan.source
         print("Looking for match to vexname ", scansource.name)
+        # calibrator
         if iscal:
             #for i in range(num_if):
             #    pbcor.append(1.0)
@@ -2014,7 +2087,6 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
         scanpoints.append(scan.startmjd - aipsstartmjd + 5.0/86400.0)
         scanpoints.append((scan.startmjd+scan.stopmjd)/2.0 - aipsstartmjd)
         scanpoints.append(scan.stopmjd - aipsstartmjd - 5.0/86400.0)
-        #print "%f %f" % (scan.startmjd, scan.stopmjd)
         for scanpoint in scanpoints:
             year, month, day, hour, minute, second = astro_utils.mjd2ymdhms(scanpoint + aipsstartmjd)
             now = datetime.datetime(year, month, day, hour, minute, int(second))
@@ -2034,7 +2106,8 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                 newweight1 = []
                 newweight2 = []
                 for j in range(gainlength):
-                    rcpcorr, lcpcorr = ant_response(now, annames[i], cephem, tephem, lambdas[j], False)
+                    # getting the antenna response at the given scanpoint (three total scanpoints) for the given freq/wavelength at the target coordinates given a pointing center
+                    rcpcorr, lcpcorr = ant_response(now, annames[i], cephem, tephem, lambdas[j], False) 
                     meancorr += rcpcorr + lcpcorr
                     meancorrcount += 2
                     newreal1.append(1.0/math.sqrt(rcpcorr))
@@ -2046,6 +2119,7 @@ def correct_primarybeam(uvdata, examplesnversion, phasecentrenum, scanlist, fiel
                 row.weight_1 = newweight1
                 row.weight_2 = newweight2
                 print("Doing time %f for antenna %d" % (scanpoint, i+1))
+                # adding the new weights (per antenna and per freq channel) at three new scan times
                 if not onlygettimes:
                     newsntable.append(row)
         try:
@@ -2371,6 +2445,19 @@ def smearingflag(brightsrcuvdata, targetuvdata, correlationlimit, fgver=1):
 
 ####### CALCULATE SOURCE POSITION CHANGE BASED ON PMPAR FIT FILE ###############
 def calcPosOffsetVsPmpar(vexfile, source, fitfile):
+    """
+    Functionality
+    -------------
+    Calculates the change in the source position by running a given fit file through the pmpar software.
+
+    Returns
+    -------
+    Returns the new RA, DEC after having run pmpar on the fit file. 
+
+    Notes
+    -----
+    Relevant github repo for pmpar: https://github.com/walterfb/pmpar
+    """
     if not os.path.exists(vexfile):
         print(vexfile + " does not exist!")
         sys.exit()
@@ -2381,6 +2468,7 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
     orgdecrad = -99
     orgrarad = -99
     vexlines = open(vexfile).readlines()
+    # gather the ra, dec, and mjd from the vex file
     for i in range(len(vexlines)):
         line = vexlines[i]
         if mjd < 0 and "MJD" in line:
@@ -2420,6 +2508,8 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
     #if not found:
     #    print "Couldn't find source " + srcname + " in SU table!"
     #    sys.exit()
+
+    # opening the fit file
     fitlines = open(fitfile).readlines()
     tmpout = open("tmpfit.in", "w")
     for line in fitlines:
@@ -2431,6 +2521,7 @@ def calcPosOffsetVsPmpar(vexfile, source, fitfile):
             decline = line
     tmpout.write("%.5f 0:0:0.0 0.1 0:0:0.0 0.1\n" % mjd)
     tmpout.close()
+    # run pmpar on the contents from fitfile
     os.system("pmpar tmpfit.in")
     elines = open("pmpar_e").readlines()
     if not len(elines) == 1:
@@ -2499,6 +2590,11 @@ def fitld_uvfits(uvfitsfile, aipsdata, sources):
 
 ####### FITLD FOR CORRELATOR UV FILES, NO WEIGHT DISCARDING ####################
 def fitld_corr_noweightthresh(file, aipsdata, sources):
+    """
+    Functionality
+    -------------
+    Load in a file with no weight threshold e.g., accepts all data. CLtablemin is automatically set to be 0.166667 minutes.
+    """
     fitld = AIPSTask('fitld', version = aipsver)
     splitfile = file.split(':')
     fitld.doconcat = 0
@@ -2528,8 +2624,20 @@ def fitld_corr_noweightthresh(file, aipsdata, sources):
         fitld.datain = f
         fitld()
 
-####### FITLD FOR CORRELATOR UV FILES, NO WEIGHT DISCARDING ####################
+####### FITLD FOR CORRELATOR UV FILES, WEIGHT DISCARDING ####################
 def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0.166667):
+    """
+    Functionality
+    -------------
+    Load in a file with a weight threshold. 
+    
+    Notes
+    -----
+    Weight threshold is automatically set to 0.4. If a weight threshold is set,
+    then fitld only accepts data with weights > threshold. Also allows one to set the the fundamental timescale for calibration e.g.,
+    cltablemin. CLtablemin is automatically set to be 0.166667 minutes. Also allows one to set the reference date. Ref date must be the 
+    lowest date in the dataset.
+    """
     fitld = AIPSTask('fitld', version = aipsver)
     splitfile = file.split(':')
     fitld.doconcat = 0
@@ -2564,7 +2672,13 @@ def fitld_vlba(file, aipsdata, sources, wtthreshhold=0.4, rdate='', cltablemin=0
         fitld.datain = f
         fitld()
 
+####### FITLD FOR CORRELATOR UV FILES, WEIGHT DISCARDING ####################
 def fitld_vlba1(file, aipsdata, wtthreshhold=0.4, rdate='', cltablemin=0.166667):
+    """
+    Functionality
+    -------------
+    Seems to be identical to fitld_vlba. 
+    """
     fitld = AIPSTask('fitld', version = aipsver)
     splitfile = file.split(':')
     fitld.doconcat = 0
@@ -2598,8 +2712,18 @@ def fitld_vlba1(file, aipsdata, wtthreshhold=0.4, rdate='', cltablemin=0.166667)
         fitld.datain = f
         fitld()
 
-####### FITLD FOR CORRELATOR UV FILES ##########################################
+####### FITLD FOR CORRELATOR UV FILES -- CAN SPECIFY ANTENNAS AND SOURCES ##########################################
 def fitld_corr(file, aipsdata, sources, antennalist='', wtthreshold=0.0, rdate='', cltablemin=0.166667):
+    """
+    Functionality
+    -------------
+    Same as fitld_vlba except now one can set the sources and the antenna list. 
+
+    Notes
+    -----
+    In fitld_vlba, antenna[1] was automatically set to 'VLBA.' Here, you can name multiple antennas.
+    The weight threshold is automatically set to zero, although it can be adjusted.
+    """
     fitld = AIPSTask('fitld', version = aipsver)
     splitfile = file.split(':')
     splitantenna = antennalist.split(',')
@@ -2652,7 +2776,7 @@ def fitld_image(file, aipsdata):
             sys.exit()
     fitld()  
 
-####### SORT INTO TB ORDER #####################################################
+####### SORT INTO TB (TIME-BASELINE) ORDER AND INDEX THE DATA #####################################################
 def uvsrt(inputuvdata, outputuvdata):
     uvsrt = AIPSTask('uvsrt', version = aipsver)
     uvsrt.indata  = inputuvdata
@@ -2665,7 +2789,7 @@ def uvsrt(inputuvdata, outputuvdata):
     indxr.cparm[3] = 0.1666666666666666667
     indxr()
 
-####### SORT INTO TB ORDER #####################################################
+####### INDEX DATA #####################################################
 def indxr(inputuvdata):
     indxr = AIPSTask('indxr', version = aipsver)
     indxr.indata = inputuvdata
@@ -2720,6 +2844,18 @@ def renumber_vlba(uvdata):
 
 ####### DBCON N CATALOG ENTRIES ################################################
 def dbcon(inputuvdatas, outputuvdata):
+    """
+    Functionality
+    -------------
+    DBcon will concatenate two uv datasets taken at different
+    points in time. Here, we are inputuvdatas where each entry in inputuvdatas
+    corresponds to a different IF. To do this, each IF must have the same number of antennas, otherwise
+    the error message is produced. Only uses if a separate IF model is desired for the sources.
+
+    Returns
+    -------
+    outputuvdata: concatenation of the inputuvdatas
+    """
     junkos = []
     errormsg = "ANTENNA tables don't match! Can't DBCON with doarray=1.  " + \
                "This is set so that there are no subarrays, and difmap " + \
@@ -2827,8 +2963,19 @@ def dbcon(inputuvdatas, outputuvdata):
         junko = AIPSUVData('JUNKO','JUNKO',1,i+1)
         junko.zap()
 
-####### MERGE PULSAR BINS ######################################################
+####### MERGE PULSAR FILES AND AVERAGE IN TIME ######################################################
 def mergebins(inputdatafiles, outputdatafile, noaverage):
+    """
+    Functionality
+    -------------
+    Merges multiple pulsar files together using dbcon. Then, sorts the uvdata based on time and baseline. 
+    If no averaging, writes out the file at this stage. If averaging requested, then averages the data
+    in time.
+
+    Returns
+    -------
+    Outputdatafile: Data file that has merged multiple inputdatafiles and possibly averaged in time.
+    """
     junk1 = AIPSUVData('JUNK1','JUNK1',1,1)
     junk2 = AIPSUVData('JUNK2','JUNK2',1,1)
     junko = AIPSUVData('JUNKO','JUNKO',1,1)
@@ -2843,7 +2990,9 @@ def mergebins(inputdatafiles, outputdatafile, noaverage):
     dbcon.dopos[1:][1:] = [0]
     dbcon.doarray = 1
     dbcon.fqtol = -1
+    # loads the first input data files as junk 1
     fitld_corr(inputdatafiles[0], junk1, [''])
+    # now merges all other input data files with the above file using dbcon
     for infile in inputdatafiles[1:]:
         fitld_corr(inputdatafiles[0], junk2, [''])
         dbcon.indata  = junk1
@@ -2892,18 +3041,23 @@ def diffuv(avgdata1, avgdata2, diffdata):
 
 ####### TABLE/FREQUENCY/POLARISATION MERGING AND SORTING #######################
 def vlbafix(uvdataset):
-    vlbamcal = AIPSTask('vlbamcal', version = aipsver)
+    vlbamcal = AIPSTask('vlbamcal', version = aipsver) 
     vlbamcal.indata = uvdataset
-    vlbamcal()
+    vlbamcal() # merges redundant calibration data
 
     vlbafix = AIPSTask('vlbafix', version = aipsver)
     vlbafix.indata   = uvdataset
     vlbafix.clint    = 0.25
     vlbafix.subarray = 0
-    vlbafix()
+    vlbafix() # fixes (e.g., sorts) VLBA data
 
 ####### PARALLACTIC ANGLE CORRECTION ###########################################
 def clcor_pang(uvdataset, clversion):
+    """
+    Functionality
+    -------------
+    Corrects for parallactic angle rotation of the feed relative to the source due to alt-azm telescope.
+    """
     clcor = AIPSTask('clcor', version = aipsver)
     clcor.indata = uvdataset
     clcor.gainver = clversion
@@ -2916,6 +3070,10 @@ def clcor_pang(uvdataset, clversion):
 ####### SOURCE POSITION CORRECTION #############################################
 def shift_source(uvdataset, source, rashift, decshift, clversion):
     """
+    Functionality
+    -------------
+    Shift the source position  by rashift and decshift. 
+
     Input parameters
     ----------------
     rashift : float 
@@ -2958,6 +3116,11 @@ def shift_antenna(uvdataset, antenna, xshift, yshift, zshift, clversion):
 
 ####### UVFIX (SINGLE SOURCE) ##################################################
 def uvfix(uvdataset, outdataset, rashift, decshift):
+    """
+    Functionality
+    -------------
+    UVfix "recomputes u,v,w terms for a uv database."
+    """
     uvfix = AIPSTask('uvfix', version = aipsver)
     uvfix.indata = uvdataset
     uvfix.outdata = outdataset
@@ -2982,6 +3145,18 @@ def setup_iono(logdir, imod):
     
 ####### IONOSPHERIC CORRECTIONS USING TECOR ####################################
 def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
+    """
+    Functionality
+    -------------
+    Correct a given uvdataset for the ionosphere using TECOR.
+
+    Required
+    --------
+    Directory with the following tecor files for the relevant date: 
+    "jplg","esag","codg","upcg","igsg","c1pg","c2pg","u2pg","e1pg.
+
+    These files can be retrieved using the python program prepare_astrometric_observations.py
+    """
     tecor = AIPSTask('tecor', version = aipsver)
     for t in uvdataset.tables:
         if 'CL' in t[1] and t[0] == clversion+1:
@@ -2994,6 +3169,7 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     tecor.indata = uvdataset
     files = sorted(os.listdir(tecordirectory))
     print(files)
+    print(tecordirectory)
     ionextypes = ["jplg","esag","codg","upcg","igsg","c1pg","c2pg","u2pg","e1pg"]
     selectedionextype = ""
     for ionextype in ionextypes:
@@ -3036,18 +3212,25 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
 ####### GENERATE DIFFERENTIAL TECOR CORRECTIONS FROM CL TABLES AND COPY IN  ####
 def insert_differential_iono(calibsuvdata, calinver, targetuvdata, targetinver, 
                              targetoutver):
+    """
+    Functionality
+    -------------
+    Generate the difference in the dispersive delay between the calibrator and target 
+    and insert this into the target uv dataset.
+    """
     wizcaldata = WizAIPSUVData(calibsuvdata)
     wiztargetdata = WizAIPSUVData(targetuvdata)
-    cltable1 = calibsuvdata.table('CL', calinver)
-    cltable2 = targetuvdata.table('CL', targetinver)
+    cltable1 = calibsuvdata.table('CL', calinver) # calibrator CL table
+    cltable2 = targetuvdata.table('CL', targetinver) # target CL table
     cdisp1 = []
     cdisp2 = []
     tdisp1 = []
     tdisp2 = []
+    # iterating through calibrator and target CL tables to get disp_1 and disp_2 for each
     print("Storing iono corrections for calibrator")
     for row in cltable1:
-        cdisp1.append(row.disp_1)
-        cdisp2.append(row.disp_2)
+        cdisp1.append(row.disp_1) # disp_1 is the dispersive delay for polarization 1
+        cdisp2.append(row.disp_2) # disp_2 is the dispersive delay for polarization 2
     print("Storing iono corrections for target")
     for row in cltable2:
         tdisp1.append(row.disp_1)
@@ -3055,11 +3238,14 @@ def insert_differential_iono(calibsuvdata, calinver, targetuvdata, targetinver,
     wizcltable = wiztargetdata.table('CL', targetoutver)
     increment = len(cltable1)/10
     count = 0
+    # looping through each row in the target calibrator table (Wizard format)
     for row in wizcltable:
         if count % increment == 0:
             print(str((10*count)/increment) + "% done")
+        # differential of disp_1 and disp_2 between target and calibrator
         row.disp_1 = tdisp1[count] - cdisp1[count]
         row.disp_2 = tdisp2[count] - cdisp2[count]
+        # updating the target wiz CL table to contain the differentials
         row.update()
         count += 1
     wizcltable.close()
@@ -3157,6 +3343,16 @@ def insert_differential_iono(targetuvdata, dtecorfile, clversion):
 '''
 ####### EOP CORRECTIONS USING CLCOR ############################################
 def correct_eops(uvdataset, eopsdirectory, clversion):
+    """
+    Functionality
+    -------------
+    Correct for earth-orientation parameters using the downloaded file
+    usno_finals.erp.
+
+    Notes
+    -----
+    usno_finals.erp can be downloaded by using prepare_astrometric_observations.py
+    """
     clcor = AIPSTask('clcor', version = aipsver)
     clcor.indata = uvdataset
     clcor.gainver = clversion
@@ -3217,6 +3413,11 @@ def deletetable(uvdataset, tabletype, tableversion):
 def splitanddbcon(uvdatasets, numtargets, numfields, numfieldsources, 
                   fieldsourcenames, clversion, aipsclass, limitedtargetlist, 
                   doconcat, skipping=False, doband=True):
+    """
+    FunctionalityAIP
+    -------------
+    
+    """
     targetnames    = []
     targetcount    = []
     orgtargetindex = []
@@ -5022,7 +5223,7 @@ def plotbandpass(uvdata, bpver, plotbptable, plotsperpage, outputfile, clversion
             for i in baselines:
                 possm.baseline[i] = i
         else:
-            print "baselines parameter must be a list"
+            print("baselines parameter must be a list")
             sys.exit()
     if clversion > 0:
         possm.docalib = 1
@@ -6200,6 +6401,17 @@ def match_headersource(template, toupdate):
 
 ##### Normalise a UV dataset (divide through by model, weight appropriately) ###
 def normaliseUVData(uvdata, clnimage, normdata, beginif=-1, endif=-1):
+    """
+    Functionality
+    -------------
+    Normalizes a UV dataset by using the AIPs task UVSUB. UVSUB subtracts "the clean components
+    from a UV-dataset." This is ideal if we want to isolate bad components in a given image, as we can divide through
+    by the clean image, re-run clean on the compromised image, and then add back in the clean image.
+
+    Returns
+    -------
+    normdata:
+    """
     tempdata = AIPSUVData("JUNKNORM", "NORM", 1, 1)
     if tempdata.exists():
         tempdata.zap()

@@ -535,7 +535,15 @@ class support_vlbireduce(object):
     
     def normalise_UVData_with_separate_IF_model_and_concatenate(self, srcname, config, expconfig, uvdata, modeldir, clversion):
         """
-        used when config['phscalseparateifmodel']==True (for phscal) or config['separateifmodel']==True (for inbeams), where config=targetconfig[i]
+        Functionality
+        -------------
+        Normalize a UVData set by using the cleaned in-beam calibrator model file. Normalizes each IF separately
+        and then concatenates each IF into one UV-dataset. 
+
+        Notes
+        -----
+        used when config['phscalseparateifmodel']==True (for phscal) or 
+        config['separateifmodel']==True (for inbeams), where config=targetconfig[i]
         """
         print(('Normalise uvdata of %s against its separate_IF_models, then concatenate back together.' % srcname))
         normed_IF_datas = []
@@ -573,7 +581,9 @@ class support_vlbireduce(object):
             IF_image_data = AIPSImage(shortname, "CLEAN", 1, i)
             if IF_image_data.exists():
                 IF_image_data.zap()
+            # reads in image file (in-beam model file) and writes out the image data to IF_image_data
             vlbatasks.fitld_image(IF_image_file, IF_image_data)
+            # normalize the uvdata to the IF_image_data and population the normdata
             vlbatasks.normaliseUVData(splitted_uv_data, IF_image_data, normdata, i, i)
             normed_IF_datas.append(normdata)
             normdata.table('NX', 1).zap()
@@ -583,6 +593,7 @@ class support_vlbireduce(object):
                 concatuvdata.zap()
         for normed_IF_data in normed_IF_datas:
             vlbatasks.match_headersource(normed_IF_datas[0], normed_IF_data)
+        # concatenates all of the data in normed_IF_Datas into concatuvdata
         vlbatasks.dbcon(normed_IF_datas, concatuvdata)
         for normed_IF_data in normed_IF_datas:
             normed_IF_data.zap()
@@ -859,6 +870,8 @@ class support_vlbireduce(object):
                          dosecondary, sumifs, clversion, snversion, inbeamnames, 
                          targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir):
         """
+        Functionality
+        -------------
         apply CALIB (self-calibration) solutions from in-beam calibrators
 
         Return parameters
