@@ -8,7 +8,7 @@ New Feature of this branch:
    
 Should you have any inquiry about the pipeline or comments for improvements, feel free to contact Hao (hdingastro@hotmail.com) or Adam (adeller@astro.swin.edu.au).
 
-## Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
+### Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
 Below details the required packages and software that needs to be installed prior to downloading and running PSRVLBIREDUCE.
 
 The first required package is, of course, AIPs. AIPs can be downloaded by following the instructions located here by clicking on the date for which you want to download AIPs. Note that as of recently, AIPs is now compatible with M1 macs.
@@ -21,8 +21,8 @@ Additionally, depending on your operating machine, ParselTongue requires a few a
 
 Before moving on to the next step of actually setting up PSRVLBIREDUCE, you should confirm that ParselTongue is running nominally on your machine. To test whether or not ParselTongue is working nominally, start up ParselTongue from the command line. This should bring up the ParselTongue server. If it does not, something has either gone wrong with your installation or the insertion of the proper baths into your bashrc or bash_login file. 
 
-_Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
-_
+Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
+
  from AIPS import AIPS
  from AIPSTask import AIPSTask, AIPSList
  from AIPSData import AIPSUVData, AIPSImage
