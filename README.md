@@ -121,11 +121,11 @@ The document should start with three different image plots. They should show the
 
 Taking it one step further and generating a file for PMPAR
 
-Coming soon…. 
+*Coming soon….*
 
 ## Detailed Overview of the PSRVLBIREDUCE Pipeline
 
-Coming soon…
+*Coming soon…*
 
 
 
