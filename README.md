@@ -23,9 +23,11 @@ Before moving on to the next step of actually setting up PSRVLBIREDUCE, you shou
 
 Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
 
- `from AIPS import AIPS
+ ```
+ from AIPS import AIPS
  from AIPSTask import AIPSTask, AIPSList
- from AIPSData import AIPSUVData, AIPSImage`
+ from AIPSData import AIPSUVData, AIPSImage
+ ```
 
 Next, try loading in your data and confirming it exists a-okay e.g.. 
 
