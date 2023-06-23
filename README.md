@@ -21,8 +21,8 @@ Additionally, depending on your operating machine, ParselTongue requires a few a
 
 Before moving on to the next step of actually setting up PSRVLBIREDUCE, you should confirm that ParselTongue is running nominally on your machine. To test whether or not ParselTongue is working nominally, start up ParselTongue from the command line. This should bring up the ParselTongue server. If it does not, something has either gone wrong with your installation or the insertion of the proper baths into your bashrc or bash_login file. 
 
-Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
-
+_Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
+_
  from AIPS import AIPS
  from AIPSTask import AIPSTask, AIPSList
  from AIPSData import AIPSUVData, AIPSImage
