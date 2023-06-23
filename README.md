@@ -1,4 +1,4 @@
-## User Guide for PSRVLBIREDUCE
+# User Guide for PSRVLBIREDUCE
 
 Overview of this repository
 This project provides a pipeline for VLBI data reduction, with special focus on VLBI astrometry. The main data reduction code, written in python-based parseltongue (Kettenis et al. 2006), is vlbi_astrometry.py which calls classes and functions from vlbireduce.py and support_vlbireduce.py. The latter two use functions provided in vlbatasks.py, where some new features have also been added. The pipeline was originally developed and used by Dr. Deller for the PSRPI project (Deller et al. 2019) and other projects. Since 2018, it has undergone large upgrades (including systematic restructuring) made by Hao Ding. Currently, the vlbireduce_v3 branch is already compatible with python3, and will be merged to the main branch after being tested properly.
@@ -8,7 +8,7 @@ New Feature of this branch:
    
 Should you have any inquiry about the pipeline or comments for improvements, feel free to contact Hao (hdingastro@hotmail.com) or Adam (adeller@astro.swin.edu.au).
 
-# Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
+## Required Packages and Software for PSRVLBIReduce: AIPS and PARSELTONGUE
 Below details the required packages and software that needs to be installed prior to downloading and running PSRVLBIREDUCE.
 
 The first required package is, of course, AIPs. AIPs can be downloaded by following the instructions located here by clicking on the date for which you want to download AIPs. Note that as of recently, AIPs is now compatible with M1 macs.
@@ -42,7 +42,8 @@ uvdata = AIPSUVData("test_gated", "UVDATA", 1, 1)
 uvdata.exists() 
 
 This should return the value True, and your level 0 testing is now complete. You are ready for PSRVLBIREDUCE installation 
-Installation
+
+## Installation
 Below, we detail the instructions for installing the PSRVLBIREDUCE pipeline.
 
 Download the PSRPIVLBIREDUCE github repo from https://github.com/dingswin/psrvlbireduce. You may need to request permission to view this github repository and/or edit it. 
@@ -98,7 +99,7 @@ The usno_finals.erp file can be fftp’ed from ftp://gdc.cddis.eosdis.nasa.gov/v
 
 You will need to place these files under a new directory /Users/Alice/PSR/examples/J1738+0333/bd179i0/logs. Additionally, you will need to make the directories /Users/Alice/PSR/examples/J1738+0333/bd179i0/images and /Users/Alice/PSR/examples/J1738+0333/bd179i0/tables. 
 
-Running the program
+## Running the program
 You should not be all set to get to work running the program. Go to /Users/Alice/PSR/psrvlbireduce/datareduction/ and run ParselTongue vlbi_astrometry.py -e bd179i0
 
 You will be prompted with many questions along the way, as the program runs. The initial set of questions will be related to the loading in of your data. You want to always answer yes to these questions, otherwise the program will abort (seeing as it has no data to use). This is the computationally longest part of the pipeline.
@@ -120,7 +121,8 @@ The document should start with three different image plots. They should show the
 Taking it one step further and generating a file for PMPAR
 
 Coming soon…. 
-Detailed Overview of the PSRVLBIREDUCE Pipeline
+
+## Detailed Overview of the PSRVLBIREDUCE Pipeline
 
 Coming soon…
 
