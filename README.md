@@ -120,11 +120,11 @@ You will be prompted with many questions along the way, as the program runs. The
 
 Many of the questions after this will be related to using saved .SN and .CL tables. If it is your first time running the program, you won’t have any saved products, so you won’t have any option but to create these tables. However, if you are running the program for the nth time, and only want to adjust something much further downstream, you should feel free to use your saved .SN and .CL tables.
 
-After you get to the phase calibrator step, the program will write out a .fits image (in this case it will be called J1740_formodeling.fits of your phase calibrator, and then exit. This is because it requires a model for the phase calibrator. Hence, you will need to load the phase calibrator file (in this case the phase calibrator is J1740_0311) into a normal AIPs environment, clean it, and then save the image as J1740+0311.clean.fits under `/Users/Alice/PSR/psrvlbireduce/examples/sourcemodels/preliminary/`.
+After you get to the phase calibrator step, the program will write out a .fits image (in this case it will be called `J1740_formodeling.fits` of your phase calibrator, and then exit. This is because it requires a model for the phase calibrator. Hence, you will need to load the phase calibrator file (in this case the phase calibrator is J1740_0311) into a normal AIPs environment, clean it, and then save the image as `J1740+0311.clean.fits` under `/Users/Alice/PSR/psrvlbireduce/examples/sourcemodels/preliminary/`.
 
 At some point later on, you will be asked to do the same for your primary in-beam calibrator. After creating the clean images, proceed to re-run the program from the start (here would be a good time to use those saved .SN and .CL tables!). 
 
-The program should (ideally) run all the way to the end. Given all your paths are properly set-up, it should end by running make_diagnostics.py which will produce a file Diagnostic.html which will contain all of the relevant plots from your work. Additionally, all of the logs outputted on the command line will be stored under bd179i0.datacheck.log and the pipeline summary will be saved under bd179i0.pipelinesummary. 
+The program should (ideally) run all the way to the end. Given all your paths are properly set-up, it should end by running `make_diagnostics.py` which will produce a file `Diagnostic.html` which will contain all of the relevant plots from your work. Additionally, all of the logs outputted on the command line will be stored under `bd179i0.datacheck.log` and the pipeline summary will be saved under `bd179i0.pipelinesummary`. 
 
 #### Interpreting the output data
 
