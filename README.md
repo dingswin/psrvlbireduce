@@ -128,7 +128,7 @@ The program should (ideally) run all the way to the end. Given all your paths ar
 
 #### Interpreting the output data
 
-If everything has gone right, you should have a file Diagnostic.html with many different plots. Below we detail how to interpret those plots. 
+If everything has gone right, you should have a file `Diagnostic.html` with many different plots. Below we detail how to interpret those plots. 
 
 The document should start with three different image plots. They should show the pulsar and two of the in-beam calibrators along with their positions. 
 
