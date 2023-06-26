@@ -14,11 +14,11 @@ Below details the required packages and software that needs to be installed prio
 
 The first required package is, of course, AIPs. AIPs can be downloaded by following the instructions located [here](http://www.aips.nrao.edu/index.shtml) by clicking on the date for which you want to download AIPs. Note that as of recently, AIPs is now compatible with M1 macs.
 
-Once you have downloaded AIPs, you should ensure it works as expected. Download any VLBA or other VLBI instrument file, and then start AIPs from that location by running either `AIPS` or `aips TV=local:0.0`. Note that sometimes the latter is necessary to get the TV to work properly. Then, confirm that you can load in a file use fitld, and check that the header of the file looks okay. If you aren’t familiar with basic AIPs tasks, then this would be the time to become familiar. There are three really nice AIPs tutorials: A small guide to AIPS, simple VLBA project including self-calibration and spectral-line VLBA project plus astrometry that are available to introduce you to the basics of AIPs. 
+Once you have downloaded AIPs, you should ensure it works as expected. Download any VLBA or other VLBI instrument file, and then start AIPs from that location by running either `AIPS` or `aips TV=local:0.0`. Note that sometimes the latter is necessary to get the TV to work properly. Then, confirm that you can load in a file use fitld, and check that the header of the file looks okay. If you aren’t familiar with basic AIPs tasks, then this would be the time to become familiar. There are three really nice AIPs tutorials: [A small guide to AIPS](http://www3.mpifr-bonn.mpg.de/staff/hrk/AIPS_TUTORIAL/HRK_AIPS_1.html), [simple VLBA project including self-calibration](https://casaguides.nrao.edu/index.php/AIPS-Simple-Self-Cal) and [spectral-line VLBA project plus astrometry](https://casaguides.nrao.edu/index.php/AIPS-Spectral_Lines_and_Astrometry) that are available to introduce you to the basics of AIPs. 
 
-The second required package is ParselTongue. ParselTongue can be downloaded by following the instructions located here. Note that ParselTongue does work on the M1 macs, and the easiest way to download it is through using brew. 
+The second required package is ParselTongue. ParselTongue can be downloaded by following the instructions located [here](https://www.jive.eu/jivewiki/doku.php?id=parseltongue:parseltongue). Note that ParselTongue does work on the M1 macs, and the easiest way to download it is through using brew. 
 Note that ParselTongue not only requires AIPS, but also requires OBIT. It is easiest to download and install Obit using the instructions on the ParselTongue website, as it can otherwise be a bit tricky to install.
-Additionally, depending on your operating machine, ParselTongue requires a few additional dependencies such as gcc, glib, etc. Instructions on what is necessary can be found here.
+Additionally, depending on your operating machine, ParselTongue requires a few additional dependencies such as gcc, glib, etc. Instructions on what is necessary can be found [here](https://www.jive.eu/parseltongue/codex.pdf).
 
 Before moving on to the next step of actually setting up `PSRVLBIREDUCE`, you should confirm that ParselTongue is running nominally on your machine. To test whether or not ParselTongue is working nominally, start up ParselTongue from the command line. This should bring up the ParselTongue server. If it does not, something has either gone wrong with your installation or the insertion of the proper baths into your bashrc or bash_login file. 
 
@@ -85,7 +85,7 @@ Ideally, this should be everything you need to now start playing around with the
 First, before getting started, make sure to run your `source_file_psrvlbireduce.sh file`. Otherwise, everything will break.
 
 ##### Downloading the data
-Next, the example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the NRAO data archive site. One at the data archive site, search for bd179i0 and then download the files:
+Next, the example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the [NRAO data archive site](https://data.nrao.edu/portal/). One at the data archive site, search for bd179i0 and then download the files:
 
 ```
 VLBA_BD179I0_ungatedi0_BIN0_SRC0_0_150824T164359.idifits
@@ -109,7 +109,7 @@ esag<>.15.Z
 igsg<>.15i
 jplg<>.15i.Z
 ```
-The usno_finals.erp file can be fftp’ed from ftp://gdc.cddis.eosdis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp. The ionospheric files can be found here.
+The usno_finals.erp file can be fftp’ed from ftp://gdc.cddis.eosdis.nasa.gov/vlbi/gsfc/ancillary/solve_apriori/usno_finals.erp. The ionospheric files can be found [here](https://cddis.nasa.gov/Data_and_Derived_Products/GNSS/atmospheric_products.html).
 
 You will need to place these files under a new directory `/Users/Alice/PSR/examples/J1738+0333/bd179i0/logs`. Additionally, you will need to make the directories `/Users/Alice/PSR/examples/J1738+0333/bd179i0/images` and `/Users/Alice/PSR/examples/J1738+0333/bd179i0/tables`. 
 
