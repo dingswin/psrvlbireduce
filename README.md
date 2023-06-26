@@ -14,13 +14,13 @@ Below details the required packages and software that needs to be installed prio
 
 The first required package is, of course, AIPs. AIPs can be downloaded by following the instructions located here by clicking on the date for which you want to download AIPs. Note that as of recently, AIPs is now compatible with M1 macs.
 
-Once you have downloaded AIPs, you should ensure it works as expected. Download any VLBA or other VLBI instrument file, and then start AIPs from that location by running either AIPS or aips TV=local:0.0. Note that sometimes the latter is necessary to get the TV to work properly. Then, confirm that you can load in a file use fitld, and check that the header of the file looks okay. If you aren’t familiar with basic AIPs tasks, then this would be the time to become familiar. There are three really nice AIPs tutorials: A small guide to AIPS, simple VLBA project including self-calibration and spectral-line VLBA project plus astrometry that are available to introduce you to the basics of AIPs. 
+Once you have downloaded AIPs, you should ensure it works as expected. Download any VLBA or other VLBI instrument file, and then start AIPs from that location by running either `AIPS` or `aips TV=local:0.0`. Note that sometimes the latter is necessary to get the TV to work properly. Then, confirm that you can load in a file use fitld, and check that the header of the file looks okay. If you aren’t familiar with basic AIPs tasks, then this would be the time to become familiar. There are three really nice AIPs tutorials: A small guide to AIPS, simple VLBA project including self-calibration and spectral-line VLBA project plus astrometry that are available to introduce you to the basics of AIPs. 
 
 The second required package is ParselTongue. ParselTongue can be downloaded by following the instructions located here. Note that ParselTongue does work on the M1 macs, and the easiest way to download it is through using brew. 
 Note that ParselTongue not only requires AIPS, but also requires OBIT. It is easiest to download and install Obit using the instructions on the ParselTongue website, as it can otherwise be a bit tricky to install.
 Additionally, depending on your operating machine, ParselTongue requires a few additional dependencies such as gcc, glib, etc. Instructions on what is necessary can be found here.
 
-Before moving on to the next step of actually setting up PSRVLBIREDUCE, you should confirm that ParselTongue is running nominally on your machine. To test whether or not ParselTongue is working nominally, start up ParselTongue from the command line. This should bring up the ParselTongue server. If it does not, something has either gone wrong with your installation or the insertion of the proper baths into your bashrc or bash_login file. 
+Before moving on to the next step of actually setting up `PSRVLBIREDUCE`, you should confirm that ParselTongue is running nominally on your machine. To test whether or not ParselTongue is working nominally, start up ParselTongue from the command line. This should bring up the ParselTongue server. If it does not, something has either gone wrong with your installation or the insertion of the proper baths into your bashrc or bash_login file. 
 
 Next, make sure you can load all of the AIPs software okay from within the ParselTongue window e.g., 
 
@@ -53,7 +53,7 @@ This should return the value True, and your level 0 testing is now complete. You
 ## Installation
 Below, we detail the instructions for installing the PSRVLBIREDUCE pipeline.
 
-Download the PSRPIVLBIREDUCE github repo from https://github.com/dingswin/psrvlbireduce. You may need to request permission to view this github repository and/or edit it. 
+Download the `PSRPIVLBIREDUCE` github repo from https://github.com/dingswin/psrvlbireduce. You may need to request permission to view this github repository and/or edit it. 
 Once you have downloaded the repository, there are a few paths that need to be set to get it running smoothly. The easiest way to do this is to create a file called `source_file_psrvlbireduce.sh` in the same directory as this `README.md`. Your source file needs to contain the following:
 
 ```
@@ -82,7 +82,7 @@ You will also need to add the location of the psrvlbireduce code to your bash_lo
 Ideally, this should be everything you need to now start playing around with the code. 
 
 ## Example Module #1
-First, before getting started, make sure to run your source_file_psrvlbireduce.sh file. Otherwise, everything will break.
+First, before getting started, make sure to run your `source_file_psrvlbireduce.sh file`. Otherwise, everything will break.
 
 ##### Downloading the data
 Next, the example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the NRAO data archive site. One at the data archive site, search for bd179i0 and then download the files:
