@@ -1798,7 +1798,7 @@ class vlbireduce(support_vlbireduce):
                     final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_secondary_inbeam_selfcal.final'
                     dualphscal_edit = tabledir + '/secondarydualphscal.edit'
                 if (not os.path.exists(dualphscal_edit)) and (not os.path.exists(final_inbeamselfcal_phase_edit)): ## the old interactive approach
-                    print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it to .corrected_phases_inbeam_selfcal.final and rerun the pipeline.")
+                    print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it with a '.final' suffix (i.e., .corrected_phases_*inbeam_selfcal.final) and rerun the pipeline.")
                     dualphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder, dosecondary)
                     sys.exit(0)
                 
