@@ -2722,6 +2722,17 @@ class vlbireduce(support_vlbireduce):
                 vlbatasks.widefieldimage(divideddata, aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, 20)
                 vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True, False,ibshiftedimage,48)
                 ## <<< difmap-image and jmfit ibshiftdivphscal
+                
+                ## >>> difmap-image and jmfit the normal phscal, only when inbeamselfcal is not applied
+                if self.maxinbeamcalibp1mins < 0:
+                    jmfitfile = directory + '/' + experiment + '_' + aipssrcname + '.difmap.jmfit'
+                    finalphscalimage = AIPSImage(aipssrcname, "ICL001", 1, 1)
+                    if finalphscalimage.exists(): ## ibshiftedimage is overwritten
+                        finalphscalimage.zap()
+                    finalphscaldata = AIPSUVData(aipssrcname, 'FINAL', 1, 1)
+                    vlbatasks.widefieldimage(finalphscaldata, aipssrcname, 256, 0.75, True, 0.050, 0, 0, 0, 100, 20)
+                    vlbatasks.nonpulsarjmfit("", jmfitfile, aipssrcname, -1, -1, True, False, finalphscalimage, 48)
+                ## <<< difmap-image and jmfit the normal phscal, only when inbeamselfcal is not applied
 
                 ## >>> then in-beam cals    
                 for j in range(len(inbeamnames[i])):
