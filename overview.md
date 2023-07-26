@@ -9,10 +9,10 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
 2. *[OPTIONAL]*: increase the number of IFs
     * Relevant parameters in .yaml file:
         * `moriffactor`
-3. [OPTIONAL]: Unflag pitown
+3. *[OPTIONAL]*: Unflag pitown
     * Relevant parameters in .yaml file:
         * `unflagpietown`
-4. [OPTIONAL]: Load user flags for RFI
+4. *[OPTIONAL]*: Load user flags for RFI
     * No specific parameters required in .yaml file. Instead, it will scrape the /tables director and look for any relevant files.
 5. Run the flagging for zero-fringe rate effects
     * Flagging baselines when the natural fringe rate is low
@@ -20,12 +20,12 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
     * Relevant parameters in yaml file:
         * fringerateflagsuppressionfactor
         * If this parameter doesn’t exist, suppression factor set to be 7
-6. [OPTIONAL]: Run the auto flagger
+6. *[OPTIONAL]*: Run the auto flagger
     * Flags data per source, per baseline, and per polarization 
     * Finds the median of the data, and then flags data that is some sigma away e.g., 7*MAD, away from this median
     * Relevant parameters in yaml file:
         * `autoflag`
-7. [OPTIONAL]: Correct positions
+7. *[OPTIONAL]*: Correct positions
     * Shifts UV-data by amounts specified in the yaml file if the positions were initially off
     * Can be useful if your initial pulsar position was very incorrect, or if the in-beam position wasn’t well known (and can be better determined later)
     * Relevant parameters in yaml file:
@@ -58,7 +58,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
 
 15. Run FRINGE on fringe calibrator and then apply it
     * Runs fringe on the fringe finder source (called ampcalsrc). Can use a saved .sn table if it exists otherwise creates and then saves a .sn file to them be loaded and applied. 
-16. [OPTIONAL]: Run xpoldelaycal, and then apply it
+16. *[OPTIONAL]*: Run xpoldelaycal, and then apply it
     * Performs cross-polar delay calibration
     * Requires the  variable Xpolscan needed to have been set in the yaml file, otherwise the earlier leakage stage set xpolscan to -1 which causes this part to not fun
     * Relevant parameter in .yaml files:
@@ -69,7 +69,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
     * Performs leakage corrections using leakage source through computing instrumental polarization corrections
 18. Run BPASS, load it, and plot it
     * Corrects for bandpass using the fringe finder source (ampcalsrc)
-19. [OPTIONAL]: Plot the bandpass solutions
+19. *[OPTIONAL]*: Plot the bandpass solutions
     * Required variable in .yaml config:
         * `plotbandpass `
         
@@ -81,53 +81,53 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
     * Optional variables in .yaml file:
         * `ampcalscan`, `phsrefuvrange`, `delay windows`, `ratewindowmhz`, `phsreffringsumifs`, `phsreffringratemwfhz`, `phsreffringedelaymwfns`, `phsreffringsumpols`, `resreffringhalfbandwidth`, `phsreffringdispersivefit`, `inttimesecs`, `exhaustivefring`
     * After running bring, we copy the SN table and apply it to the data
-21. [OPTIONAL]: Run phase CALIB on phase reference calibrators
+21. *[OPTIONAL]*: Run phase CALIB on phase reference calibrators
     * Runs phase self-calibration on the phase reference source
     * Relevant .yaml variables:
         * `maxphsrefcalibpnmins`
         * If this variable < 1, then self-calibration is not performed
-22. [OPTIONAL]: Run amplitude CALIB on phase reference calibrators
+22. *[OPTIONAL]*: Run amplitude CALIB on phase reference calibrators
     * Runs amplitude self-calibration on the phase reference source
     * Note you must already have a model for your in-beam calibrator 
     * Relevant .yaml variables:
         * `maxphsrefcalibapnmins` — if this variable < 1, then self-calibration is not performed
 IN-BEAM CALIBRATOR OPERATIONS
-23. [OPTIONAL]: generate a raw in-beam dataset pre-any self calibration
+23. *[OPTIONAL]*: generate a raw in-beam dataset pre-any self calibration
     * Prior to running any self-calibration on the in-beam source, writes to disk the inbeam
     * Relevant .yaml variables:
         * `writerawinbeam`
-24. [OPTIONAL]: Do a combined IF and polarization phase self-calibration on the in-beam calibrator
+24. *[OPTIONAL]*: Do a combined IF and polarization phase self-calibration on the in-beam calibrator
     * Perform one round of phase self-calibration on the in-beam calibrator with the IFs and polarizations combined
     * Relevant .yaml variables:
         * `maxinbeamcalibp1mins` — this must be above must be > 0 for this to run
         * `inbeamuvrange`, `inbeamcalibp1mins`, `inbeamcalibp1snr`, `inbeamcalibp1type`, `inbeamminmodelflux`
-25. [OPTIONAL]: Do a separate IF phase self-calibration on the in-beam calibrators
+25. *[OPTIONAL]*: Do a separate IF phase self-calibration on the in-beam calibrators
     * Same as above except do self-calibration per IF rather than combining all together
-26. [OPTIONAL]: Do dual-phasecal calibration with IFs and pol combined
+26. *[OPTIONAL]*: Do dual-phasecal calibration with IFs and pol combined
     * Applies dual-phase cal mode on the primary in-beam calibrator 
     * Dual-phase calibrator mode refers to use two co-linear phase calibrators
     * Seems to be fairly rarely used 
-27. [OPTIONAL]: Do dual-phasecal calibration with separate IFs
+27. *[OPTIONAL]*: Do dual-phasecal calibration with separate IFs
     * Same as above but now per IF rather than combing all IFs
-28. [OPTIONAL]: Combined IF amplitude and phase self-calibration for in-beam calibrator
+28. *[OPTIONAL]*: Combined IF amplitude and phase self-calibration for in-beam calibrator
     * Amplitude and phase self-calibration for the in-beam calibrator with IFs combined
     * Relevant .yaml parameters:
         * `maxinbeamcalibap1mins` — Must be >0 for this to run
         * `inbeamcalibap1mins`, `inbeamcalibap1snr`, `inbeamcalibap1type`, `inbeamcalibap1weightit`
-29. [OPTIONAL]: Separate IF amplitude and phase self-calibration for in-beam calibrator 
+29. *[OPTIONAL]*: Separate IF amplitude and phase self-calibration for in-beam calibrator 
     * Same as above except now for separate IFs
     * All variables are the same except ap1 is now apn
     * Relevant .yaml parameters:
         * `maxinbeamcalibapnmins` — Must be >0 for this to run
         * `inbeamcalibapnmins`, `inbeamcalibapnsnr`, `inbeamcalibapnweightit`, `inbeamcalibapnmins`, `inbeamcalibapnstokesi`
-30. [OPTIONAL]: Phase self-calibration on second in-beam calibrator
+30. *[OPTIONAL]*: Phase self-calibration on second in-beam calibrator
     * Rarely used
     * Relevant variables are the same as that for the first round except p1 is replaced with sp1 e.g., maxinbeamcalibsp1mins
-31. [OPTIONAL]: Do dual-phscal calibration on the prIBC-secIBC line if requested
+31. *[OPTIONAL]*: Do dual-phscal calibration on the prIBC-secIBC line if requested
     * Applies dual-phase cal mode on the secondary in-beam calibrators
     * Dual-phase calibrator mode refers to use two co-linear phase calibrators
     * Seems to be fairly rarely used 
-32. [OPTIONAL]: Calculate scintillation corrections
+32. *[OPTIONAL]*: Calculate scintillation corrections
     * Correcting for scintillation that can cause a scattering disk in the final image
     * Relevant .yaml file parameters:
         * `noscintcorr` -> needs to be set to True
@@ -141,7 +141,7 @@ IN-BEAM CALIBRATOR OPERATIONS
 34. Image the target sources using DIFMAP
     * Images the targets (pulsars, in-beam cals, and phase calibrators). Imaging technique depends on which source is being imaged e.g., phase calibrator uses a wide-field image while the other two don’t
     * Fits for positions using JMFIT
-35. [OPTIONAL]: Produce some nice diagnostics
+35. *[OPTIONAL]*: Produce some nice diagnostics
     * Puts together a Diagnostic.html file with all of the final images and a bunch of diagnostic plots
     * VERY helpful!
 
