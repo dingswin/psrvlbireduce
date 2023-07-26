@@ -145,6 +145,7 @@ Thus, you can either use the .stats file from your gated or ungated pulsar datas
 Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of `psrvlbireduce`. 
 
 _**LOAD DATA AND PERFORM BASIC CORRECTIONS**_
+
 1. Load the data
 2. [OPTIONAL]: increase the number of IFs
     * Relevant parameters in .yaml file:
@@ -195,6 +196,7 @@ _**LOAD DATA AND PERFORM BASIC CORRECTIONS**_
     * NOTE: The pulsar calibrator file must already exist, and hence must have been requested when submitting your observations 
 
 _**FRINGE FINDER CORRECTIONS AND LEAKAGE CORRECTIONS**_
+
 15. Run FRINGE on fringe calibrator and then apply it
     * Runs fringe on the fringe finder source (called ampcalsrc). Can use a saved .sn table if it exists otherwise creates and then saves a .sn file to them be loaded and applied. 
 16. [OPTIONAL]: Run xpoldelaycal, and then apply it
@@ -213,6 +215,7 @@ _**FRINGE FINDER CORRECTIONS AND LEAKAGE CORRECTIONS**_
         * plotbandpass 
         
 _**PHASE CALIBRATOR OPERATIONS**_
+
 20. Run FRINGE on phase reference calibrator
     * Runs fringe on the phase reference calibrator
     * If no model for phase calibrator, program will break here after creating a .fits file for the phase calibrator which will need to then be imaged for the program to keep running
