@@ -1,5 +1,5 @@
 ## Detailed Overview of the PSRVLBIREDUCE Pipeline
-Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of `psrvlbireduce`. 
+Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of PSRVLBIREDUCE. 
 
 ### _**LOAD DATA AND PERFORM BASIC CORRECTIONS**_
 
