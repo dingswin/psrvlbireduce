@@ -134,7 +134,12 @@ The document should start with three different image plots. They should show the
 
 #### Taking it one step further and generating a file for PMPAR
 
-*Coming soon….*
+The necessary input for pmpar is a file whose format is:
+
+`<date> <ra> <ra error in hms> <dec> <dec error in mas>`
+
+Thus, you can either use the .stats file from your gated or ungated pulsar dataset to retrieve all of these quantities, or you can use the program `jmfit2pmpar.py`. At this time, however, detailed notes on how to use `jmfit2pmpar.py` do not exist.
+
 
 ## Detailed Overview of the PSRVLBIREDUCE Pipeline
 
