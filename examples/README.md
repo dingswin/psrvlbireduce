@@ -2,7 +2,7 @@
 Below, we will detail an example of how to run this pipeline on data that was acquired for Deller et al. (2019). Remember, before getting started, make sure to run your `source_file_psrvlbireduce.sh file`. Otherwise, everything will break.
 
 ##### Downloading the data
-Next, the example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the [NRAO data archive site](https://data.nrao.edu/portal/). One at the data archive site, search for bd179i0 and then download the files:
+The example module uses data from the experiment bd179i0 for PSR J1738+0333. This data will need to be downloaded from the [NRAO data archive site](https://data.nrao.edu/portal/). One at the data archive site, search for bd179i0 and then download the files:
 
 ```
 VLBA_BD179I0_ungatedi0_BIN0_SRC0_0_150824T164359.idifits
