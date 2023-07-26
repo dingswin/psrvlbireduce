@@ -6,7 +6,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
 ## **LOAD DATA AND PERFORM BASIC CORRECTIONS**
 
 1. Load the data
-2. #### *[OPTIONAL]*: increase the number of IFs
+2. ##### *[OPTIONAL]*: increase the number of IFs
     * Relevant parameters in .yaml file:
         * `moriffactor`
 3. *[OPTIONAL]*: Unflag pitown
