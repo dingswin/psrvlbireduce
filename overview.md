@@ -3,7 +3,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
 
 *Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of PSRVLBIREDUCE*
 
-### _**LOAD DATA AND PERFORM BASIC CORRECTIONS**_
+### **LOAD DATA AND PERFORM BASIC CORRECTIONS**
 
 1. Load the data
 2. *[OPTIONAL]*: increase the number of IFs
@@ -54,7 +54,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
     * Runs additional calibration using a pulse calibrator source
     * NOTE: The pulsar calibrator file must already exist, and hence must have been requested when submitting your observations 
 
-### _**FRINGE FINDER CORRECTIONS AND LEAKAGE CORRECTIONS**_
+### **FRINGE FINDER CORRECTIONS AND LEAKAGE CORRECTIONS**
 
 15. Run FRINGE on fringe calibrator and then apply it
     * Runs fringe on the fringe finder source (called ampcalsrc). Can use a saved .sn table if it exists otherwise creates and then saves a .sn file to them be loaded and applied. 
@@ -73,7 +73,7 @@ Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We 
     * Required variable in .yaml config:
         * `plotbandpass `
         
-### _**PHASE CALIBRATOR OPERATIONS**_
+### **PHASE CALIBRATOR OPERATIONS**
 
 20. Run FRINGE on phase reference calibrator
     * Runs fringe on the phase reference calibrator
@@ -135,7 +135,7 @@ IN-BEAM CALIBRATOR OPERATIONS
     * Dual-phase calibrator mode refers to use two co-linear phase calibrators
     * Seems to be fairly rarely used 
 
-### _**IMAGE AND WRITE OUT DATA**_
+### **IMAGE AND WRITE OUT DATA**
 
 33. Split, image, and write out all sources
 34. Image the target sources using DIFMAP
