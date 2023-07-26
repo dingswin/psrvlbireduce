@@ -1,7 +1,7 @@
 ## Detailed Overview of the PSRVLBIREDUCE Pipeline
 Below, we detail the main functions performed by the PSRVLBIREDUCE pipeline. We note what functions automatically will run, and which are optional and hence must be indicated in the .yaml configuration files.
 
-__Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of PSRVLBIREDUCE.__
+_Note that this was compiled on July 26, 2023, and hence might not apply for a much later and updated version of PSRVLBIREDUCE_
 
 ### _**LOAD DATA AND PERFORM BASIC CORRECTIONS**_
 
