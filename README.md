@@ -16,4 +16,4 @@ To successfully run PSRVLBIREDUCE, you will need to have both AIPs and PARSELTON
 To test out the pipeline and gain a basic understanding for how it works, there exists example .yaml files for an observation of PSR J1738+0333. Under `/examples`, there is a `README.md` which will walk you through the steps to get PSRVLBIREDUCE running on this dataset, and hence should serve as an example for how to run it on your own dataset.
 
 ## Detailed Overview of the PSRVLBIREDUCE Pipeline
-For a more detailed overview of the main functions and steps followed by running the PSRVLBIREDUCE pipeline, please see `detailed_description.md`.
+For a more detailed overview of the main functions and steps followed by running the PSRVLBIREDUCE pipeline, please see `detailed_overview_psrvlbireduce.md`.
