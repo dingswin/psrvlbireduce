@@ -1727,12 +1727,27 @@ class vlbireduce(support_vlbireduce):
             tocalindices = []
             for i in range(numtargets):
                 config = targetconfigs[i]
+                try:
+                    dualphscal0 = config['dualphscal'].split(',')[0]
+                    if int(dualphscal0) > 0:
+                        dualphscal_requested = True
+                    else:
+                        dualphscal_requested = False
+                except KeyError:
+                    dualphscal_requested = False
+                ## the following would not be necessary
+                """
                 if config['separateifmodel'] or \
                    len(config['primaryinbeam'].split(',')) > 1:
                     tocalnames.append('CONCAT' + str(i))
                 else:
-                    tocalnames.append(targetconfigs[i]['primaryinbeam'])
+                    tocalnames.append(config['primaryinbeam']) ## tocalnames cannot be [] when dualphscal is required!
                 tocalindices.append(i)
+                """
+                if dualphscal_requested:
+                    tocalnames.append(config['primaryinbeam']) ## tocalnames cannot be [] when dualphscal is required!
+                    tocalindices.append(i)
+                    
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
         return tocalnames, tocalindices
@@ -2062,7 +2077,7 @@ class vlbireduce(support_vlbireduce):
                 config = targetconfigs[i]
                 try:
                     if config['inbeamcalibsp1mins'] > 0:
-                        tocalnames.append(targetconfigs[i]['secondaryinbeam'])
+                        tocalnames.append(config['secondaryinbeam'])
                         tocalindices.append(i)
                 except KeyError:
                     continue
@@ -2110,14 +2125,28 @@ class vlbireduce(support_vlbireduce):
             print("Skipping secondary inbeam phase-only selfcal (separate IFs)")
             tocalnames = []
             tocalindices = []
+            
+            
             for i in range(numtargets):
                 config = targetconfigs[i]
                 try:
-                    if config['inbeamcalibspnmins'] > 0:
-                        tocalnames.append(targetconfigs[i]['secondaryinbeam'])
-                        tocalindices.append(i)
+                    if int(config['secondarydualphscal'].split(',')[0]) > 0:
+                        secondary_dualphscal_requested = True
+                    else:
+                        secondary_dualphscal_requested = False
                 except KeyError:
-                    continue
+                    secondary_dualphscal_requested = False
+                ## the following would not be necessary
+                #try:
+                #    if config['inbeamcalibspnmins'] > 0:
+                #        tocalnames.append(config['secondaryinbeam'])
+                #        tocalindices.append(i)
+                #except KeyError:
+                #    pass
+                if secondary_dualphscal_requested:
+                    tocalnames.append(config['secondaryinbeam'])
+                    tocalindices.append(i)
+                    
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
         return tocalnames, tocalindices
