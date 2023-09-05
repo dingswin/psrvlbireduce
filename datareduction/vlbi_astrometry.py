@@ -490,7 +490,7 @@ def main():
     ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
             tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
-            inbeamnames, targetnames, haveungated, ungateduvdata)
+            inbeamnames, targetnames, haveungated, ungateduvdata, False)
     ## Do a combined IF amp + phase selfcal on the inbeams if requested ###########################################
     [tocalnames, tocalindices] = reducevlbi.do_a_combined_IF__amp_and_phase__self_calibration_on_the_inbeams_if_requested(
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly, calonly, 
@@ -526,7 +526,7 @@ def main():
     ## Do dual-phscal calibration on secondary inbeam (on separate IFs and pols) if requested ############################
     reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(secondary_dualphscal_setup, 
             tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
-            inbeamnames, targetnames, haveungated, ungateduvdata)
+            inbeamnames, targetnames, haveungated, ungateduvdata, True)
     ## Calculate the scintillation correction ############################################################################
     [scinttablepaths, beginif, endif] = reducevlbi.calculate_the_scintillation_correction(numtargets, targetconfigs,
                 tabledir, targetnames, expconfig, gateduvdata, inbeamuvdatas)

@@ -1879,7 +1879,7 @@ class vlbireduce(support_vlbireduce):
 
     def do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(self, dualphscal_setup, 
             tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
-            inbeamnames, targetnames, haveungated, ungateduvdata):
+            inbeamnames, targetnames, haveungated, ungateduvdata, dosecondary=False):
         """
         Functionality
         -------------
@@ -1889,8 +1889,13 @@ class vlbireduce(support_vlbireduce):
         ----
         So far dualphscal_setup applies for all target groups. But it can adapt easily if necessary.
         """
+        if dosecondary:
+            maxinbeamcalibnmins = self.maxinbeamcalibspnmins
+        else:
+            maxinbeamcalibnmins = self.maxinbeamcalibpnmins
+
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-           int(dualphscal_setup[0].strip()) > 0 and self.maxinbeamcalibpnmins > 0:
+           int(dualphscal_setup[0].strip()) > 0 and maxinbeamcalibnmins > 0:
             try:
                 if int(targetconfigs[0]['secondarydualphscal'].split(',')[0]) > 0:
                     secondary_dualphscal_requested = True
@@ -1905,10 +1910,14 @@ class vlbireduce(support_vlbireduce):
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
                 if tocalname in self.secondaryinbeams:
                     inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.spn.sn'
-                    dosecondary = True
+                    if not dosecondary:
+                        print('The setup is self-contradictory; aborting')
+                        sys.exit()
                 else:
                     inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.pn.sn'
-                    dosecondary = False
+                    if dosecondary:
+                        print('The setup is self-contradictory; aborting')
+                        sys.exit()
                 ## <<<
                 
                 ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
