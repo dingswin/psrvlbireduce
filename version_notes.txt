@@ -1,0 +1,2 @@
+v3.2
+1. There are two procedures by which 2D interpolation can be carried out. One is the incremental approach that v3.1 takes (cal1 --> cal2 --> cal3), where a calibrator is referenced to the previous one (i.e. cal2 referenced to cal1, and cal3 referenced to cal2). The other approach is both cal2 and cal3 are phase-referenced to cal1. The cal2 and cal3 phase solutions are then combined with a linear relation. Realizing this procedure would require a different line of data reduction, which is the focus of v3.2.
