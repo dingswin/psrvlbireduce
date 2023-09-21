@@ -1668,40 +1668,27 @@ class vlbireduce(support_vlbireduce):
         """
         Note
         ----
-        'dosecondary' is a new feature of v3.2, which neatly merge two functions (this and do_a_secondary_phase_selfcal_on_inbeam_with__IFs_and_pols__combined_if_requested) back into one.
+        'dosecondary' is a new feature of v3.2, which neatly combines two functions back into one.
         """
-        if dosecondary:
-            p1mins = self.maxinbeamcalibsp1mins
-            inbeamkind0 = 'secondary'
-        else:
-            p1mins = self.maxinbeamcalibp1mins
-            inbeamkind0 = 'primary'
-        inbeamkind = inbeamkind0 + 'inbeam'
-
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            p1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs) on " + inbeamkind0 + " inbeam")
+            self.maxinbeamcalibp1mins > 0:
+            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs)")
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
                                        calonly, self.beginif, self.endif, False, dosecondary, True, self.clversion, targetnames, numtargets, 
                                        inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping " + inbeamkind0 + " inbeam phase-only selfcal (combined IFs)")
+            print("Skipping inbeam phase-only selfcal (combined IFs)")
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
                 config = targetconfigs[i]
                 if config['separateifmodel'] or \
-                   len(config[inbeamkind].split(',')) > 1:
+                   len(config['primaryinbeam'].split(',')) > 1:
                     tocalnames.append('CONCAT' + str(i))
-                    tocalindices.append(i)
                 else:
-                    try:
-                        if p1mins > 0:
-                            tocalnames.append(config[inbeamkind])
-                            tocalindices.append(i)
-                    except KeyError:
-                        continue
+                    tocalnames.append(targetconfigs[i]['primaryinbeam'])
+                tocalindices.append(i)
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion, inbeamuvdatas[0])
         return tocalnames, tocalindices
