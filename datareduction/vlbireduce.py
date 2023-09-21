@@ -1678,8 +1678,7 @@ class vlbireduce(support_vlbireduce):
             inbeamkind0 = 'primary'
         inbeamkind = inbeamkind0 + 'inbeam'
 
-        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            p1mins > 0:
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and p1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs) on " + inbeamkind0 + " inbeam")
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
@@ -1708,39 +1707,64 @@ class vlbireduce(support_vlbireduce):
 
     def load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(self, tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, 
-            haveungated, ungateduvdata, tabledir):
-        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            self.maxinbeamcalibp1mins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Applying inbeam CALIB p1 sols")
+            haveungated, ungateduvdata, tabledir, dosecondary=False):
+        """
+        Note
+        ----
+        The addition of 'dosecondary' merges load_secondaryinbeam_CALIB_solutions_with__IFs_and_pols__combined() into this function.
+        """
+        if dosecondary:
+            p1mins = self.maxinbeamcalibsp1mins
+            inbeamkind0 = 'secondary'
+        else:
+            p1mins = self.maxinbeamcalibp1mins
+            inbeamkind0 = 'primary'
+        
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and p1mins> 0:
+            print("Runlevel " + str(self.runlevel) + ": Applying " + inbeamkind0 + " inbeam CALIB p1 sols")
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                       targetconfigs, targetonly, calonly, False, False, True,
+                                       targetconfigs, targetonly, calonly, False, dosecondary, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        ['-1','0'], tabledir, self.inbeamfilenums)
             ## sncount is used to point at SN table in post-phscal stage
         else:
-            print("Skipping application of inbeam phase-only selfcal (combined IFs)")
-            if self.maxinbeamcalibp1mins > 0:
+            print("Skipping application of " + inbeamkind0 + " inbeam phase-only selfcal (combined IFs)")
+            if p1mins > 0:
                 sncount = len(tocalnames) + 1
             else:
                 sncount = 0
-        if self.maxinbeamcalibp1mins > 0:
+        if p1mins > 0:
             self.snversion = self.snversion + sncount
+            if dosecondary:
+                self.targetcl0 = self.targetcl ## to mark the primary inbeam self-cal solutions
             self.targetcl += 1
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
     def do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(self, 
             inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype, targetonly,
-            calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames):
-        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
-            self.maxinbeamcalibpnmins > 0:
-            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs)")
+            calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames, dosecondary=False):
+        """
+        Note
+        ----
+        The addition of 'dosecondary' merges do_a_separate_IF_phase_selfcal_on_the_secondary_inbeams_if_requested into this function.
+        """
+        if dosecondary:
+            pnmins = self.maxinbeamcalibspnmins
+            inbeamkind0 = 'secondary'
+        else:
+            pnmins = self.maxinbeamcalibpnmins
+            inbeamkind0 = 'primary'
+        inbeamkind = inbeamkind0 + 'inbeam'
+        
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and pnmins > 0:
+            print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (separate IFs) on " + inbeamkind0 + " inbeam")
             tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata,
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly,
-                                       calonly, self.beginif, self.endif, False, False, False, self.clversion+self.targetcl, 
+                                       calonly, self.beginif, self.endif, False, dosecondary, False, self.clversion+self.targetcl, 
                                        targetnames, numtargets, inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
         else:
-            print("Skipping inbeam phase-only selfcal (separate IFs)")
+            print("Skipping " + inbeamkind0 + " inbeam phase-only selfcal (separate IFs)")
             tocalnames = []
             tocalindices = []
             for i in range(numtargets):
@@ -1762,8 +1786,8 @@ class vlbireduce(support_vlbireduce):
                     tocalnames.append(config['primaryinbeam']) ## tocalnames cannot be [] when dualphscal is required!
                 tocalindices.append(i)
                 """
-                if dualphscal_requested:
-                    tocalnames.append(config['primaryinbeam']) ## tocalnames cannot be [] when dualphscal is required!
+                if dualphscal_requested or (pnmins > 0):
+                    tocalnames.append(config[inbeamkind]) ## tocalnames cannot be [] when dualphscal is required!
                     tocalindices.append(i)
                     
         self.runlevel  = self.runlevel + 1

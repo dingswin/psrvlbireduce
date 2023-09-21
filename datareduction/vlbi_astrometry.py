@@ -553,7 +553,7 @@ def main():
             ## Load the p1 inbeam CALIB solutions ########################################
             reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
                     tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
-                    ungateduvdata, tabledir)
+                    ungateduvdata, tabledir, dosecondary)
             ## Do a separate IF phase selfcal on the inbeams if requested #################
             [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
                     inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
