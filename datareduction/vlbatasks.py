@@ -6272,7 +6272,16 @@ def gethash(hashstr):
     return "%c%c%c" % (chr(ord('a') + hasha), chr(ord('a') + hashb), 
                        chr(ord('a') + hashc))
 
-class calibrate_target_phase_with_two_colinear_phscals:
+class calibrate_target_phase_with_multiple_phscals:
+    """
+    Functionality
+    -------------
+    implementing 1D/2D interpolation.
+
+    Note
+    ----
+    Here, 'multiple' --> two or three.
+    """
     def __init__(s, inbeamuvdata):
         s.inbeamuvdata = inbeamuvdata
         #s.compile_into_table()
@@ -6479,12 +6488,45 @@ class calibrate_target_phase_with_two_colinear_phscals:
         os.system('cp %s %s' % (sntable, oldsntable))
         return oldsntable
     def load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS(s, final_phase_edit, correction_factor):
+        """
+        Functionality
+        -------------
+        pickle-load final_inbeamselfcal_phase_edit (astropy Table), multiply the phase solutions with correction_factor, and write into astropy Table. This function works only for 1D interpolation!!!
+        """
         from astropy.table import Table
         import pickle
         readfile = open(final_phase_edit, 'rb')
         t = pickle.load(readfile) ## would run into UnicodeDecodeError when loading in python3 what is pickle-dumped in python2 !!!
         readfile.close()
         phis = t['phi'] * correction_factor
+        reals = np.cos(phis*math.pi/180)
+        imags = np.sin(phis*math.pi/180)
+        s.t2 = Table([t['row_no'], t['antenna_no'], t['time'], reals, imags], 
+                                names=['row_no', 'antenna_no', 'time', 'real', 'imag'])
+        print(s.t2)
+    def linearly_add_two_final_inbeamselfcal_phase_edits(s, final_phase_edits, correction_factors):
+        """
+        Functionality
+        -------------
+        This function is the 2D interpolation version of s.load_final_inbeamselfcal_phase_edit_and_prepare_for_edit_in_AIPS().
+        """
+        from astropy.table import Table
+        import pickle
+        LoT = list_of_tables = []
+        for final_phase_edits in final_phase_edits: ## prIBC comes first, secIBC follows
+            readfile = open(final_phase_edit, 'rb')
+            t = pickle.load(readfile) ## would run into UnicodeDecodeError when loading in python3 what is pickle-dumped in python2 !!!
+            readfile.close()
+            LoT.append(t)
+
+        common_row_nos = np.array(list(set(LoT[0]['row_no']) & set(LoT[1]['row_no'])))
+        LoT1 = [] ## LoT after the common row_no cut
+        for t in LoT:
+            index = [x in common_row_nos for x in t['row_no']]
+            t1 = t[index]
+            LoT1.append(t1)
+        
+        phis = LoT1[0]['phi'] * correction_factors[0] + LoT1[1]['phi'] * correction_factors[1]
         reals = np.cos(phis*math.pi/180)
         imags = np.sin(phis*math.pi/180)
         s.t2 = Table([t['row_no'], t['antenna_no'], t['time'], reals, imags], 

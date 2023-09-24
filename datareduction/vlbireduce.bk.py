@@ -1957,7 +1957,7 @@ class vlbireduce(support_vlbireduce):
         
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do\
-        ## not trust this printTableAndRunlevel result if you are requesting iverse referencing!
+        ## not trust this printTableAndRunlevel result if you are requesting inverse referencing!
     
 
 

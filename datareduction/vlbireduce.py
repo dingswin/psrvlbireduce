@@ -1844,7 +1844,7 @@ class vlbireduce(support_vlbireduce):
                     vlbatasks.deletetable(uvdata, 'SN', self.snversion+i) ## supposed to be clear beforehand
 
                 vlbatasks.loadtable(uvdata, inbeamselfcalp1sntable, self.snversion)
-                dualphscalp1 = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(uvdata)
+                dualphscalp1 = vlbatasks.calibrate_target_phase_with_multiple_phscals(uvdata)
                 dualphscalp1.compile_into_table()
                 #originalinbeamselfcalp1sntable = dualphscal.copy_inbeamselfcal_sntable(inbeamselfcalp1sntable) 
                 
@@ -1870,6 +1870,92 @@ class vlbireduce(support_vlbireduce):
                 dualphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, dualphscaloutputsn)
                 
                 vlbatasks.deletetable(uvdata, 'SN', self.snversion) ## clean up after producing dualphscaloutputsn
+                ## <<<<
+            
+            ## >>> apply the corrected p1.sn (or sp1.sn) only to the de-facto target.\
+            ## the original clversion+1 CL table will be deleted and replaced in applyinbeamcalib() !!
+            junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                                   targetconfigs, True, calonly, False, dosecondary, True,
+                                   self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
+                                   ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
+            ## <<<
+            if (not dosecondary) and secondary_dualphscal_requested: 
+                print('Applying the phase-corrected solutions only to the secondary in-beam calibrator.')
+                junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
+                                       targetconfigs, targetonly, True, False, False, True,
+                                       self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
+                                       ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums, self.secondaryinbeams)
+                    
+        self.runlevel += 1
+        self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do not trust this printTableAndRunlevel result if you are requesting inverse referencing!
+    
+    def do_triple_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(self, triphscal_setup, directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames_both, tocalindices_both, expconfig, targetconfigs, inbeamnames, targetnames):
+        """
+        Functionality
+        -------------
+        Correct both inbeamcalibp1 and inbeamcalibsp1 solutions according to triphscal_setup, and add them together into the phase solutions at the target field, then apply to the target only.
+        
+        Note
+        ----
+        So far triphscal_setup applies for all target groups. But it can adapt easily if necessary.
+        """
+        if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and \
+           int(triphscal_setup[0].strip()) > 0:
+            inbeamselfcal_phase_time_folder = directory+'/inbeamselfcal_phase_time_evolution'
+            if not os.path.exists(inbeamselfcal_phase_time_folder):
+                os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
+            
+            final_inbeamselfcal_phase_edits = []
+            for (tocalname, tocalindex) in zip(tocalnames_both, tocalindices_both): ## prIBC first, secIBC second
+                ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
+                if tocalname in self.secondaryinbeams:
+                    inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.sp1.sn'
+                    print("Adopt triple-phscal mode on the secondary in-beam calibrator now...")
+                    dosecondary = True
+                else:
+                    inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.p1.sn'
+                    print("Adopt triple-phscal mode on the primary in-beam calibrator now...")
+                    dosecondary = False
+                ## <<<
+                
+                ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
+                filenum = self.inbeamfilenums[tocalindex]
+                if filenum >= 0:
+                    uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
+                else:
+                    uvdata = gateduvdata
+                
+                for i in range(20):
+                    vlbatasks.deletetable(uvdata, 'SN', self.snversion+i) ## supposed to be clear beforehand
+
+                vlbatasks.loadtable(uvdata, inbeamselfcalp1sntable, self.snversion)
+                triphscalp1 = vlbatasks.calibrate_target_phase_with_multiple_phscals(uvdata)
+                triphscalp1.compile_into_table()
+                #originalinbeamselfcalp1sntable = dualphscal.copy_inbeamselfcal_sntable(inbeamselfcalp1sntable) 
+                
+                if not dosecondary:
+                    final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_inbeam_selfcal.final'
+                else:
+                    final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_secondary_inbeam_selfcal.final'
+                
+                if (not os.path.exists(dualphscal_edit)) and (not os.path.exists(final_inbeamselfcal_phase_edit)): ## the old interactive approach
+                    print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it with a '.final' suffix (i.e., .corrected_phases_*inbeam_selfcal.final) and rerun the pipeline.")
+                    triphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder, dosecondary)
+                    sys.exit(0)
+                else:
+                    final_inbeamselfcal_phase_edits.append(final_inbeamselfcal_phase_edit)
+                
+            if len(list(set(final_inbeamselfcal_phase_edits))) != 2:
+                print('There should be 2 different .corrected_phases*inbeam_selfcal.final for triphscal; aborting for now.')
+                sys.exit()
+
+            phase_correction_factors = np.float128(triphscal_setup[1:]) ## two phase-correcting factors
+            triphscalp1.linearly_add_two_final_inbeamselfcal_phase_edits(final_inbeamselfcal_phase_edits, phase_correction_factors)
+            
+            triphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.triphscal.sn')
+            triphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, triphscaloutputsn)
+            
+            vlbatasks.deletetable(uvdata, 'SN', self.snversion) ## clean up after producing dualphscaloutputsn
                 ## <<<<
             
             ## >>> apply the corrected p1.sn (or sp1.sn) only to the de-facto target.\
@@ -1971,7 +2057,7 @@ class vlbireduce(support_vlbireduce):
                 for i in range(20):
                     vlbatasks.deletetable(uvdata, 'SN', self.snversion+i) ## supposed to be clear beforehand
                 vlbatasks.loadtable(uvdata, inbeamselfcalpnsntable, self.snversion)
-                dualphscalpn = vlbatasks.calibrate_target_phase_with_two_colinear_phscals(uvdata)
+                dualphscalpn = vlbatasks.calibrate_target_phase_with_multiple_phscals(uvdata)
                 dualphscalpn.read_inbeamselfcalpn_solutions()
                 pndualphscaloutputsn = inbeamselfcalpnsntable.replace('.sn', '.dualphscal.sn')
                 dualphscalpn.edit_inbeamselfcalpn_in_AIPS_and_write_out(phase_correction_factor, self.snversion, pndualphscaloutputsn)
@@ -2007,9 +2093,13 @@ class vlbireduce(support_vlbireduce):
                 dualphscal_setup = targetconfigs[0]['dualphscal'].split(',')
             except KeyError:
                 dualphscal_setup = ['-1','0']
+            try:
+                triphscal_setup = targetconfigs[0]['triphscal'].split(',')
+            except KeyError:
+                triphscal_setup = ['-1','0','0'] ## the second and third values assign the correcting factors for the primaryinbeam and secondaryinbeam
 
-            if int(dualphscal_setup[0]) > 0:
-                print('For now, amp+phase inbeam selfcal cannot be requested when dualphscal is requested; aborting')
+            if int(dualphscal_setup[0]) > 0 or (int(triphscal_setup[0]) > 0):
+                print('For now, amp+phase inbeam selfcal cannot be requested when dualphscal or triphscal is requested; aborting')
                 sys.exit()
             else:
                 print("Runlevel " + str(self.runlevel) + ": Doing amp+phase inbeam selfcal")
