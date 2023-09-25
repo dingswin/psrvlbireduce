@@ -90,15 +90,6 @@ class Logger(object):
     def flush(self):
         pass
 
-def output_dotriphscal(triphscal_setup):
-    """
-    also works for dualphscal_setup
-    """
-    if int(triphscal_setup[0]) > 0:
-        dotriphscal = True
-    else:
-        dotriphscal = False
-    return dotriphscal
 
 def main():
     """
@@ -246,7 +237,7 @@ def main():
         triphscal_setup = targetconfigs[0]['triphscal'].split(',')
     except KeyError:
         triphscal_setup = ['-1','0','0'] ## the second and third values assign the correcting factors for the primaryinbeam and secondaryinbeam
-    dotriphscal = output_dotriphscal(triphscal_setup)
+    dotriphscal = vlbireduce.output_dotriphscal(triphscal_setup)
 
     try:
         difmaptargetuvaverstring = expconfig['difmaptargetuvaverstring']
@@ -261,11 +252,11 @@ def main():
         multi_component_sources = {}
 
 
-
     ################################################################################
     ## get an instance of the vlbireduce class
     ################################################################################
     reducevlbi = vlbireduce(runfromlevel, runtolevel)
+
 
 
     ################################################################################
@@ -354,6 +345,7 @@ def main():
         logout.writelines(lines)
     logout.write('\n\n')
     logout.close()
+    
 
     ################################################################################
     ## Zap the existing cal tables if requested
@@ -562,18 +554,18 @@ def main():
             [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
                     inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
                     targetonly, calonly, targetnames, numtargets, directory, tabledir, alwayssaved, inbeamnames, dosecondary)
-            ## Do tripple phscal calibration if requested: correct prIBC/secIBC.icalib.p1.sn then add them together ################################
-            reducevlbi.do_triple_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(triphscal_setup, 
-                    directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames_both, tocalindices_both, 
-                    expconfig, targetconfigs, inbeamnames, targetnames):
+        ## Do tripple phscal calibration if requested: correct prIBC/secIBC.icalib.p1.sn then add them together ################################
+        reducevlbi.do_triple_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(triphscal_setup, 
+                directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames_both, tocalindices_both, 
+                expconfig, targetconfigs, inbeamnames, targetnames):
             ## Load the pn inbeam CALIB pn solutions ########################################################################
             reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
                     gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
                     tabledir)
-            ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
-            reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
-                    tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
-                    inbeamnames, targetnames, haveungated, ungateduvdata, False)
+        ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
+        reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
+                tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
+                inbeamnames, targetnames, haveungated, ungateduvdata, False)
             
         
 

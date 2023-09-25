@@ -6529,6 +6529,7 @@ class calibrate_target_phase_with_multiple_phscals:
         phis = LoT1[0]['phi'] * correction_factors[0] + LoT1[1]['phi'] * correction_factors[1]
         reals = np.cos(phis*math.pi/180)
         imags = np.sin(phis*math.pi/180)
+        t = LoT1[0]
         s.t2 = Table([t['row_no'], t['antenna_no'], t['time'], reals, imags], 
                                 names=['row_no', 'antenna_no', 'time', 'real', 'imag'])
         print(s.t2)

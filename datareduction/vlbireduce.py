@@ -26,6 +26,16 @@ from support_vlbireduce import support_vlbireduce
 from time import gmtime, strftime
 from optparse import OptionParser
 warnings.defaultaction = "always"
+    
+def output_dotriphscal(triphscal_setup):
+    """
+    also works for dualphscal_setup
+    """
+    if int(triphscal_setup[0]) > 0:
+        dotriphscal = True
+    else:
+        dotriphscal = False
+    return dotriphscal
 
 class vlbireduce(support_vlbireduce):
     """
@@ -1952,25 +1962,17 @@ class vlbireduce(support_vlbireduce):
             phase_correction_factors = np.float128(triphscal_setup[1:]) ## two phase-correcting factors
             triphscalp1.linearly_add_two_final_inbeamselfcal_phase_edits(final_inbeamselfcal_phase_edits, phase_correction_factors)
             
-            triphscaloutputsn = inbeamselfcalp1sntable.replace('.sn', '.triphscal.sn')
+            triphscaloutputsn = tabledir + '/icalib.p1.triphscal.sn'
             triphscalp1.edit_AIPS_sntable_and_write_out(self.snversion, triphscaloutputsn)
             
             vlbatasks.deletetable(uvdata, 'SN', self.snversion) ## clean up after producing dualphscaloutputsn
                 ## <<<<
             
-            ## >>> apply the corrected p1.sn (or sp1.sn) only to the de-facto target.\
+            ## >>> apply the corrected icalib.p1.triphscal.sn only to the de-facto target.\
             ## the original clversion+1 CL table will be deleted and replaced in applyinbeamcalib() !!
             junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                    targetconfigs, True, calonly, False, dosecondary, True,
-                                   self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
-                                   ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
-            ## <<<
-            if (not dosecondary) and secondary_dualphscal_requested: 
-                print('Applying the phase-corrected solutions only to the secondary in-beam calibrator.')
-                junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                       targetconfigs, targetonly, True, False, False, True,
-                                       self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, 
-                                       ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums, self.secondaryinbeams)
+                                   self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
                     
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do not trust this printTableAndRunlevel result if you are requesting inverse referencing!
@@ -2492,6 +2494,16 @@ class vlbireduce(support_vlbireduce):
             for i in range(numtargets):
                 config = targetconfigs[i]
                 try:
+                    dualphscal_setup = config['dualphscal'].split(',')
+                except KeyError:
+                    dualphscal_setup = ['-1','0']
+                dodualphscal = output_dotriphscal(dualphscal_setup)
+                try:
+                    triphscal_setup = config['triphscal'].split(',')
+                except KeyError:
+                    triphscal_setup = ['-1','0','0'] ## the second and third values assign the correcting factors for the primaryinbeam and secondaryinbeam
+                dotriphscal = output_dotriphscal(triphscal_setup)
+                try:
                     combineifs = config['combinefinalifs']
                 except KeyError:
                     combineifs = False
@@ -2539,34 +2551,37 @@ class vlbireduce(support_vlbireduce):
                                 vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion, split_phscal_option, aipssrcname, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
                                 vlbatasks.writedata(splitdata, self.phscaluvfiles[i], True)
                             else:
-                                try:
-                                    phscalseparateifmodel = config['phscalseparateifmodel']
-                                except KeyError:
-                                    phscalseparateifmodel = False
-                                if phscalseparateifmodel:
-                                    divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
-                                        inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
+                                if dodualphscal or dotriphscal: ## bypass ibshift while dualphscal or triphscal is requested
+                                    pass
                                 else:
-                                    vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
-                                        splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
-                                    phscal_image_file = modeldir + aipssrcname + self.cmband + ".clean.fits"
-                                    if not os.path.exists(phscal_image_file):
-                                        print("Need a model for " + aipssrcname + " since --divideinbeammodel=True")
-                                        print("But " + phscal_image_file + " was not found.")
-                                        sys.exit()
-                                    modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
-                                    if modeldata.exists():
-                                        modeldata.zap()
-                                    vlbatasks.fitld_image(phscal_image_file, modeldata)
-                                    divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
-                                    if divideddata.exists():
-                                        divideddata.zap()
-                                    vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
-                                vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
-                                #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
-                                #if not skipplots:
-                                #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
-                                #                    fullauto, stokesi)
+                                    try:
+                                        phscalseparateifmodel = config['phscalseparateifmodel']
+                                    except KeyError:
+                                        phscalseparateifmodel = False
+                                    if phscalseparateifmodel:
+                                        divideddata = self.normalise_UVData_with_separate_IF_model_and_concatenate(phscalnames[i], config, expconfig,\
+                                            inbeamuvdatas[0], modeldir, self.clversion+self.targetcl)
+                                    else:
+                                        vlbatasks.splittoseq(inbeamuvdatas[0], self.clversion+self.targetcl, split_phscal_option, aipssrcname,\
+                                            splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
+                                        phscal_image_file = modeldir + aipssrcname + self.cmband + ".clean.fits"
+                                        if not os.path.exists(phscal_image_file):
+                                            print("Need a model for " + aipssrcname + " since --divideinbeammodel=True")
+                                            print("But " + phscal_image_file + " was not found.")
+                                            sys.exit()
+                                        modeldata = AIPSImage(aipssrcname, "CLEAN", 1, 1)
+                                        if modeldata.exists():
+                                            modeldata.zap()
+                                        vlbatasks.fitld_image(phscal_image_file, modeldata)
+                                        divideddata = AIPSUVData(aipssrcname, 'DIV', 1, 1)
+                                        if divideddata.exists():
+                                            divideddata.zap()
+                                        vlbatasks.normaliseUVData(splitdata, modeldata,  divideddata)
+                                    vlbatasks.writedata(divideddata, self.ibshiftdivphscaluvfiles[i], True)
+                                    #plotfile = directory + '/' + experiment + '_' + aipssrcname + '.clean.ps'
+                                    #if not skipplots:
+                                    #    vlbatasks.image(splitdata, 0.5, 512, 75, 0.5, phscalnames[i], plotfile, False,
+                                    #                    fullauto, stokesi)
                     ################################################
                     ## Then the inbeams
                     ################################################
@@ -2971,3 +2986,4 @@ class vlbireduce(support_vlbireduce):
             os.system("%s/make_final_diagnostic.py" % codedir)
         else:
             print("Skipping making of diagnostic plots")
+
