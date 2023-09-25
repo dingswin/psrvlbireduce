@@ -1717,7 +1717,7 @@ class vlbireduce(support_vlbireduce):
 
     def load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(self, tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, 
-            haveungated, ungateduvdata, tabledir, dosecondary=False):
+            haveungated, ungateduvdata, tabledir, dosecondary=False, applyinbeamlist=None):
         """
         Note
         ----
@@ -1735,7 +1735,7 @@ class vlbireduce(support_vlbireduce):
             sncount = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
                                        targetconfigs, targetonly, calonly, False, dosecondary, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                                       ['-1','0'], tabledir, self.inbeamfilenums)
+                                       ['-1','0'], tabledir, self.inbeamfilenums, applyinbeamlist)
             ## sncount is used to point at SN table in post-phscal stage
         else:
             print("Skipping application of " + inbeamkind0 + " inbeam phase-only selfcal (combined IFs)")

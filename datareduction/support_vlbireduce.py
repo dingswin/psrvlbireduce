@@ -678,7 +678,7 @@ class support_vlbireduce(object):
     def applyinbeamcalib(self, tocalnames, tocalindices, inbeamuvdatas, gateduvdata, 
                          expconfig, targetconfigs, targetonly, calonly, doampcal,
                          dosecondary, sumifs, clversion, snversion, inbeamnames, 
-                         targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir,
+                         targetnames, haveungated, ungateduvdata, multiphscal_setup, tabledir,
                          inbeamfilenums, applyinbeamlist=None):
         """
         Functionality
@@ -701,7 +701,12 @@ class support_vlbireduce(object):
             very rare.
         4. With applyinbeamlist (that is not None), the function can apply solutions to listed 
             inbeam sources, as long as targetonly==False. NOTE that this feature is not yet
-            available for inverse phase referencing!!
+            available for inverse phase referencing!! When applyinbeamlist!=None, the solutions will not be applied to the main phase calibrator.
+
+        Input parameters
+        ----------------
+        multiphscal_setup : list of str
+            it could be dualphscal_setup (len==2) or triphscal_setup (len==3).
 
         Return parameters
         -----------------
@@ -726,29 +731,42 @@ class support_vlbireduce(object):
                     calibstring = 'ap1'
                 elif dosecondary:
                     calibstring = 'sp1'
-                    if int(dualphscal_setup[0])>0:
+                    if int(multiphscal_setup[0])>0:
                         calibstring += '.dualphscal'
                 else:
                     calibstring = 'p1'
-                    if int(dualphscal_setup[0])>0:
-                        calibstring += '.dualphscal'
+                    if int(multiphscal_setup[0])>0:
+                        if len(multiphscal_setup) == 2:
+                            calibstring += '.dualphscal'
+                        elif len(multiphscal_setup) == 3:
+                            calibstring += '.triphscal'
             else:
                 if dosecondary:
                     calibstring = 'spn'
-                    if int(dualphscal_setup[0])>0:
-                        calibstring += '.dualphscal'
+                    if int(multiphscal_setup[0])>0:
+                        if len(multiphscal_setup) == 2:
+                            calibstring += '.dualphscal'
+                        elif len(multiphscal_setup) == 3:
+                            calibstring += '.triphscal'
                 else:
                     if doampcal:
                         calibstring = 'apn'
                     else:
                         calibstring = 'pn'
-                        if int(dualphscal_setup[0])>0:
-                            calibstring += '.dualphscal'
+                        if int(multiphscal_setup[0])>0:
+                            if len(multiphscal_setup) == 2:
+                                calibstring += '.dualphscal'
+                            elif len(multiphscal_setup) == 3:
+                                calibstring += '.triphscal'
             print(inbeamsrc)
             if "CONCAT" in inbeamsrc:
-                calibtablepath = "%sCONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
+                calibtablepath = "%s/CONCAT%d.icalib.%s.sn" % (tabledir, sncount, calibstring)
             else:
-                calibtablepath = "%s%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
+                if len(multiphscal_setup) != 3:
+                    calibtablepath = "%s/%s.icalib.%s.sn" % (tabledir, inbeamsrc, calibstring)
+                else: ## triphscal
+                    calibtablepath = "%s/icalib.%s.sn" % (tabledir, calibstring)
+                    
             ## >>> for the first imbeamselfcalp1 or inbeamselfcalpn apply
             #if not os.path.exists(calibtablepath):
             #    calibtablepath = calibtablepath.replace('.dualphscal', '')

@@ -549,7 +549,7 @@ def main():
             ## Load the p1 inbeam CALIB solutions ########################################
             reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
                     tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
-                    ungateduvdata, tabledir, dosecondary)
+                    ungateduvdata, tabledir, dosecondary, tocalnames) ## only apply inbeam solutions to the inbeam itself and the target
             ## Do a separate IF phase selfcal on the inbeams if requested #################
             [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
                     inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,
@@ -557,15 +557,15 @@ def main():
         ## Do tripple phscal calibration if requested: correct prIBC/secIBC.icalib.p1.sn then add them together ################################
         reducevlbi.do_triple_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_with__IF_and_pol__combined(triphscal_setup, 
                 directory, tabledir, inbeamuvdatas, gateduvdata, ungateduvdata, targetonly, calonly, haveungated, tocalnames_both, tocalindices_both, 
-                expconfig, targetconfigs, inbeamnames, targetnames):
+                expconfig, targetconfigs, inbeamnames, targetnames)
             ## Load the pn inbeam CALIB pn solutions ########################################################################
-            reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
-                    gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
-                    tabledir)
+            #reducevlbi.load_inbeam_CALIB_solutions_on_separate_IFs(tocalnames, tocalindices, inbeamuvdatas, 
+            #        gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, ungateduvdata, 
+            #        tabledir)
         ## Do dual-phscal calibration if requested: 2). correct INBEAM.icalib.pn.sn ###################################
-        reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
-                tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
-                inbeamnames, targetnames, haveungated, ungateduvdata, False)
+        #reducevlbi.do_dual_phscal_calibration_correcting_the_CALIB_solutions_on_inbeams_on_separate_IFs(dualphscal_setup, 
+        #        tabledir, inbeamuvdatas, gateduvdata, tocalnames, tocalindices, expconfig, targetconfigs, targetonly, calonly,
+        #        inbeamnames, targetnames, haveungated, ungateduvdata, False)
             
         
 
