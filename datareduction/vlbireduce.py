@@ -16,11 +16,13 @@ from AIPSTask import AIPSTask, AIPSList
 AIPSTask.isbatch = 0
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from AIPSTV import AIPSTV
+from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
 
 ################################################################################
 ## General python imports
 ################################################################################
 import sys, os, string, math, warnings, subprocess, yaml, glob
+import numpy as np
 import interaction, vlbatasks
 from support_vlbireduce import support_vlbireduce
 from time import gmtime, strftime
@@ -1683,14 +1685,19 @@ class vlbireduce(support_vlbireduce):
         if dosecondary:
             p1mins = self.maxinbeamcalibsp1mins
             inbeamkind0 = 'secondary'
+            doneinbeams = self.secondaryinbeams
+            inbeamfilenums = self.secondaryfilenums
         else:
             p1mins = self.maxinbeamcalibp1mins
             inbeamkind0 = 'primary'
+            doneinbeams = self.doneinbeams
+            inbeamfilenums = self.inbeamfilenums
         inbeamkind = inbeamkind0 + 'inbeam'
+
 
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and p1mins > 0:
             print("Runlevel " + str(self.runlevel) + ": Doing phase-only inbeam selfcal (combined IFs) on " + inbeamkind0 + " inbeam")
-            tocalnames, tocalindices = self.inbeamselfcal(self.doneinbeams, self.inbeamfilenums, inbeamuvdatas, gateduvdata, 
+            tocalnames, tocalindices = self.inbeamselfcal(doneinbeams, inbeamfilenums, inbeamuvdatas, gateduvdata, 
                                        expconfig, targetconfigs, modeldir, modeltype, targetonly, 
                                        calonly, self.beginif, self.endif, False, dosecondary, True, self.clversion, targetnames, numtargets, 
                                        inbeamnames, directory, tabledir, alwayssaved, self.leakagedopol)
@@ -1717,7 +1724,7 @@ class vlbireduce(support_vlbireduce):
 
     def load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(self, tocalnames, 
             tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, 
-            haveungated, ungateduvdata, tabledir, dosecondary=False, applyinbeamlist=None):
+            haveungated, ungateduvdata, tabledir, dosecondary=False, applyinbeamlist=None, dotriphscal=False):
         """
         Note
         ----
@@ -1736,18 +1743,27 @@ class vlbireduce(support_vlbireduce):
                                        targetconfigs, targetonly, calonly, False, dosecondary, True,
                                        self.clversion, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, 
                                        ['-1','0'], tabledir, self.inbeamfilenums, applyinbeamlist)
+            if (not dosecondary) and dotriphscal:
+                sncount = 0
             ## sncount is used to point at SN table in post-phscal stage
         else:
             print("Skipping application of " + inbeamkind0 + " inbeam phase-only selfcal (combined IFs)")
             if p1mins > 0:
-                sncount = len(tocalnames) + 1
+                if (not dosecondary) and dotriphscal:
+                    sncount = 0
+                else:
+                    sncount = len(tocalnames) + 1
             else:
                 sncount = 0
+
         if p1mins > 0:
             self.snversion = self.snversion + sncount
             if dosecondary:
                 self.targetcl0 = self.targetcl ## to mark the primary inbeam self-cal solutions
-            self.targetcl += 1
+            if (not dosecondary) and dotriphscal:
+                pass
+            else:
+                self.targetcl += 1
         self.runlevel = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
@@ -1837,14 +1853,15 @@ class vlbireduce(support_vlbireduce):
                     inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.sp1.sn'
                     print("Adopt dual-phscal mode on the secondary in-beam calibrator now...")
                     dosecondary = True
+                    filenum = self.secondaryfilenums[tocalindex]
                 else:
                     inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.p1.sn'
                     print("Adopt dual-phscal mode on the primary in-beam calibrator now...")
                     dosecondary = False
+                    filenum = self.inbeamfilenums[tocalindex]
                 ## <<<
                 
                 ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
-                filenum = self.inbeamfilenums[tocalindex]
                 if filenum >= 0:
                     uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
                 else:
@@ -1914,7 +1931,6 @@ class vlbireduce(support_vlbireduce):
             inbeamselfcal_phase_time_folder = directory+'/inbeamselfcal_phase_time_evolution'
             if not os.path.exists(inbeamselfcal_phase_time_folder):
                 os.system('mkdir %s' % inbeamselfcal_phase_time_folder)
-            
             final_inbeamselfcal_phase_edits = []
             for (tocalname, tocalindex) in zip(tocalnames_both, tocalindices_both): ## prIBC first, secIBC second
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
@@ -1922,14 +1938,15 @@ class vlbireduce(support_vlbireduce):
                     inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.sp1.sn'
                     print("Adopt triple-phscal mode on the secondary in-beam calibrator now...")
                     dosecondary = True
+                    filenum = self.secondaryfilenums[tocalindex]
                 else:
                     inbeamselfcalp1sntable = tabledir + '/' + tocalname + '.icalib.p1.sn'
                     print("Adopt triple-phscal mode on the primary in-beam calibrator now...")
                     dosecondary = False
+                    filenum = self.inbeamfilenums[tocalindex]
                 ## <<<
                 
                 ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
-                filenum = self.inbeamfilenums[tocalindex]
                 if filenum >= 0:
                     uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
                 else:
@@ -1948,13 +1965,14 @@ class vlbireduce(support_vlbireduce):
                 else:
                     final_inbeamselfcal_phase_edit = inbeamselfcal_phase_time_folder + '/.corrected_phases_secondary_inbeam_selfcal.final'
                 
-                if (not os.path.exists(dualphscal_edit)) and (not os.path.exists(final_inbeamselfcal_phase_edit)): ## the old interactive approach
+                if not os.path.exists(final_inbeamselfcal_phase_edit): ## the old interactive approach
                     print("the final saved_inbeamselfcal_phase_edit not found, now heading to interactive phase correction. When you finalize the edit, make a copy of the output file, rename it with a '.final' suffix (i.e., .corrected_phases_*inbeam_selfcal.final) and rerun the pipeline.")
                     triphscalp1.interactively_solve_phase_ambiguity(inbeamselfcal_phase_time_folder, dosecondary)
                     sys.exit(0)
                 else:
                     final_inbeamselfcal_phase_edits.append(final_inbeamselfcal_phase_edit)
-                
+            
+            print(final_inbeamselfcal_phase_edits)
             if len(list(set(final_inbeamselfcal_phase_edits))) != 2:
                 print('There should be 2 different .corrected_phases*inbeam_selfcal.final for triphscal; aborting for now.')
                 sys.exit()
@@ -1970,9 +1988,9 @@ class vlbireduce(support_vlbireduce):
             
             ## >>> apply the corrected icalib.p1.triphscal.sn only to the de-facto target.\
             ## the original clversion+1 CL table will be deleted and replaced in applyinbeamcalib() !!
-            junk = self.applyinbeamcalib(tocalnames, tocalindices, inbeamuvdatas, gateduvdata, expconfig, 
-                                   targetconfigs, True, calonly, False, dosecondary, True,
-                                   self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, dualphscal_setup, tabledir, self.inbeamfilenums)
+            junk = self.applyinbeamcalib(tocalnames_both[:1], tocalindices_both[:1], inbeamuvdatas, gateduvdata, expconfig, 
+                                   targetconfigs, True, calonly, False, False, True,
+                                   self.clversion+self.targetcl-1, self.snversion, inbeamnames, targetnames, haveungated, ungateduvdata, triphscal_setup, tabledir, self.inbeamfilenums)
                     
         self.runlevel += 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0]) ## do not trust this printTableAndRunlevel result if you are requesting inverse referencing!
@@ -2040,18 +2058,19 @@ class vlbireduce(support_vlbireduce):
                 ## >>> note that this function does not work for the scenario where two inbeams are provided as primaryinbeam!
                 if tocalname in self.secondaryinbeams:
                     inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.spn.sn'
+                    filenum = self.secondaryfilenums[tocalindex]
                     if not dosecondary:
                         print('The setup is self-contradictory; aborting')
                         sys.exit()
                 else:
                     inbeamselfcalpnsntable = tabledir + '/' + tocalname + '.icalib.pn.sn'
+                    filenum = self.inbeamfilenums[tocalindex]
                     if dosecondary:
                         print('The setup is self-contradictory; aborting')
                         sys.exit()
                 ## <<<
                 
                 ## >>>> use the real inbeamcal data (target can work the same) as a host to produce dualphscal solutions
-                filenum = self.inbeamfilenums[tocalindex]
                 if filenum >= 0:
                     uvdata = inbeamuvdatas[filenum] ## uvdata here refers to the uvdata to do self-calibration
                 else:

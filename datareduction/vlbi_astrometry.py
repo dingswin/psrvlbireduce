@@ -19,7 +19,7 @@ from AIPSTV import AIPSTV
 ################################################################################
 import sys, os, string, math, warnings, subprocess, yaml, glob
 import interaction, vlbatasks
-from vlbireduce import vlbireduce
+import vlbireduce as _vlbireduce
 from time import gmtime, strftime
 from optparse import OptionParser
 warnings.defaultaction = "always"
@@ -237,7 +237,7 @@ def main():
         triphscal_setup = targetconfigs[0]['triphscal'].split(',')
     except KeyError:
         triphscal_setup = ['-1','0','0'] ## the second and third values assign the correcting factors for the primaryinbeam and secondaryinbeam
-    dotriphscal = vlbireduce.output_dotriphscal(triphscal_setup)
+    dotriphscal = _vlbireduce.output_dotriphscal(triphscal_setup)
 
     try:
         difmaptargetuvaverstring = expconfig['difmaptargetuvaverstring']
@@ -255,7 +255,7 @@ def main():
     ################################################################################
     ## get an instance of the vlbireduce class
     ################################################################################
-    reducevlbi = vlbireduce(runfromlevel, runtolevel)
+    reducevlbi = _vlbireduce.vlbireduce(runfromlevel, runtolevel)
 
 
 
@@ -549,7 +549,7 @@ def main():
             ## Load the p1 inbeam CALIB solutions ########################################
             reducevlbi.load_inbeam_CALIB_solutions_obtained_with__IF_and_pol__combined(tocalnames,
                     tocalindices, inbeamuvdatas, gateduvdata, expconfig, targetconfigs, targetonly, calonly, inbeamnames, targetnames, haveungated, 
-                    ungateduvdata, tabledir, dosecondary, tocalnames) ## only apply inbeam solutions to the inbeam itself and the target
+                    ungateduvdata, tabledir, dosecondary, tocalnames, True) ## only apply inbeam solutions to the inbeam itself and the target
             ## Do a separate IF phase selfcal on the inbeams if requested #################
             [tocalnames, tocalindices] = reducevlbi.do_a_separate_IF_phase_selfcal_on_the_inbeams_if_requested(
                     inbeamuvdatas, gateduvdata, expconfig, targetconfigs, modeldir, modeltype,

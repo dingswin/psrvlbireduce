@@ -6513,7 +6513,7 @@ class calibrate_target_phase_with_multiple_phscals:
         from astropy.table import Table
         import pickle
         LoT = list_of_tables = []
-        for final_phase_edits in final_phase_edits: ## prIBC comes first, secIBC follows
+        for final_phase_edit in final_phase_edits: ## prIBC comes first, secIBC follows
             readfile = open(final_phase_edit, 'rb')
             t = pickle.load(readfile) ## would run into UnicodeDecodeError when loading in python3 what is pickle-dumped in python2 !!!
             readfile.close()
