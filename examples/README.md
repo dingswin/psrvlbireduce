@@ -16,7 +16,7 @@ Note that in total, these files are ~12.7 Gb, so you will need adequate storage 
 #### Downloading auxiliary data files
 Next, you need to acquire the EOP (earth-orientation parameter) file and the ionospheric files for that given day. This can easily be done by running the program prepare_astrometric_epoch.py under /datareduction. To run this file successfully, you will either need to supply it with the .vex file from your observations, or run it under the directory in which your data lives so it can grab the name of the .idifits file and figure out the date for which the files need to be grabbed. For example, 
 
-In `/Users/Alice/PSR/examples/J1738+0333/bd179i0` you can either run `prepare_astrometric_epoch.py bd179i0.vex` or you can just run `prepare_astrometric_epoch.py`. This should download all of the necessary files for you to be on your way.
+In `/Users/Alice/PSR/examples/J1738+0333/bd179i0` you should run `prepare_astrometric_epoch.py bd179i0.vex`. You do not need to have the vex file necessarily. It will make/download it for you. This should download all of the necessary files for you to be on your way.
 
 If you would prefer to download the above files manually, you can do so. The files you will need are:
 ```
