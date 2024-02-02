@@ -4394,11 +4394,12 @@ def inbeam_fring(uvdataset, calmodel, snversion, clversion, solintmins,
 
 ##### Bandpass corrections #####################################################
 def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
-          dopol = 0):
+          dopol = 0, usefullscan=False):
     bpass = AIPSTask('bpass', version = aipsver)
     bpass.indata = uvdataset
     bpass.calsour[1] = srcname
-    bpass.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
+    if not usefullscan:
+        bpass.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
     bpass.docalib = 2
     bpass.gainuse = clversion
     bpass.flagver = 1
@@ -4423,11 +4424,12 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
     bpass()
 
 ##### Polynomial-based bandpass correction #####################################
-def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10):
+def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10, usefullscan=False):
     cpass = AIPSTask('cpass', version = aipsver)
     cpass.indata = uvdataset
     cpass.calsour[1] = srcname
-    cpass.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
+    if not usefullscan:
+        cpass.timerang[1:] = get_ampcal_timer(uvdataset, srcname, ampcalscanno)
     cpass.docalib = 2
     cpass.gainuse = clversion
     cpass.flagver = 1
@@ -4729,7 +4731,6 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
         imagr.niter = 0
     imagr.dotv = -1
     imagr()
-    
 
 ##### Use imean to get stats from an image and return ##########################
 def getimagestats(image, cutofffrac): # [peak, rms, peakx, peaky]
@@ -4942,6 +4943,36 @@ def clcordelays(uvdataset, snversion, clversion, refant, numifs, numstokes):
                 break
         if not found:
             print("Couldn't find solution for antenna " + str(i+1))
+
+##### Extract delays from a SN table and stick them in a dictionary ############
+##### Takes an average over all IFs and polarisations ##########################
+def sntable2delaydict(uvdataset, snversion, numifs, numpols):
+    wizdataset = WizAIPSUVData(uvdataset)
+    antennas = {}
+    antable = uvdataset.table("AIPS AN", 1)
+    for row in antable:
+       antennas[str(row.nosta)] = row.anname.strip()
+       print(row)
+    sntable = wizdataset.table('SN', snversion)
+    delaydict = {}
+    for row in sntable:
+        count = 0
+        print(row.antenna_no)
+        anname = antennas[str(row.antenna_no)]
+        delaydict[anname] = 0.0
+        if numifs == 1:
+            delaydict[anname] += row.delay_1*1000000000.0
+            if numpols == 2:
+                delaydict[anname] += row.delay_2*1000000000.0
+        else:
+            for j in range(numifs):
+                delaydict[anname] += row.delay_1[j]*1000000000.0
+                count += 1
+                if numpols == 2:
+                    delaydict[anname] += row.delay_2[j]*1000000000.0
+                    count += 1
+        delaydict[anname] /= (numifs * numpols)
+    return delaydict
 
 ##### Create a flag table for a dataset for when a model will be too resolved ##
 def createmodelflagtable(uvdataset, modelimage, minflux, flagver):
