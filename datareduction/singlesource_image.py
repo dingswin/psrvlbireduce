@@ -76,7 +76,7 @@ vlbatasks.fitld_uvfits(os.getcwd() + "/templink.fits", uvdata, [])
 try:
     fullmjd  = vlbatasks.get_dataset_mjd_midpoint(uvdata)
 except ValueError:
-    print "Couldn't get MJD"
+    print("Couldn't get MJD")
     fullmjd = -1
 uvdata.zap()
 
@@ -86,6 +86,7 @@ npixels = imagesize
 gaussiantarget = False
 beginif = 1
 uvaverstr = '20,False'
+uvtaperstr = '0.99,1000'
 fullimagefile = fitsfile[:fitsfile.rfind('.')] + ".clean"
 fulljmfitfile = fitsfile[:fitsfile.rfind('.')] + ".clean"
 
@@ -94,7 +95,7 @@ fulljmfitfile = fitsfile[:fitsfile.rfind('.')] + ".clean"
 #                           beginif, endif, "", finalimagesize)
 #vlbatasks.jmfit(fullimagefile, fulljmfitfile, sourcename, stokesi, endif, pixelwindow, fullmjd)
 vlbatasks.difmap_maptarget(fitsfile, fullimagefile, fullauto, stokesi,
-                           pixelmas, npixels, weightstring, uvaverstr, gaussiantarget,
+                           pixelmas, npixels, weightstring, uvaverstr, uvtaperstr, gaussiantarget,
                            beginif, endif)
 vlbatasks.jmfit(fullimagefile, fulljmfitfile, sourcename, stokesi, endif)
 

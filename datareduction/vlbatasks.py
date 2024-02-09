@@ -310,7 +310,7 @@ class Scan:
             return -999
 
     def containsTime(self, mjd, sec):
-#        print "my mjd and sec is %d, %d, being asked for %d, %f" % (self.startmjd, self.startsec, mjd, sec)
+#        print("my mjd and sec is %d, %d, being asked for %d, %f" % (self.startmjd, self.startsec, mjd, sec))
         offset = (mjd-self.startmjd)*86400 + sec - self.startsec
         if offset >= 0 and offset < self.scandur + 0.1: #Crappy rpfits time stamps!
             return True
@@ -3144,7 +3144,7 @@ def setup_iono(logdir, imod):
     return templogdir
     
 ####### IONOSPHERIC CORRECTIONS USING TECOR ####################################
-def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
+def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2, scale=1.0, deltah=0.0, alpha=0):
     """
     Functionality
     -------------
@@ -3201,6 +3201,10 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     tecor.aparm[2:] = [0]
     tecor.aparm[1] = 1
     tecor.aparm[2] = follow
+    if int(aipsver[-2:]) >= 23:
+        tecor.aparm[4] = scale # Overall scaling fudge factor
+        tecor.aparm[5] = deltah # Offset to assumed height, in km
+        tecor.aparm[6] = alpha # elevation fudge factor
     if numfiles > 0:
         print('Running TECOR with ' + str(numfiles) + ' files - first one is ' + tecor.infile)
         print("Follow is " + str(follow))

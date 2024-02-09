@@ -120,6 +120,7 @@ if imageslice >= 0:
 if len(blc) == 1:
     imean = AIPSTask("imean")
     imean.indata = imagedata
+    imean.docat = -1 # Don't use store the estimated noise in the header
     imean.go()
     lines = imean.message()
     xpix = 128
@@ -163,7 +164,7 @@ jmfit.trc = trc
 jmfit.go()
 jmfitmessage = jmfit.message()
 print(jmfitmessage)
-sys.exit()
+
 msgindex = 0
 exciselinenos = []
 for i in range(len(jmfitmessage)-1):

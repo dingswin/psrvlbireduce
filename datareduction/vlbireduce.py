@@ -312,17 +312,32 @@ class vlbireduce(support_vlbireduce):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel and not expconfig['skiptecor']:
             print("Runlevel " + str(self.runlevel) + ": Running TECOR to correct ionosphere")
             try:
-                follow = expconfig['tecorfollow']
+                tecorfollow = expconfig['tecorfollow']
             except KeyError:
                 print("Follow not specified in expconfig file, defaulting to 0.2")
-                follow = 0.2
+                tecorfollow = 0.2
+            try:
+                tecorscale = expconfig['tecorscale']
+            except KeyError:
+                print("Scale not specified in expconfig file, defaulting to 1.0")
+                tecorscale = 1.0
+            try:
+                tecordeltah = expconfig['tecordeltah']
+            except KeyError:
+                print("Deltah not specified in expconfig file, defaulting to 0.0")
+                tecordeltah = 0.0
+            try:
+                tecoralpha = expconfig['tecoralpha']
+            except KeyError:
+                print("Alpha not specified in expconfig file, defaulting to 1.0")
+                tecoralpha = 1.0
             if not targetonly:
                 for i in range(numinbeams):
-                    vlbatasks.correct_iono(inbeamuvdatas[i], logdir, self.clversion, follow)
+                    vlbatasks.correct_iono(inbeamuvdatas[i], logdir, self.clversion, tecorfollow, tecorscale, tecordeltah, tecoralpha)
             if not calonly:
-                vlbatasks.correct_iono(gateduvdata, logdir, self.clversion, follow)
+                vlbatasks.correct_iono(gateduvdata, logdir, self.clversion, tecorfollow, tecorscale, tecordeltah, tecoralpha)
                 if haveungated:
-                    vlbatasks.correct_iono(ungateduvdata, logdir, self.clversion, follow)
+                    vlbatasks.correct_iono(ungateduvdata, logdir, self.clversion, tecorfollow, tecorscale, tecordeltah, tecoralpha)
         else:
             print("Skipping ionospheric corrections")
         

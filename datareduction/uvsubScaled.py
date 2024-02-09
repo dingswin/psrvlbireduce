@@ -11,13 +11,13 @@ from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
 usage  = "uvsubScaled.py <uvinputfile1> <uvinputfile2> <scalefactor> <uvoutputfile>\n"
 usage += "  (subtracts uvinputfile2 from uvinputfile1, after scaling uvinputfile2 by scalefactor)"
 if len(sys.argv) != 5:
-    print usage
+    print(usage)
     sys.exit()
 
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
 except KeyError:
-    aipsver = '31DEC18'
+    aipsver = '31DEC23'
 AIPS.userno = 101
 uvdata1     = AIPSUVData("JUNK1", "JUNK1", 1, 1)
 uvdata2     = AIPSUVData("JUNK2", "JUNK2", 1, 1)
@@ -58,7 +58,7 @@ except TypeError:
     numchan = int(uvdata1.table('FQ', 1)[0].total_bandwidth/\
               uvdata1.table('FQ', 1)[0].ch_width + 0.5)
 numstokes = len(uvdata1.stokes)
-print "%d IFs, %d chans, %d stokes" % (numif, numchan, numstokes)
+print("%d IFs, %d chans, %d stokes" % (numif, numchan, numstokes))
 
 times = []
 baselines = []
@@ -71,11 +71,11 @@ for row in wizuvdata2:
     output2.write("%.6f %d-%d\n" % (row.time, row.baseline[0], row.baseline[1]))
 output2.close()
 
-print "Finished reading file 1..."
+print("Finished reading file 1...")
 
 visibilities = numpy.zeros(rowcount*numif*numchan*numstokes*3).reshape(rowcount, numif, numchan, numstokes, 3)
 
-print "Allocated space for visibilities"
+print("Allocated space for visibilities")
 rowcount = 0
 for row in wizuvdata2:
     for i in range(numif):
@@ -85,7 +85,7 @@ for row in wizuvdata2:
                     visibilities[rowcount][i][j][k][l] = row.visibility[i][j][k][l]
     rowcount += 1
 
-print "Now we've read in file 1's visibilities, time to skip through file 2"
+print("Now we've read in file 1's visibilities, time to skip through file 2")
 numvisibilities = rowcount
 
 times1 = []
@@ -95,9 +95,9 @@ for row in wizuvdata1:
     output.write("%.6f %d-%d\n" % (row.time, row.baseline[0], row.baseline[1]))
 output.close()
 
-print "Loaded all of the data for subtraction..."
-print "Master data has " + str(len(times1)) + " visibilities"
-print "Data to subtract has " + str(numvisibilities) + " visibilities"
+print("Loaded all of the data for subtraction...")
+print("Master data has " + str(len(times1)) + " visibilities")
+print("Data to subtract has " + str(numvisibilities) + " visibilities")
 
 atindex = 0
 numskipped = 0
@@ -107,11 +107,11 @@ rowcount = 0
 TINY = 0.000001
 for row in wizuvdata1:
     if atindex == len(times):
-        print "Ran out of times"
+        print("Ran out of times")
         break
     numvis += 1
     while atindex < len(times) and row.time > times[atindex]+TINY:
-        print "Skipping a visibility due to time mismatch! %.10f %.10f" % (row.time, times[atindex])
+        print("Skipping a visibility due to time mismatch! %.10f %.10f" % (row.time, times[atindex]))
         atindex += 1
         numskipped += 1
 #    while atindex < len(times) and (row.baseline[0] > baselines[atindex][0] or ((row.baseline[0] == baselines[atindex][0]) and (row.baseline[1] > baselines[atindex][1]))):
@@ -128,26 +128,26 @@ for row in wizuvdata1:
                 (row.baseline[0] != baselines[atindex][0] and row.baseline[1] != baselines[atindex][1] and baselines[atindex][0] == baselines[atindex][1]) # The baseline doesn't match and we're currently looking at an autocorrelation, which might be present in the to-subtract dataset and not the primary dataset
               )
            ):
-        print "Skipping a visibility due to baseline mismatch!"
-        print row.baseline, baselines[atindex], atindex, len(baselines), len(times)
+        print("Skipping a visibility due to baseline mismatch!")
+        print(row.baseline, baselines[atindex], atindex, len(baselines), len(times))
         atindex += 1
         numskipped += 1
     if atindex == len(times):
-        print "Ran out of times"
+        print("Ran out of times")
         break
     rowcount += 1
     if row.time < times[atindex]-TINY or row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1]:
-        print "Skipping a visibility because times no longer match after baseline mismatch"
-        print row.baseline, baselines[atindex], row.time, times[atindex]
+        print("Skipping a visibility because times no longer match after baseline mismatch")
+        print(row.baseline, baselines[atindex], row.time, times[atindex])
         for i in range(numif):
             for j in range(numchan):
                 for k in range(numstokes):
                     row.visibility[i][j][k][2] = 0.0
         row.update()
         continue
-    #print "\n\n\n" + str(baselines[atindex]) + " " + str(row.baseline) + ", Before: " + str(row.visibility)
+    #print("\n\n\n" + str(baselines[atindex]) + " " + str(row.baseline) + ", Before: " + str(row.visibility))
     if row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1] or row.time != times[atindex]:
-        print "ARGGH!"
+        print("ARGGH!")
     #if row.visibility[0][0][0][2] > 0:
     #    weightratio = row.visibility[0][0][0][2]/visibilities[atindex][0][0][0][2]
     #    if weightratio > 1.1 or weightratio < 0.9:
@@ -165,12 +165,12 @@ for row in wizuvdata1:
                 row.visibility[i][j][k][1] -= scalefactor*visibilities[atindex][i][j][k][1]
     row.update()
     #if math.sqrt(row.visibility[0][0][0][0]**2 + row.visibility[0][0][0][1]**2) > 0.035 and math.sqrt(row.uvw[0]**2+row.uvw[1]**2+row.uvw[2]**2) > 50000000:
-    #    print row.visibility
-    #print "After: " + str(row.visibility)
+    #    print(row.visibility)
+    #print("After: " + str(row.visibility))
     atindex += 1
 
 wizuvdata1.update()
 
-print "Skipped " + str(numskipped) + " out of " + str(numvis) + " visibilities, plus another " + str(numskipped2) + " because of weight mismatch"
+print("Skipped " + str(numskipped) + " out of " + str(numvis) + " visibilities, plus another " + str(numskipped2) + " because of weight mismatch")
 vlbatasks.writedata(uvdata1, tempoutfile, True)
 os.system("mv %s %s" % (tempoutfile,outuvfile))

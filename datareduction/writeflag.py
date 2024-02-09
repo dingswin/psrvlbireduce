@@ -32,8 +32,10 @@ if not os.path.exists(tabledir):
 if not os.path.exists(vexfile):
     print(vexfile + " does not exist - aborting!")
     sys.exit()
-
-flagsource = input('Flag source: ')
+if sys.version_info[0] == 3:
+    flagsource = input('Flag source: ')
+else:
+    flagsource = raw_input('Flag source: ')
 if flagsource=="":
     flagfile = tabledir + 'additionaledit.flag'
 else:
@@ -95,7 +97,10 @@ while index < len(queries):
             index += 1
             continue
         query = query % flagants
-    answer = input(query + ': ')
+    if sys.version_info[0] == 3:
+        answer = input(query + ': ')
+    else:
+        answer = raw_input(query + ': ')
     if answer == "q": break
     if query == "Flag antenna":
        flagants = answer
