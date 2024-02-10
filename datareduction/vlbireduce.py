@@ -2526,7 +2526,11 @@ class vlbireduce(support_vlbireduce):
                     combineifs = config['combinefinalifs']
                 except KeyError:
                     combineifs = False
-                splitmulti = False
+                try:
+                    splitmulti = config['splitmultichannels']
+                except KeyError:
+                    splitmulti = False
+                #splitmulti = False
                 splitseqno = 1
                 splitbeginif = -1
                 splitendif = -1
@@ -2814,6 +2818,10 @@ class vlbireduce(support_vlbireduce):
                     self.ungatedpresent.append(False)
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
+        
+        if splitmulti:
+            print('Multi-channel data are produced only for the analysis of scintillation. Therefore, no need to proceed further.')
+            sys.exit(0)
 
     def image_targets_using_DIFMAP_and_fit_for_position(self, calonly, numtargets, targetconfigs, expconfig,
             directory, experiment, targetnames, beginif, endif, haveungated, phscalnames, inbeamnames, inbeamuvdatas,
