@@ -45,7 +45,7 @@ parser.add_option("--filelist", dest="filelist", default="",
 parser.add_option("--filelistdir", dest="filelistdir", default="",
                    help="Prepend all filelist files with this")
 (options, junk) = parser.parse_args()
-AIPS.userno     = 2575
+AIPS.userno     = 2576
 rootdir         = options.rootdir
 expseries       = options.expseries
 expcodes        = options.expcodes.split(',')

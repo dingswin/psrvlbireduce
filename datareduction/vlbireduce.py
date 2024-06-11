@@ -1977,7 +1977,7 @@ class vlbireduce(support_vlbireduce):
                 print('There should be 2 different .corrected_phases*inbeam_selfcal.final for triphscal; aborting for now.')
                 sys.exit()
 
-            phase_correction_factors = np.float128(triphscal_setup[1:]) ## two phase-correcting factors
+            phase_correction_factors = np.float64(triphscal_setup[1:]) ## two phase-correcting factors
             triphscalp1.linearly_add_two_final_inbeamselfcal_phase_edits(final_inbeamselfcal_phase_edits, phase_correction_factors)
             
             triphscaloutputsn = tabledir + '/icalib.p1.triphscal.sn'
