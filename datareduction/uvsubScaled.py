@@ -8,11 +8,20 @@ from AIPSTask import AIPSTask, AIPSList
 from AIPSData import AIPSUVData, AIPSImage, AIPSCat
 from Wizardry.AIPSData import AIPSUVData as WizAIPSUVData
 
-usage  = "uvsubScaled.py <uvinputfile1> <uvinputfile2> <scalefactor> <uvoutputfile>\n"
+usage  = "uvsubScaled.py <uvinputfile1> <uvinputfile2> <scalefactor> <uvoutputfile> [--ignoretime]\n"
 usage += "  (subtracts uvinputfile2 from uvinputfile1, after scaling uvinputfile2 by scalefactor)"
-if len(sys.argv) != 5:
+if len(sys.argv) != 5 and len(sys.argv) != 6:
     print(usage)
     sys.exit()
+
+ignoretime = False
+if len(sys.argv) == 6:
+    if sys.argv[5] == "--ignoretime":
+        ignoretime = True
+    else:
+        print("Unknown optional parameter", sys.argv[5])
+        print(usage)
+        sys.exit()
 
 try:
     aipsver = os.environ['PSRVLBAIPSVER']
@@ -110,7 +119,7 @@ for row in wizuvdata1:
         print("Ran out of times")
         break
     numvis += 1
-    while atindex < len(times) and row.time > times[atindex]+TINY:
+    while not ignoretime and atindex < len(times) and row.time > times[atindex]+TINY:
         print("Skipping a visibility due to time mismatch! %.10f %.10f" % (row.time, times[atindex]))
         atindex += 1
         numskipped += 1
@@ -119,7 +128,7 @@ for row in wizuvdata1:
     ## WARNING - CHANGING THIS FROM ABOVE, SINCE THE TIME CHECK SEEMED INCORRECT
     while ( atindex < len(times) # Not running off the end of the times array
              and 
-              row.time < times[atindex]+TINY # Current row is earlier than or equal to the time we are currently looking at - ensures we don't race off into the future
+              (ignoretime or row.time < times[atindex]+TINY) # Current row is earlier than or equal to the time we are currently looking at - ensures we don't race off into the future
              and  
               (row.baseline[0] > baselines[atindex][0] # The row's baseline is a higher number than the one we are currently looking at
                or 
@@ -136,7 +145,7 @@ for row in wizuvdata1:
         print("Ran out of times")
         break
     rowcount += 1
-    if row.time < times[atindex]-TINY or row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1]:
+    if (not ignoretime and row.time < times[atindex]-TINY) or row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1]:
         print("Skipping a visibility because times no longer match after baseline mismatch")
         print(row.baseline, baselines[atindex], row.time, times[atindex])
         for i in range(numif):
@@ -146,8 +155,9 @@ for row in wizuvdata1:
         row.update()
         continue
     #print("\n\n\n" + str(baselines[atindex]) + " " + str(row.baseline) + ", Before: " + str(row.visibility))
-    if row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1] or row.time != times[atindex]:
-        print("ARGGH!")
+    if row.baseline[0] != baselines[atindex][0] or row.baseline[1] != baselines[atindex][1] or (not ignoretime and row.time != times[atindex]):
+        print("ARGGH! Should not ever get here. Aborting")
+        sys.exit()
     #if row.visibility[0][0][0][2] > 0:
     #    weightratio = row.visibility[0][0][0][2]/visibilities[atindex][0][0][0][2]
     #    if weightratio > 1.1 or weightratio < 0.9:
