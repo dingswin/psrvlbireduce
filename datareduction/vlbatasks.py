@@ -4398,7 +4398,7 @@ def inbeam_fring(uvdataset, calmodel, snversion, clversion, solintmins,
 
 ##### Bandpass corrections #####################################################
 def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
-          dopol = 0, usefullscan=False):
+          dopol = 0, usefullscan=False, fluxcoeffs=[]):
     bpass = AIPSTask('bpass', version = aipsver)
     bpass.indata = uvdataset
     bpass.calsour[1] = srcname
@@ -4420,15 +4420,47 @@ def bpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, \
     bpass.flux = 0
     bpass.smodel[1:] = [0]
     bpass.bpassprm[1:] = [0]
-    bpass.bpassprm[5] = 1
-    bpass.bpassprm[9] = 1
-    bpass.bpassprm[10] = 1
+    bpass.bpassprm[5] = 1 # Don't apply a "channel 0" normalisation based on a subset of channels
+    bpass.bpassprm[9] = 1 # Do try to interpolate over flagged channels
+    bpass.bpassprm[10] = 1 # Do the amplitude normalisation using all channels
+
+    # Deal with source spectral index/curvature
+    if len(fluxcoeffs) > 1:
+        bpass.doscale = 1
+        bpass.specindx = fluxcoeffs[1]
+        for i in range(len(fluxcoeffs) - 2):
+            bpass.specurve[i+1] = fluxcoeffs[i+2]
     print("CL version is " + str(clversion) + ", calsour is " + \
           str(bpass.calsour[1]) + ", timer is " + str(bpass.timerang))
     bpass()
 
+##### Run SETJY to set the source flux densities in the SU table ###############
+def setjy(uvdataset, srcname, fluxcoeffs):
+    """
+    Functionality
+    -------------
+    Runs SETJY in mode SPEC to set the flux density of source srcname
+    Fluxcoeffs must be an array of length at least 2 (reference value, spectral index)
+    and max 5.
+    Reference frequency is 1 GHz.
+    """
+    setjy = AIPSTask('setjy', version = aipsver)
+    setjy.indata = uvdataset
+    setjy.sources[1] = srcname
+    if not isinstance( fluxcoeffs, (list, tuple) ):
+        raise TypeError("fluxcoeffs argument to setjy must be a list")
+    if len(fluxcoeffs) < 2:
+        raise TypeError("fluxcoeffs argument to setjy must be a list of length at least 2")
+    if len(fluxcoeffs) > 5:
+        raise TypeError("fluxcoeffs argument to setjy must be a list of length at most 5")
+    setjy.zerosp[1] = fluxcoeffs[0]
+    setjy.specindx = fluxcoeffs[1]
+    for i in range(len(fluxcoeffs) - 2):
+        setjy.specurve[i+1] = fluxcoeffs[i+2]
+    setjy()
+
 ##### Polynomial-based bandpass correction #####################################
-def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10, usefullscan=False):
+def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npoly=10, usefullscan=False, fluxcoeffs=[]):
     cpass = AIPSTask('cpass', version = aipsver)
     cpass.indata = uvdataset
     cpass.calsour[1] = srcname
@@ -4457,6 +4489,13 @@ def cpass(uvdataset, srcname, clversion, ampcalscanno, ampcalmodeldata=None, npo
     cpass.cparm[3] = 0.005
     cpass.cparm[5] = 2
     cpass.cparm[8] = 1
+    # Deal with source spectral index/curvature
+    if len(fluxcoeffs) > 1:
+        cpass.doscale = 1
+        cpass.specindx = fluxcoeffs[1]
+        for i in range(len(fluxcoeffs) - 2):
+            cpass.specurve[i+1] = fluxcoeffs[i+2]
+    # Run it
     cpass()
 
 ##### Get the number of channels in a uv file ##################################
