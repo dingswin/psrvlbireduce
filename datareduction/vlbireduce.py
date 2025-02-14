@@ -2863,6 +2863,8 @@ class vlbireduce(support_vlbireduce):
                                            config['difmapweightstring'], difmaptargetuvaverstring, 
                                            uvtaperstring, config['usegaussiantarget'],
                                            beginif, endif-subtractif)
+                print(targetimagefile, jmfitfile, targetnames[i])
+                print('\n\n\n\n\n\n\n\n\n'*10)
                 vlbatasks.jmfit(targetimagefile, jmfitfile, targetnames[i], stokesi, endif-subtractif)
                 ## >>> when the target is resolved
                 if targetnames[i] in self.dividesourcelist:

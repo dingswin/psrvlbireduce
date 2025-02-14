@@ -169,6 +169,7 @@ def main():
     #os.system("wget -4 ftp://cddis.gsfc.nasa.gov/gps/products/ionex/%04d/%03d/*.Z" % (syear, sdoy))
     """download IONEX files"""
     if edoy != sdoy:
+        download_TEC_maps(syear, sdoy, syy)
         download_TEC_maps(eyear, edoy, eyy)
     else:
         download_TEC_maps(syear, sdoy, syy)

@@ -634,6 +634,11 @@ class support_vlbireduce(object):
     def expconfig2cals(self, expconfig, expno=''):
         targetdir = expconfig['rootdir']
         cals = []
+        if expno == '':
+            try:
+                expno = expconfig['expno']
+            except KeyError:
+                pass
         try: 
             phscalnames = expconfig['phscalnames']
             if type(phscalnames) == str:
@@ -651,7 +656,7 @@ class support_vlbireduce(object):
                 for bpcal in bpcals:
                     cals.append(bpcal)
         except KeyError:
-            ## if 'inbeamnames' is unfound, neither should be phscalnames, then proceeding to sourcefiles ###
+            ## if 'ampcalsrc' is unfound, neither should be phscalnames, then proceeding to sourcefiles ###
             sourcefiles = glob.glob(r'%s/*/*.source' % targetdir)
             if sourcefiles == []:
                 print("source files not found; abort")
@@ -875,6 +880,8 @@ class support_vlbireduce(object):
                     sourcelist = []
                     for i in tocalindices: 
                         sourcelist.append(phsrefnames[i])
+                    #print(inbeamuvdatas[0], sourcelist, phsrefnames, tocalindices)
+                    #sys.exit()
                     vlbatasks.applysntable(inbeamuvdatas[0], snversion+sncount, '2PT', 
                                            clversion, expconfig['refant'], sourcelist, 'CALP')
                 else:
