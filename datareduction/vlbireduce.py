@@ -566,7 +566,7 @@ class vlbireduce(support_vlbireduce):
                                 elif "174" in experiment:
                                     fieldsourcenames[targetnames[j][:5] + "PT"] = inbeamnames[j][i]
                                 else:
-                                    fieldsourcenames[targetnames[j] + "PT"] = inbeamnames[j][i]
+                                    fieldsourcenames[targetnames[j][:10] + "PT"] = inbeamnames[j][i] ## [:10] is for the case of J1824-2452A and so on
                                 
                     pbsntable = tabledir + 'pbcor.cal' + str(i) + '.sn'
                     vlbatasks.deletetable(inbeamuvdatas[i], 'SN', self.snversion)
@@ -583,9 +583,9 @@ class vlbireduce(support_vlbireduce):
                     if expconfig['dodefaultnames']:
                         fieldsourcenames["TARGETPT"] = targetnames[i]
                     elif "174" in experiment:
-                        fieldsourcenames[targetnames[j][:5] + "PT"] = targetnames[i]
+                        fieldsourcenames[targetnames[i][:5] + "PT"] = targetnames[i]
                     else:
-                        fieldsourcenames[targetnames[i] + "PT"] = targetnames[i]
+                        fieldsourcenames[targetnames[i][:10] + "PT"] = targetnames[i]
                 uvdatas = [gateduvdata]
                 if haveungated:
                     uvdatas = [gateduvdata, ungateduvdata]
