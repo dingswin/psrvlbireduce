@@ -2552,6 +2552,10 @@ class vlbireduce(support_vlbireduce):
                             #write out pre-selfcal in-beam cal data
                             tempfile = directory + '/temp.fits'
                             os.system("rm -f " + tempfile)
+                            aipssrcname = inbeamsrc
+                            if len(inbeamsrc) > 12:
+                                aipssrcname = inbeamsrc[:12]
+                            self.splitdata_PS = AIPSUVData(aipssrcname, 'PRESEL', 1, 1) #pre-selfcalibration
                             #if os.path.exists(temp_inbeampreselfcaluvfile):
                             #    os.remove(temp_inbeampreselfcaluvfile)
                             #print(inbeamuvdatas[count], inbeamsrc, splitseqno, splitmulti, splitband, splitbeginif, splitendif, combineifs, self.leakagedopol)
