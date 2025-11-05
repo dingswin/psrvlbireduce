@@ -42,8 +42,15 @@ def download_TEC_maps(yyyy, doy, yy):
             if gzip_result != 0:
                 raise Exception
         except:
-            print('use jplg instead of igsg, as the latter is not yet available.')
-            os.system("gunzip jplg%03d0.%02di.Z" % (doy, yy))
+            try:
+                print('use jplg instead of igsg, as the latter is not yet available.')
+                gunzip_result = os.system("gunzip jplg%03d0.%02di.Z" % (doy, yy))
+                if gunzip_result != 0:
+                    raise Exception
+            except:
+                print('use esag instead of igsg and jplg, as the latter two are not yet available.')
+                os.system("gzip -d ESA0OPSFIN_%04d%03d0000_01D_02H_GIM.INX.gz" % (yyyy, doy))
+
 
     
 
