@@ -362,7 +362,27 @@ class support_vlbireduce(object):
                 ## >>> targetfilenum<0  --> inverse referencing
                 else:
                     tocaluvdata.append(inbeam_uv_data)
-                    tocalimagedata.append(None) ## no image data used for pulsar
+                    if config['useimagemodelininversereferencing']: # note that dualphscal and triphscal cannot be applied at the same time!!!
+                        inbeam_image_file = modeldir + inbeamsrc + self.cmband + ".clean.fits"
+                        rawuvoutputfile = directory + inbeamsrc + self.cmband + ".formodeling.uv.fits"
+                        if not os.path.exists(inbeam_image_file):
+                            print(("Can't find " + modeltype + " inbeam model  " + inbeam_image_file))
+                            if modeltype == "preliminary":
+                                print(("I will write out a data file for this inbeam to " + rawuvoutputfile))
+                                print("Please image it with your favourite tool")
+                                print("(clean only if using difmap, no modelfitting)")
+                                print(("When complete, copy the image fits file to " + inbeam_image_file))
+                                vlbatasks.writedata(inbeam_uv_data, rawuvoutputfile, True)
+                            else:
+                                print("Aborting!!")
+                            sys.exit(1)
+                        inbeam_image_data = AIPSImage(shortname, "CLEAN", 1, 1)
+                        if inbeam_image_data.exists():
+                            inbeam_image_data.zap()
+                        vlbatasks.fitld_image(inbeam_image_file, inbeam_image_data)
+                        tocalimagedata.append(inbeam_image_data)
+                    else:
+                        tocalimagedata.append(None) ## no image data used for pulsar
                     tocalnames.append(inbeamsrc)
                     tocalconfigs.append(config)
                 ## <<<
