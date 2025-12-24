@@ -4474,7 +4474,11 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
     imagr = AIPSTask('imagr', version = aipsver)
     imagr.indata = uvdataset
     imagr.nfield = 1
-    imagr.sources[1] = srcname
+    if int(aipsver[-2:]) >= 26:
+        imagr.srcname[1] = srcname
+    else:
+        imagr.sources[1] = srcname
+    #imagr.sources[1] = srcname
     imagr.stokes = 'I'
     imagr.outname = srcname
     imagr.flux = stopflux
@@ -4608,7 +4612,10 @@ def image(uvdataset, cellmas, numcells, numcc, flux, srcname, plotfile,
           doallbands, nointeraction, stokesi):
     imagr = AIPSTask('imagr', version = aipsver)
     imagr.indata = uvdataset
-    imagr.sources[1] = srcname
+    if int(aipsver[-2:]) >= 26:
+        imagr.srcname[1] = srcname
+    else:
+        imagr.sources[1] = srcname
     imagr.stokes = 'I'
     if len(srcname) > 12:
         imagr.outname = srcname[:12]
