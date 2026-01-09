@@ -120,6 +120,7 @@ if imageslice >= 0:
 if len(blc) == 1:
     imean = AIPSTask("imean")
     imean.indata = imagedata
+    imean.docat = -1 # Don't store the estimated noise in the header
     imean.go()
     lines = imean.message()
     xpix = 128
