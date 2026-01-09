@@ -587,7 +587,7 @@ def main():
                 phscalnames, inbeamnames, inbeamuvdatas, uvtaperstring, difmaptargetuvaverstring, multi_component_sources)
     ## Make some nice diagnostic plots #############################################
     if not skipdiagnosticplots:
-        reducevlbi.make_diagnostic_plots(directory, codedir)
+        reducevlbi.make_diagnostic_plots(directory, codedir, logfile)
 
 if __name__ == "__main__":
     main()

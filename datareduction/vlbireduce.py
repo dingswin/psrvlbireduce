@@ -3024,11 +3024,11 @@ class vlbireduce(support_vlbireduce):
         self.runlevel  = self.runlevel + 1
         self.printTableAndRunlevel(self.runlevel, self.snversion, self.clversion+self.targetcl, inbeamuvdatas[0])
 
-    def make_diagnostic_plots(self, directory, codedir):
+    def make_diagnostic_plots(self, directory, codedir, logfile):
         if self.runfromlevel <= self.runlevel and self.runtolevel >= self.runlevel:
             print("Making final diagnostic plots")
             os.chdir(directory)
-            os.system("%s/make_final_diagnostic.py" % codedir)
+            os.system("python {0}/make_final_diagnostic2.py {1}".format(codedir, logfile))
         else:
             print("Skipping making of diagnostic plots")
 
