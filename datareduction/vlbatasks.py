@@ -309,7 +309,7 @@ class Scan:
             return -999
 
     def containsTime(self, mjd, sec):
-#        print "my mjd and sec is %d, %d, being asked for %d, %f" % (self.startmjd, self.startsec, mjd, sec)
+#        print("my mjd and sec is %d, %d, being asked for %d, %f" % (self.startmjd, self.startsec, mjd, sec))
         offset = (mjd-self.startmjd)*86400 + sec - self.startsec
         if offset >= 0 and offset < self.scandur + 0.1: #Crappy rpfits time stamps!
             return True
@@ -2992,7 +2992,7 @@ def setup_iono(logdir, imod):
     return templogdir
     
 ####### IONOSPHERIC CORRECTIONS USING TECOR ####################################
-def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
+def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2, scale=1.0, deltah=0.0, alpha=0):
     tecor = AIPSTask('tecor', version = aipsver)
     for t in uvdataset.tables:
         if 'CL' in t[1] and t[0] == clversion+1:
@@ -3036,6 +3036,10 @@ def correct_iono(uvdataset, tecordirectory, clversion, follow=0.2):
     tecor.aparm[2:] = [0]
     tecor.aparm[1] = 1
     tecor.aparm[2] = follow
+    if int(aipsver[-2:]) >= 23:
+        tecor.aparm[4] = scale # Overall scaling fudge factor
+        tecor.aparm[5] = deltah # Offset to assumed height, in km
+        tecor.aparm[6] = alpha # elevation fudge factor
     if numfiles > 0:
         print('Running TECOR with ' + str(numfiles) + ' files - first one is ' + tecor.infile)
         print("Follow is " + str(follow))
@@ -4474,7 +4478,7 @@ def widefieldimage(uvdataset, srcname, numcells, cellmas, doclean, stopflux,
     imagr = AIPSTask('imagr', version = aipsver)
     imagr.indata = uvdataset
     imagr.nfield = 1
-    if int(aipsver[-2:]) >= 26:
+    if int(aipsver[-2:]) >= 23:
         imagr.srcname = srcname
     else:
         imagr.sources[1] = srcname
@@ -5326,7 +5330,7 @@ def write_difmappsrscript(imagename, bands, difmap, pixsize, finepix,npixels=102
     difmap.stdin.write("unshift\n")
 
 ##### Use difmap to map a target ###############################################
-def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='0.99,1000', dogaussian=False, beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2, **kwargs):
+def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, mapsize=1024, uvweightstr="0,-1", uvaverstr='20,True', uvtaperstr='', dogaussian=False, beginif=1, endif=4, ifrange="", finalmapsize=1024, finepix=0.2, **kwargs):
     """
     Note
     ----
@@ -5375,7 +5379,8 @@ def difmap_maptarget(uvfile, imagefile, nointeraction, stokesi, pixsize=1.0, map
     difmap.stdin.write("mapsize " + str(mapsize) + "," + str(pixsize) + "\n")
     difmap.stdin.write("uvweight " + uvweightstr + "\n")
     difmap.stdin.write("uvaver " + uvaverstr + "\n")
-    difmap.stdin.write("uvtaper " + uvtaperstr + "\n")
+    if len(uvtaperstr) > 1:
+        difmap.stdin.write("uvtaper " + uvtaperstr + "\n")
     difmap.stdin.write("mapcolor none\n")
     if nointeraction:
         difmap.stdin.write("device /null\n")
